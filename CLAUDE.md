@@ -32,13 +32,26 @@ deleted once its content was migrated into the database via
 `/login`; other failures show an inline error with a retry button while
 the sidebar/header keep rendering normally. The API backing this is one
 shared tree for every logged-in user — no per-user data. The member
-detail panel supports renaming, adding a child, deleting, and managing
-spouses (the empty state supports creating the first member) — all
-these call `genealogy-api`'s Member/Marriage CRUD endpoints directly and
-trigger a **silent** tree refetch on success (see the `loadTree({
-silent: true })` note below). Re-parenting an existing member via the
-UI (the backend already supports it through `PUT`) has no UI yet —
-still a future piece of work.
+detail panel supports renaming, adding a child, deleting, reparenting,
+and managing spouses (the empty state supports creating the first
+member) — all these call `genealogy-api`'s Member/Marriage CRUD
+endpoints directly and trigger a **silent** tree refetch on success
+(see the `loadTree({ silent: true })` note below).
+
+**Reparenting** — the edit form's "Cha/Mẹ" `<select>` only appears when
+`getReparentCandidates` (`src/lib/tree/search.ts`) returns a non-empty
+list; it excludes the member itself and all of its descendants (client-
+side cycle prevention, mirroring the backend's own `_is_descendant`
+check) and only ever lists blood-line members (spouses are never
+parent candidates). For the tree's root member specifically, every
+other member is by definition its descendant, so the candidate list is
+always empty and the field simply doesn't render — no separate
+`isRoot` flag needed. **A successful reparent closes the detail panel**
+instead of trying to patch `ancestorPath`/`generation` locally — moving
+a member changes its position in the tree, and those two fields are
+computed from the *old* position; closing the panel and letting the
+next click re-derive them from the refetched tree avoids reintroducing
+the same class of staleness bug already documented below for renames.
 
 **Spouses (`MemberDetailPanel`'s "Vợ/chồng" section)** — a member can
 have zero or more spouses (`PanelSpouse[]`, converted in
