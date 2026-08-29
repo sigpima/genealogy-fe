@@ -1,5 +1,6 @@
 'use client';
 
+import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { loginFields } from '@/constants/formFields';
 import FormAction from '@/components/FormAction';
@@ -11,12 +12,39 @@ const fieldsState: { [key: string]: string } = {};
 fields.forEach((field) => (fieldsState[field.id] = ''));
 
 export default function Login() {
+  const router = useRouter();
   const [loginState, setLoginState] = useState(fieldsState);
+  const [error, setError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setLoginState({ ...loginState, [e.target.id]: e.target.value });
   };
-  const handleSubmit = (e: React.FormEvent) => {
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError(null);
+    setIsSubmitting(true);
+    try {
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: loginState['email-address'],
+          password: loginState['password'],
+        }),
+      });
+      if (!response.ok) {
+        setError('Email hoặc mật khẩu không đúng.');
+        return;
+      }
+      router.push('/');
+    } catch {
+      setError('Không thể kết nối tới máy chủ. Vui lòng thử lại.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -37,8 +65,9 @@ export default function Login() {
           />
         ))}
       </div>
+      {error && <p className="text-sm text-danger">{error}</p>}
       <FormExtra />
-      <FormAction handleSubmit={handleSubmit} text="Login" />
+      <FormAction text={isSubmitting ? 'Đang đăng nhập...' : 'Login'} />
     </form>
   );
 }
