@@ -13,7 +13,7 @@ import {
   type SpouseUpdateInput,
 } from '@/components/tree/MemberDetailPanel';
 import { TreeControls } from '@/components/tree/TreeControls';
-import { getMemberAtPath } from '@/lib/tree/search';
+import { getMemberAtPath, getReparentCandidates } from '@/lib/tree/search';
 import type { FamilyMember, Gender, Spouse } from '@/lib/tree/types';
 
 const Tree = dynamic(() => import('react-d3-tree'), { ssr: false });
@@ -178,14 +178,29 @@ export default function GenealogyTree({ familyTree, focusRequest, onDataChanged 
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           full_name: input.name,
-          parent_id: selectedMember.parentId,
+          parent_id: input.parentId,
           birth_year: input.birthYear,
           death_year: input.deathYear,
           gender: input.gender,
           notes: input.notes,
         }),
       });
-      if (!response.ok) return { ok: false, error: 'Không thể lưu. Vui lòng thử lại.' };
+      if (!response.ok) {
+        if (response.status === 400) {
+          return { ok: false, error: 'Không thể chuyển cha: sẽ tạo vòng lặp trong cây.' };
+        }
+        return { ok: false, error: 'Không thể lưu. Vui lòng thử lại.' };
+      }
+
+      if (input.parentId !== selectedMember.parentId) {
+        // Re-parenting changes this member's position in the tree, so ancestorPath and
+        // generation would be stale if the panel stayed open - close it instead and let
+        // onDataChanged()'s refetch reflect the new structure the next time it's opened.
+        setSelectedMember(null);
+        onDataChanged();
+        return { ok: true };
+      }
+
       // ancestorPath's last entry is this member's own (old) name - update it too, or
       // handleSelectChild's name-based path lookup would silently fail for any child
       // navigated to after a rename.
@@ -510,6 +525,8 @@ export default function GenealogyTree({ familyTree, focusRequest, onDataChanged 
           gender={selectedMember.gender}
           notes={selectedMember.notes}
           avatarUrl={selectedMember.avatarUrl}
+          parentId={selectedMember.parentId}
+          parentOptions={getReparentCandidates(familyTree, selectedMember.id)}
           spouses={selectedMember.spouses}
           childMembers={selectedMember.childrenNames.map((childName) => ({
             name: childName,

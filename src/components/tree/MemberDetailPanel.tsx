@@ -17,7 +17,10 @@ export type MemberUpdateInput = {
   deathYear: number | null;
   gender: Gender | null;
   notes: string | null;
+  parentId: number | null;
 };
+
+export type ParentOption = { id: number; name: string };
 
 export type PanelSpouse = {
   marriageId: number;
@@ -53,6 +56,8 @@ export type MemberDetailPanelProps = {
   gender: Gender | null;
   notes: string | null;
   avatarUrl: string | null;
+  parentId: number | null;
+  parentOptions: ParentOption[];
   childMembers: MemberDetailPanelChild[];
   spouses: PanelSpouse[];
   onClose: () => void;
@@ -137,6 +142,8 @@ export function MemberDetailPanel({
   gender,
   notes,
   avatarUrl,
+  parentId,
+  parentOptions,
   childMembers,
   spouses,
   onClose,
@@ -157,6 +164,7 @@ export function MemberDetailPanel({
   const [editedDeathYear, setEditedDeathYear] = useState(toInputValue(deathYear));
   const [editedGender, setEditedGender] = useState<string>(gender ?? '');
   const [editedNotes, setEditedNotes] = useState(notes ?? '');
+  const [editedParentId, setEditedParentId] = useState(toInputValue(parentId));
   const [newChildName, setNewChildName] = useState('');
   const [actionError, setActionError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -183,6 +191,7 @@ export function MemberDetailPanel({
     setEditedDeathYear(toInputValue(deathYear));
     setEditedGender(gender ?? '');
     setEditedNotes(notes ?? '');
+    setEditedParentId(toInputValue(parentId));
     resetAvatarDraft();
     setIsEditing(true);
   }
@@ -229,6 +238,7 @@ export function MemberDetailPanel({
       deathYear: parseYear(editedDeathYear),
       gender: editedGender ? (editedGender as Gender) : null,
       notes: editedNotes.trim() ? editedNotes.trim() : null,
+      parentId: parentOptions.length > 0 ? Number(editedParentId) : parentId,
     });
     setIsSubmitting(false);
     if (result.ok) {
@@ -352,6 +362,22 @@ export function MemberDetailPanel({
               className="mt-1 w-full rounded-lg border-default border bg-app px-2 py-1 text-sm text-default focus:outline-none"
             />
           </div>
+          {parentOptions.length > 0 && (
+            <div>
+              <label className="text-xs text-muted">Cha/Mẹ</label>
+              <select
+                value={editedParentId}
+                onChange={(e) => setEditedParentId(e.target.value)}
+                className="mt-1 w-full rounded-lg border-default border bg-app px-2 py-1 text-sm text-default focus:outline-none"
+              >
+                {parentOptions.map((option) => (
+                  <option key={option.id} value={option.id}>
+                    {option.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
           <div className="flex gap-x-2">
             <div className="flex-1">
               <label className="text-xs text-muted">Năm sinh</label>
