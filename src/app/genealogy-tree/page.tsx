@@ -3,10 +3,10 @@
 import dynamic from 'next/dynamic';
 import React, { useEffect, useRef, useState } from 'react';
 import type { CustomNodeElementProps, TreeNodeDatum } from 'react-d3-tree';
-import { MemberDetailPanel, type MutationResult } from '@/components/tree/MemberDetailPanel';
+import { MemberDetailPanel, type MemberUpdateInput, type MutationResult } from '@/components/tree/MemberDetailPanel';
 import { TreeControls } from '@/components/tree/TreeControls';
 import { getMemberAtPath } from '@/lib/tree/search';
-import type { FamilyMember } from '@/lib/tree/types';
+import type { FamilyMember, Gender } from '@/lib/tree/types';
 
 const Tree = dynamic(() => import('react-d3-tree'), { ssr: false });
 
@@ -22,12 +22,22 @@ type SelectedMember = {
   generation: number;
   ancestorPath: string[];
   childrenNames: string[];
+  birthYear: number | null;
+  deathYear: number | null;
+  gender: Gender | null;
+  notes: string | null;
 };
 
-// The API's tree nodes carry an `id` that react-d3-tree's own RawNodeDatum/TreeNodeDatum
-// types don't declare (they only know about `name`/`children`/`attributes`) - the field
-// survives at runtime since react-d3-tree doesn't strip unknown properties.
-type MemberNodeData = TreeNodeDatum & { id: number };
+// The API's tree nodes carry fields that react-d3-tree's own RawNodeDatum/TreeNodeDatum
+// types don't declare (they only know about `name`/`children`/`attributes`) - these
+// survive at runtime since react-d3-tree doesn't strip unknown properties.
+type MemberNodeData = TreeNodeDatum & {
+  id: number;
+  birth_year?: number | null;
+  death_year?: number | null;
+  gender?: Gender | null;
+  notes?: string | null;
+};
 
 // Derived from CustomNodeElementProps rather than imported directly from 'd3-hierarchy' -
 // react-d3-tree bundles its own (older) @types/d3-hierarchy, and the two HierarchyPointNode
@@ -104,6 +114,10 @@ export default function GenealogyTree({ familyTree, focusRequest, onDataChanged 
       generation: ancestorPath.length,
       ancestorPath,
       childrenNames,
+      birthYear: data.birth_year ?? null,
+      deathYear: data.death_year ?? null,
+      gender: data.gender ?? null,
+      notes: data.notes ?? null,
     });
   }
 
@@ -119,24 +133,43 @@ export default function GenealogyTree({ familyTree, focusRequest, onDataChanged 
       generation: newPath.length,
       ancestorPath: newPath,
       childrenNames: member.children?.map((child) => child.name) ?? [],
+      birthYear: member.birth_year ?? null,
+      deathYear: member.death_year ?? null,
+      gender: member.gender ?? null,
+      notes: member.notes ?? null,
     });
   }
 
-  async function handleRenameMember(newName: string): Promise<MutationResult> {
+  async function handleUpdateMember(input: MemberUpdateInput): Promise<MutationResult> {
     if (!selectedMember) return { ok: false, error: 'Không tìm thấy thành viên.' };
     try {
       const response = await fetch(`/api/members/${selectedMember.id}`, {
         method: 'PUT',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ full_name: newName, parent_id: selectedMember.parentId }),
+        body: JSON.stringify({
+          full_name: input.name,
+          parent_id: selectedMember.parentId,
+          birth_year: input.birthYear,
+          death_year: input.deathYear,
+          gender: input.gender,
+          notes: input.notes,
+        }),
       });
       if (!response.ok) return { ok: false, error: 'Không thể lưu. Vui lòng thử lại.' };
       // ancestorPath's last entry is this member's own (old) name - update it too, or
       // handleSelectChild's name-based path lookup would silently fail for any child
       // navigated to after a rename.
-      const newAncestorPath = [...selectedMember.ancestorPath.slice(0, -1), newName];
-      setSelectedMember({ ...selectedMember, name: newName, ancestorPath: newAncestorPath });
+      const newAncestorPath = [...selectedMember.ancestorPath.slice(0, -1), input.name];
+      setSelectedMember({
+        ...selectedMember,
+        name: input.name,
+        ancestorPath: newAncestorPath,
+        birthYear: input.birthYear,
+        deathYear: input.deathYear,
+        gender: input.gender,
+        notes: input.notes,
+      });
       onDataChanged();
       return { ok: true };
     } catch {
@@ -275,12 +308,16 @@ export default function GenealogyTree({ familyTree, focusRequest, onDataChanged 
           name={selectedMember.name}
           generation={selectedMember.generation}
           ancestorPath={selectedMember.ancestorPath}
+          birthYear={selectedMember.birthYear}
+          deathYear={selectedMember.deathYear}
+          gender={selectedMember.gender}
+          notes={selectedMember.notes}
           childMembers={selectedMember.childrenNames.map((childName) => ({
             name: childName,
             onSelect: () => handleSelectChild(childName),
           }))}
           onClose={() => setSelectedMember(null)}
-          onRename={handleRenameMember}
+          onUpdate={handleUpdateMember}
           onAddChild={handleAddChildMember}
           onDelete={handleDeleteMember}
         />
