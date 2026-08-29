@@ -12,9 +12,10 @@ export type HeaderProps = {
   searchQuery: string;
   onSearchQueryChange: (query: string) => void;
   searchResults: HeaderSearchResult[];
+  onLogout: () => void;
 };
 
-export function Header({ searchQuery, onSearchQueryChange, searchResults }: HeaderProps) {
+export function Header({ searchQuery, onSearchQueryChange, searchResults, onLogout }: HeaderProps) {
   return (
     <header className="relative flex items-center gap-x-4 border-default border-b bg-surface px-4 py-3">
       <div className="relative w-full max-w-sm">
@@ -41,7 +42,10 @@ export function Header({ searchQuery, onSearchQueryChange, searchResults }: Head
           </ul>
         )}
       </div>
-      <div className="ml-auto">
+      <div className="ml-auto flex items-center gap-x-3">
+        <button type="button" onClick={onLogout} className="text-sm text-muted hover:text-default">
+          Đăng xuất
+        </button>
         <ThemeSettingsPopover />
       </div>
     </header>
