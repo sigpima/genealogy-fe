@@ -1,58 +1,106 @@
 'use client';
 
-import dynamic from "next/dynamic";
-import React, { useEffect, useRef, useState } from 'react';
-import treeData_ from './new_treeData.json';
-import { TreeNodeDatum } from 'react-d3-tree';
-const Tree = dynamic(() => import("react-d3-tree"), { ssr: false });
+import dynamic from 'next/dynamic';
+import React, { useState } from 'react';
+import type { CustomNodeElementProps } from 'react-d3-tree';
+import treeData from './new_treeData.json';
+import { TreeControls } from '@/components/tree/TreeControls';
+import type { FamilyMember } from '@/lib/tree/types';
 
-function renderNode({ nodeDatum }: { nodeDatum: TreeNodeDatum }): React.JSX.Element {
-  return (
-    <g>
-      <rect width="200" height="100" x="-100" y="-50" rx="10" ry="10" fill="#fff" stroke="#333" strokeWidth={2}/>
-      {/* <circle r={30} fill="#fff" stroke="#333" strokeWidth={2}></circle> */}
-      <text x="0" y="0" textAnchor="middle" dominantBaseline="middle" fill="black" strokeWidth="0">
-        {nodeDatum.name}
-      </text>
-    </g>
-  )
-};
+const Tree = dynamic(() => import('react-d3-tree'), { ssr: false });
 
-// Tree visualization
+const familyTree = treeData as FamilyMember;
+
+const INITIAL_ZOOM = 0.9;
+const SCALE_EXTENT = { min: 0.3, max: 2.5 };
+
 export default function GenealogyTree() {
   const [translate, setTranslate] = useState({ x: 0, y: 0 });
-  const treeContainer = useRef<HTMLDivElement>(null);
+  const [initialTranslate, setInitialTranslate] = useState({ x: 0, y: 0 });
+  const [zoom, setZoom] = useState(INITIAL_ZOOM);
+  const [dimensions, setDimensions] = useState<{ width: number; height: number } | null>(null);
 
-  // Lấy kích thước container để căn giữa cây
   const handleContainerRef = (containerRef: HTMLDivElement | null) => {
-    if (containerRef && !translate.x && !translate.y) {
-      const dimensions = containerRef.getBoundingClientRect();
-      setTranslate({
-        x: dimensions.width / 2,
-        y: dimensions.height / 6,
-      });
-      treeContainer.current = containerRef;
+    if (containerRef && !dimensions) {
+      const rect = containerRef.getBoundingClientRect();
+      const centered = { x: rect.width / 2, y: rect.height / 6 };
+      setTranslate(centered);
+      setInitialTranslate(centered);
+      setDimensions({ width: rect.width, height: rect.height });
     }
   };
 
+  function renderNode({ nodeDatum, toggleNode }: CustomNodeElementProps) {
+    const hasChildren = Boolean(nodeDatum.children && nodeDatum.children.length > 0);
+    const isCollapsed = nodeDatum.__rd3t.collapsed;
+
+    return (
+      <g>
+        <rect
+          width={200}
+          height={70}
+          x={-100}
+          y={-35}
+          rx={14}
+          ry={14}
+          className="fill-surface stroke-border"
+          style={{ strokeWidth: 1.5 }}
+        />
+        <text x={0} y={0} textAnchor="middle" dominantBaseline="middle" className="fill-text text-sm">
+          {nodeDatum.name}
+        </text>
+        {hasChildren && (
+          <g
+            transform="translate(85, -25)"
+            style={{ cursor: 'pointer' }}
+            onClick={(event) => {
+              event.stopPropagation();
+              toggleNode();
+            }}
+          >
+            <circle r={10} className="fill-primary" />
+            <text
+              textAnchor="middle"
+              dominantBaseline="middle"
+              className="fill-on-primary text-xs"
+              style={{ pointerEvents: 'none' }}
+            >
+              {isCollapsed ? '+' : '−'}
+            </text>
+          </g>
+        )}
+      </g>
+    );
+  }
+
   return (
-    <div
-      ref={handleContainerRef}
-      className="w-full h-screen bg-gray-100 overflow-hidden"
-    >
+    <div ref={handleContainerRef} className="relative h-full w-full overflow-hidden bg-app">
       <Tree
-        data={treeData_}
+        data={familyTree}
+        dimensions={dimensions ?? undefined}
         renderCustomNodeElement={renderNode}
-        nodeSize={{x: 250, y: 150}}
+        nodeSize={{ x: 250, y: 150 }}
         translate={translate}
-        zoomable={true}
-        zoom={0.9} // mức zoom mặc định
-        scaleExtent={{ min: 0.5, max: 2 }} // Giới hạn zoom
-        orientation="vertical" // Cây dọc
-        collapsible={true}
-        separation={{ siblings: 0.8, nonSiblings: 1.5 }} // khoảng cách node
-        pathFunc="step" // Kiểu đường nối
-        draggable={true} // bật kéo
+        zoomable
+        zoom={zoom}
+        scaleExtent={SCALE_EXTENT}
+        orientation="vertical"
+        collapsible
+        separation={{ siblings: 0.8, nonSiblings: 1.5 }}
+        pathFunc="step"
+        draggable
+        onUpdate={({ zoom: liveZoom, translate: liveTranslate }) => {
+          setZoom(liveZoom);
+          setTranslate(liveTranslate);
+        }}
+      />
+      <TreeControls
+        onZoomIn={() => setZoom((z) => Math.min(SCALE_EXTENT.max, z * 1.2))}
+        onZoomOut={() => setZoom((z) => Math.max(SCALE_EXTENT.min, z / 1.2))}
+        onReset={() => {
+          setZoom(INITIAL_ZOOM);
+          setTranslate(initialTranslate);
+        }}
       />
     </div>
   );
