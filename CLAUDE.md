@@ -32,12 +32,28 @@ deleted once its content was migrated into the database via
 `/login`; other failures show an inline error with a retry button while
 the sidebar/header keep rendering normally. The API backing this is one
 shared tree for every logged-in user — no per-user data. The member
-detail panel supports renaming, adding a child, and deleting (the empty
-state supports creating the first member) — all three call
-`genealogy-api`'s Member CRUD endpoints directly and trigger a **silent**
-tree refetch on success (see the `loadTree({ silent: true })` note
-below). Re-parenting an existing member via the UI (the backend already
-supports it through `PUT`) has no UI yet — still a future piece of work.
+detail panel supports renaming, adding a child, deleting, and managing
+spouses (the empty state supports creating the first member) — all
+these call `genealogy-api`'s Member/Marriage CRUD endpoints directly and
+trigger a **silent** tree refetch on success (see the `loadTree({
+silent: true })` note below). Re-parenting an existing member via the
+UI (the backend already supports it through `PUT`) has no UI yet —
+still a future piece of work.
+
+**Spouses (`MemberDetailPanel`'s "Vợ/chồng" section)** — a member can
+have zero or more spouses (`PanelSpouse[]`, converted in
+`genealogy-tree/page.tsx`'s `toPanelSpouses` from the API's snake_case
+`Spouse` shape). Each row has its own inline edit mode (name, birth
+year, death year, gender, notes, marriage year — one `SpouseDraft` per
+row, only one row editable at a time) submitted as a single `PUT
+/api/members/marriages/{marriageId}`; a plain name + marriage-year form
+adds a new spouse via `POST /api/members/{memberId}/marriages`.
+**Deleting a spouse calls `DELETE /api/members/{spouseId}`** — the same
+endpoint used to delete any member — not a marriage-specific endpoint;
+the backend's `ON DELETE CASCADE` removes the marriage link as a side
+effect. Spouses never appear on the tree itself (`renderNode` in
+`genealogy-tree/page.tsx` is unchanged) — they exist only in this
+panel.
 
 **Auth architecture — same-origin proxy, not direct cross-origin calls.**
 `genealogy-api` runs on a different origin (`http://localhost:8000`) and
