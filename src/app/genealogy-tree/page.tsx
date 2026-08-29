@@ -5,6 +5,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import type { CustomNodeElementProps, TreeNodeDatum } from 'react-d3-tree';
 import {
   MemberDetailPanel,
+  type AvatarUploadResult,
   type MemberUpdateInput,
   type MutationResult,
   type PanelSpouse,
@@ -33,6 +34,7 @@ type SelectedMember = {
   deathYear: number | null;
   gender: Gender | null;
   notes: string | null;
+  avatarUrl: string | null;
   spouses: PanelSpouse[];
 };
 
@@ -141,6 +143,7 @@ export default function GenealogyTree({ familyTree, focusRequest, onDataChanged 
       deathYear: data.death_year ?? null,
       gender: data.gender ?? null,
       notes: data.notes ?? null,
+      avatarUrl: data.avatar_url ?? null,
       spouses: toPanelSpouses(data.spouses),
     });
   }
@@ -161,6 +164,7 @@ export default function GenealogyTree({ familyTree, focusRequest, onDataChanged 
       deathYear: member.death_year ?? null,
       gender: member.gender ?? null,
       notes: member.notes ?? null,
+      avatarUrl: member.avatar_url ?? null,
       spouses: toPanelSpouses(member.spouses),
     });
   }
@@ -326,6 +330,42 @@ export default function GenealogyTree({ familyTree, focusRequest, onDataChanged 
     }
   }
 
+  async function handleUploadAvatar(file: File): Promise<AvatarUploadResult> {
+    if (!selectedMember) return { ok: false, error: 'Không tìm thấy thành viên.' };
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const response = await fetch(`/api/members/${selectedMember.id}/avatar`, {
+        method: 'POST',
+        credentials: 'include',
+        body: formData,
+      });
+      if (!response.ok) return { ok: false, error: 'Không thể tải ảnh lên. Vui lòng thử lại.' };
+      const body: { avatar_url: string } = await response.json();
+      setSelectedMember({ ...selectedMember, avatarUrl: body.avatar_url });
+      onDataChanged();
+      return { ok: true, avatarUrl: body.avatar_url };
+    } catch {
+      return { ok: false, error: 'Không thể kết nối tới máy chủ.' };
+    }
+  }
+
+  async function handleDeleteAvatar(): Promise<MutationResult> {
+    if (!selectedMember) return { ok: false, error: 'Không tìm thấy thành viên.' };
+    try {
+      const response = await fetch(`/api/members/${selectedMember.id}/avatar`, {
+        method: 'DELETE',
+        credentials: 'include',
+      });
+      if (!response.ok) return { ok: false, error: 'Không thể xoá ảnh. Vui lòng thử lại.' };
+      setSelectedMember({ ...selectedMember, avatarUrl: null });
+      onDataChanged();
+      return { ok: true };
+    } catch {
+      return { ok: false, error: 'Không thể kết nối tới máy chủ.' };
+    }
+  }
+
   function renderNode({ nodeDatum, hierarchyPointNode, toggleNode }: CustomNodeElementProps) {
     const hasChildren = Boolean(nodeDatum.children && nodeDatum.children.length > 0);
     const isCollapsed = nodeDatum.__rd3t.collapsed;
@@ -462,6 +502,7 @@ export default function GenealogyTree({ familyTree, focusRequest, onDataChanged 
           deathYear={selectedMember.deathYear}
           gender={selectedMember.gender}
           notes={selectedMember.notes}
+          avatarUrl={selectedMember.avatarUrl}
           spouses={selectedMember.spouses}
           childMembers={selectedMember.childrenNames.map((childName) => ({
             name: childName,
@@ -474,6 +515,8 @@ export default function GenealogyTree({ familyTree, focusRequest, onDataChanged 
           onAddSpouse={handleAddSpouse}
           onUpdateSpouse={handleUpdateSpouse}
           onDeleteSpouse={handleDeleteSpouse}
+          onUploadAvatar={handleUploadAvatar}
+          onDeleteAvatar={handleDeleteAvatar}
         />
       )}
     </div>
