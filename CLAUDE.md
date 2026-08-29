@@ -137,11 +137,18 @@ worth re-reading before touching this flow again:**
   then surfaces as a *second*, confusing `DELETE` 409 if the user then
   tries to delete what they think is the child.
 
-**Tree data has only a name and children** — the backend's `Member` model
-has no birth/death dates, gender, or notes fields. The member detail
-panel (`src/components/tree/MemberDetailPanel.tsx`) only shows what that
-data actually has (name, generation, ancestor breadcrumb, children);
-don't invent fields the data doesn't contain.
+**Member detail fields** — each tree node also carries `birth_year`,
+`death_year`, `gender` (`'male' | 'female' | 'other'`, see the `Gender`
+type in `src/lib/tree/types.ts`), and `notes`, all nullable. Display mode
+in `MemberDetailPanel` renders a lifespan string (`"1950 – 2020"` or
+`"1950 – nay"` if no death year), a gender label, and a notes paragraph,
+each only when present. Edit mode (`Sửa`) expands into a full form — name,
+birth year, death year, gender dropdown, notes textarea — submitted as a
+**single `PUT`** via one `MemberUpdateInput` (`onUpdate` prop), unlike the
+add-child form which stays name-only. `genealogy-tree/page.tsx` reads
+these fields off the raw tree node in `handleNodeClick`/`handleSelectChild`
+(`MemberNodeData`'s `birth_year`/`death_year`/`gender`/`notes`, snake_case
+to match the API) and converts them to the panel's camelCase props.
 
 **`FormAction` (`src/components/FormAction.tsx`) must not receive a
 `handleSubmit` prop when used inside a `<form onSubmit={...}>`** — its
