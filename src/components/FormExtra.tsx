@@ -1,3 +1,5 @@
+import Link from 'next/link';
+
 export default function FormExtra() {
   return (
     <div className="flex items-center justify-between">
@@ -9,9 +11,9 @@ export default function FormExtra() {
       </div>
 
       <div className="text-sm">
-        <a href="#" className="font-medium accent-text hover:underline">
+        <Link href="/forgot-password" className="font-medium accent-text hover:underline">
           Forgot your password?
-        </a>
+        </Link>
       </div>
     </div>
   );
