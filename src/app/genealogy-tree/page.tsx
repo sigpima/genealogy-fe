@@ -3,15 +3,12 @@
 import dynamic from 'next/dynamic';
 import React, { useEffect, useRef, useState } from 'react';
 import type { CustomNodeElementProps } from 'react-d3-tree';
-import treeData from './new_treeData.json';
 import { MemberDetailPanel } from '@/components/tree/MemberDetailPanel';
 import { TreeControls } from '@/components/tree/TreeControls';
 import { getMemberAtPath } from '@/lib/tree/search';
 import type { FamilyMember } from '@/lib/tree/types';
 
 const Tree = dynamic(() => import('react-d3-tree'), { ssr: false });
-
-const familyTree = treeData as FamilyMember;
 
 export type FocusRequest = {
   path: string[];
@@ -49,7 +46,12 @@ function arraysEqual(a: string[], b: string[]): boolean {
 const INITIAL_ZOOM = 0.9;
 const SCALE_EXTENT = { min: 0.3, max: 2.5 };
 
-export default function GenealogyTree({ focusRequest }: { focusRequest?: FocusRequest | null }) {
+export type GenealogyTreeProps = {
+  familyTree: FamilyMember;
+  focusRequest?: FocusRequest | null;
+};
+
+export default function GenealogyTree({ familyTree, focusRequest }: GenealogyTreeProps) {
   const [translate, setTranslate] = useState({ x: 0, y: 0 });
   const [initialTranslate, setInitialTranslate] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(INITIAL_ZOOM);
