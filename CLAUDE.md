@@ -51,9 +51,33 @@ adds a new spouse via `POST /api/members/{memberId}/marriages`.
 **Deleting a spouse calls `DELETE /api/members/{spouseId}`** — the same
 endpoint used to delete any member — not a marriage-specific endpoint;
 the backend's `ON DELETE CASCADE` removes the marriage link as a side
-effect. Spouses never appear on the tree itself (`renderNode` in
-`genealogy-tree/page.tsx` is unchanged) — they exist only in this
-panel.
+effect. Spouses never appear on the tree itself — they exist only in
+this panel.
+
+**Avatars** — `renderNode` in `genealogy-tree/page.tsx` draws a small
+circular thumbnail (SVG `<clipPath>` + `<image>`) next to each node's
+name when `avatar_url` is present, or a plain circle with the member's
+first initial otherwise; `MemberDetailPanel`'s `AvatarOrInitial` helper
+does the same at a larger size for the display/edit views. The upload
+flow is bundled into the existing "Sửa" form rather than being its own
+sub-form: picking a file only sets local state
+(`avatarFile`/`avatarPreviewUrl` via `URL.createObjectURL`, revoked on
+every subsequent change or unmount-equivalent reset) — nothing is sent
+until "Lưu" is clicked. `handleSave` then does the avatar mutation
+first (`POST /api/members/{id}/avatar` as `multipart/form-data` if a
+new file was picked, or `DELETE /api/members/{id}/avatar` if "Xoá ảnh"
+was clicked with no replacement), and only then sends the normal JSON
+`PUT` for the other fields — the general member-update endpoint never
+carries the avatar. **All of `genealogy-tree/page.tsx`'s mutation
+handlers that update `selectedMember` from its previous value use the
+functional `setSelectedMember((prev) => ...)` form, not
+`setSelectedMember({ ...selectedMember, ... })`** — this was a real bug
+(not just style): saving a new avatar and the text fields in the same
+"Lưu" click fires two state updates back-to-back, and the second
+handler's closure still held the pre-upload `selectedMember` snapshot,
+silently reverting the just-set `avatarUrl`. Follow the functional-update
+pattern for any new handler that mutates `selectedMember` based on its
+existing fields.
 
 **Auth architecture — same-origin proxy, not direct cross-origin calls.**
 `genealogy-api` runs on a different origin (`http://localhost:8000`) and
@@ -70,6 +94,12 @@ is *present* on `/` and `/genealogy-tree` (redirecting to `/login` if
 not) — it does not decode/verify the JWT, since that would require
 sharing `JWT_SECRET` with the frontend; real validation happens on the
 API when it's actually called.
+
+`next.config.ts`'s `rewrites()` has a second rule, `/uploads/:path*` →
+`${API_BASE_URL}/uploads/:path*`, for the same reason as `/api/*` but
+for a different concern: it keeps `avatar_url` values (e.g.
+`/uploads/avatars/<uuid>.jpg`) usable as relative `<img src>`s instead
+of hardcoding the backend's origin into the frontend.
 
 **Theming is a runtime-switchable, CSS-variable system, not Tailwind's
 `@theme` token registration.** `src/app/globals.css` defines one
