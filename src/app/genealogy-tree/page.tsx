@@ -3,10 +3,17 @@
 import dynamic from 'next/dynamic';
 import React, { useEffect, useRef, useState } from 'react';
 import type { CustomNodeElementProps, TreeNodeDatum } from 'react-d3-tree';
-import { MemberDetailPanel, type MemberUpdateInput, type MutationResult } from '@/components/tree/MemberDetailPanel';
+import {
+  MemberDetailPanel,
+  type MemberUpdateInput,
+  type MutationResult,
+  type PanelSpouse,
+  type SpouseAddInput,
+  type SpouseUpdateInput,
+} from '@/components/tree/MemberDetailPanel';
 import { TreeControls } from '@/components/tree/TreeControls';
 import { getMemberAtPath } from '@/lib/tree/search';
-import type { FamilyMember, Gender } from '@/lib/tree/types';
+import type { FamilyMember, Gender, Spouse } from '@/lib/tree/types';
 
 const Tree = dynamic(() => import('react-d3-tree'), { ssr: false });
 
@@ -26,6 +33,7 @@ type SelectedMember = {
   deathYear: number | null;
   gender: Gender | null;
   notes: string | null;
+  spouses: PanelSpouse[];
 };
 
 // The API's tree nodes carry fields that react-d3-tree's own RawNodeDatum/TreeNodeDatum
@@ -37,7 +45,21 @@ type MemberNodeData = TreeNodeDatum & {
   death_year?: number | null;
   gender?: Gender | null;
   notes?: string | null;
+  spouses?: Spouse[];
 };
+
+function toPanelSpouses(spouses: Spouse[] | undefined): PanelSpouse[] {
+  return (spouses ?? []).map((spouse) => ({
+    marriageId: spouse.marriage_id,
+    spouseId: spouse.id,
+    name: spouse.full_name,
+    birthYear: spouse.birth_year,
+    deathYear: spouse.death_year,
+    gender: spouse.gender,
+    notes: spouse.notes,
+    marriageYear: spouse.marriage_year,
+  }));
+}
 
 // Derived from CustomNodeElementProps rather than imported directly from 'd3-hierarchy' -
 // react-d3-tree bundles its own (older) @types/d3-hierarchy, and the two HierarchyPointNode
@@ -118,6 +140,7 @@ export default function GenealogyTree({ familyTree, focusRequest, onDataChanged 
       deathYear: data.death_year ?? null,
       gender: data.gender ?? null,
       notes: data.notes ?? null,
+      spouses: toPanelSpouses(data.spouses),
     });
   }
 
@@ -137,6 +160,7 @@ export default function GenealogyTree({ familyTree, focusRequest, onDataChanged 
       deathYear: member.death_year ?? null,
       gender: member.gender ?? null,
       notes: member.notes ?? null,
+      spouses: toPanelSpouses(member.spouses),
     });
   }
 
@@ -210,6 +234,90 @@ export default function GenealogyTree({ familyTree, focusRequest, onDataChanged 
       }
       if (!response.ok) return { ok: false, error: 'Không thể xoá. Vui lòng thử lại.' };
       setSelectedMember(null);
+      onDataChanged();
+      return { ok: true };
+    } catch {
+      return { ok: false, error: 'Không thể kết nối tới máy chủ.' };
+    }
+  }
+
+  async function handleAddSpouse(input: SpouseAddInput): Promise<MutationResult> {
+    if (!selectedMember) return { ok: false, error: 'Không tìm thấy thành viên.' };
+    try {
+      const response = await fetch(`/api/members/${selectedMember.id}/marriages`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ spouse_full_name: input.name, marriage_year: input.marriageYear }),
+      });
+      if (!response.ok) return { ok: false, error: 'Không thể thêm. Vui lòng thử lại.' };
+      const body: Spouse = await response.json();
+      setSelectedMember({
+        ...selectedMember,
+        spouses: [...selectedMember.spouses, ...toPanelSpouses([body])],
+      });
+      onDataChanged();
+      return { ok: true };
+    } catch {
+      return { ok: false, error: 'Không thể kết nối tới máy chủ.' };
+    }
+  }
+
+  async function handleUpdateSpouse(
+    marriageId: number,
+    input: SpouseUpdateInput
+  ): Promise<MutationResult> {
+    if (!selectedMember) return { ok: false, error: 'Không tìm thấy thành viên.' };
+    try {
+      const response = await fetch(`/api/members/marriages/${marriageId}`, {
+        method: 'PUT',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          spouse_full_name: input.name,
+          spouse_birth_year: input.birthYear,
+          spouse_death_year: input.deathYear,
+          spouse_gender: input.gender,
+          spouse_notes: input.notes,
+          marriage_year: input.marriageYear,
+        }),
+      });
+      if (!response.ok) return { ok: false, error: 'Không thể lưu. Vui lòng thử lại.' };
+      setSelectedMember({
+        ...selectedMember,
+        spouses: selectedMember.spouses.map((spouse) =>
+          spouse.marriageId === marriageId
+            ? {
+                ...spouse,
+                name: input.name,
+                birthYear: input.birthYear,
+                deathYear: input.deathYear,
+                gender: input.gender,
+                notes: input.notes,
+                marriageYear: input.marriageYear,
+              }
+            : spouse
+        ),
+      });
+      onDataChanged();
+      return { ok: true };
+    } catch {
+      return { ok: false, error: 'Không thể kết nối tới máy chủ.' };
+    }
+  }
+
+  async function handleDeleteSpouse(spouseId: number): Promise<MutationResult> {
+    if (!selectedMember) return { ok: false, error: 'Không tìm thấy thành viên.' };
+    try {
+      const response = await fetch(`/api/members/${spouseId}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      });
+      if (!response.ok) return { ok: false, error: 'Không thể xoá. Vui lòng thử lại.' };
+      setSelectedMember({
+        ...selectedMember,
+        spouses: selectedMember.spouses.filter((spouse) => spouse.spouseId !== spouseId),
+      });
       onDataChanged();
       return { ok: true };
     } catch {
@@ -312,6 +420,7 @@ export default function GenealogyTree({ familyTree, focusRequest, onDataChanged 
           deathYear={selectedMember.deathYear}
           gender={selectedMember.gender}
           notes={selectedMember.notes}
+          spouses={selectedMember.spouses}
           childMembers={selectedMember.childrenNames.map((childName) => ({
             name: childName,
             onSelect: () => handleSelectChild(childName),
@@ -320,6 +429,9 @@ export default function GenealogyTree({ familyTree, focusRequest, onDataChanged 
           onUpdate={handleUpdateMember}
           onAddChild={handleAddChildMember}
           onDelete={handleDeleteMember}
+          onAddSpouse={handleAddSpouse}
+          onUpdateSpouse={handleUpdateSpouse}
+          onDeleteSpouse={handleDeleteSpouse}
         />
       )}
     </div>
