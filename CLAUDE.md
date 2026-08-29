@@ -202,6 +202,20 @@ button is `type="submit"`, so passing the same handler as `onClick` too
 fires it twice per submit. `loginForm.tsx`/`signupForm.tsx` rely on the
 form's `onSubmit` alone; follow that pattern for any new auth-style form.
 
+**Forgot/reset password pages** (`/forgot-password`, `/reset-password`)
+follow the same layout pattern as `/login`/`/signup` (an `AuthHeader` +
+a client form component). `/forgot-password`'s form always shows the
+same generic success message on any successful response — it never
+reflects back whether the email was registered, matching the backend's
+anti-enumeration behavior; don't "improve" this by showing a different
+message for a failed lookup. `/reset-password`'s form reads `token`
+from the query string via `useSearchParams()`, which requires wrapping
+the form in a `<Suspense>` boundary in the page component — omitting it
+makes `next build` fail with "useSearchParams() should be wrapped in a
+suspense boundary". The "Forgot your password?" link in
+`src/components/FormExtra.tsx` used to be a dead `href="#"` placeholder;
+it now points at `/forgot-password`.
+
 ## Testing
 
 Vitest covers pure logic only (`src/lib/**/*.test.ts`) —
