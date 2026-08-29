@@ -1,1 +1,88 @@
 @import 'tailwindcss';
+
+:root,
+:root[data-theme='modern'] {
+  --color-bg: #f8fafc;
+  --color-surface: #ffffff;
+  --color-primary: #2563eb;
+  --color-accent: #2563eb;
+  --color-text: #0f172a;
+  --color-text-muted: #64748b;
+  --color-border: #e2e8f0;
+  --color-on-primary: #ffffff;
+}
+
+:root[data-theme='warm'] {
+  --color-bg: #fbf7f2;
+  --color-surface: #ffffff;
+  --color-primary: #b85a34;
+  --color-accent: #b85a34;
+  --color-text: #2b211b;
+  --color-text-muted: #7a6a5d;
+  --color-border: #e8ddd0;
+  --color-on-primary: #ffffff;
+}
+
+:root[data-theme='elegant'] {
+  --color-bg: #14110f;
+  --color-surface: #1f1b18;
+  --color-primary: #d4af37;
+  --color-accent: #d4af37;
+  --color-text: #f5efe6;
+  --color-text-muted: #b8aa98;
+  --color-border: #332c25;
+  --color-on-primary: #14110f;
+}
+
+@layer components {
+  .bg-app {
+    background-color: var(--color-bg);
+  }
+  .bg-surface {
+    background-color: var(--color-surface);
+  }
+  .bg-primary {
+    background-color: var(--color-primary);
+  }
+  .text-default {
+    color: var(--color-text);
+  }
+  .text-muted {
+    color: var(--color-text-muted);
+  }
+  .text-on-primary {
+    color: var(--color-on-primary);
+  }
+  .accent-text {
+    color: var(--color-accent);
+  }
+  .border-default {
+    border-color: var(--color-border);
+  }
+  .fill-surface {
+    fill: var(--color-surface);
+  }
+  .fill-border {
+    fill: var(--color-border);
+  }
+  .fill-primary {
+    fill: var(--color-primary);
+  }
+  .fill-on-primary {
+    fill: var(--color-on-primary);
+  }
+  .fill-text {
+    fill: var(--color-text);
+  }
+  .stroke-border {
+    stroke: var(--color-border);
+  }
+  .stroke-accent {
+    stroke: var(--color-accent);
+  }
+}
+
+body {
+  background-color: var(--color-bg);
+  color: var(--color-text);
+}
