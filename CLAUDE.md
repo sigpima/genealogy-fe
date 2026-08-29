@@ -5,7 +5,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Commands
 
 - Install dependencies: `npm install`
-- Run the dev server: `npm run dev` (Turbopack)
+- First-time setup: `cp .env.example .env` (sets `API_BASE_URL` for the `/api/*` proxy — see Architecture)
+- Run the dev server: `npm run dev` (Turbopack) — auth features (login/signup/logout, and the protected `/`/`/genealogy-tree` routes) need `genealogy-api` also running locally (`uv run uvicorn app.main:app --reload` in that sibling repo) with its `FRONTEND_ORIGIN`/`.env` pointing back at this app
 - Run all unit tests: `npm run test` (or `npx vitest run`)
 - Run a single test file: `npx vitest run src/lib/tree/search.test.ts`
 - Typecheck: `npx tsc --noEmit`
@@ -22,19 +23,37 @@ afterward if needed.
 ## Architecture
 
 Next.js 15 App Router / React 19 / Tailwind v4 app: an interactive family
-tree (`react-d3-tree`) plus login/signup pages that are **visual only** —
-no backend call exists yet (see `docs/superpowers/specs/` for the
-non-goals of the current design; backend wiring is a separate future
-piece of work against the sibling `genealogy-api` project).
+tree (`react-d3-tree`) plus login/signup pages wired to the sibling
+`genealogy-api` project. The tree data itself is still a static JSON file
+(`new_treeData.json`) — only auth is real so far; Member/Family CRUD
+against the API is a separate future piece of work (see
+`docs/superpowers/specs/`).
+
+**Auth architecture — same-origin proxy, not direct cross-origin calls.**
+`genealogy-api` runs on a different origin (`http://localhost:8000`) and
+sets its JWT as an httpOnly cookie. For Next.js's own server
+(`src/middleware.ts`) to see that cookie, the browser must never talk to
+the backend's origin directly — `next.config.ts`'s `rewrites()` proxies
+`/api/:path*` to `${API_BASE_URL}/:path*` so, from the browser's
+perspective, the login response (and its `Set-Cookie` header) comes from
+`localhost:3000` itself. **Every frontend fetch to the backend must go
+through `/api/...`, never `http://localhost:8000` directly** — calling
+the backend's origin directly would set a cookie the middleware can never
+read. `src/middleware.ts` only checks whether the `access_token` cookie
+is *present* on `/` and `/genealogy-tree` (redirecting to `/login` if
+not) — it does not decode/verify the JWT, since that would require
+sharing `JWT_SECRET` with the frontend; real validation happens on the
+API when it's actually called.
 
 **Theming is a runtime-switchable, CSS-variable system, not Tailwind's
 `@theme` token registration.** `src/app/globals.css` defines one
 `:root[data-theme="warm|modern|elegant"]` block per theme (colors only:
 `--color-bg`, `--color-surface`, `--color-primary`, `--color-accent`,
-`--color-text`, `--color-text-muted`, `--color-border`, `--color-on-primary`),
-plus a `@layer components` block mapping them to semantic utility classes
-(`bg-app`, `bg-surface`, `bg-primary`, `text-default`, `text-muted`,
-`text-on-primary`, `accent-text`, `border-default`, and SVG-specific
+`--color-text`, `--color-text-muted`, `--color-border`, `--color-on-primary`,
+`--color-danger`), plus a `@layer components` block mapping them to
+semantic utility classes (`bg-app`, `bg-surface`, `bg-primary`,
+`text-default`, `text-muted`, `text-on-primary`, `accent-text`,
+`text-danger`, `border-default`, and SVG-specific
 `fill-surface`/`fill-border`/`fill-primary`/`fill-on-primary`/`fill-text`/
 `stroke-border`/`stroke-accent`). **Every new component should use these
 semantic classes, never a raw Tailwind color utility** — that was the
@@ -88,6 +107,12 @@ and `children`** — no birth/death dates, gender, or notes. The member
 detail panel (`src/components/tree/MemberDetailPanel.tsx`) only shows
 what that data actually has (name, generation, ancestor breadcrumb,
 children); don't invent fields the data doesn't contain.
+
+**`FormAction` (`src/components/FormAction.tsx`) must not receive a
+`handleSubmit` prop when used inside a `<form onSubmit={...}>`** — its
+button is `type="submit"`, so passing the same handler as `onClick` too
+fires it twice per submit. `loginForm.tsx`/`signupForm.tsx` rely on the
+form's `onSubmit` alone; follow that pattern for any new auth-style form.
 
 ## Testing
 
