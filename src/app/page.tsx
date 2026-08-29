@@ -16,27 +16,30 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const loadTree = useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const response = await fetch('/api/members/tree', { credentials: 'include' });
-      if (response.status === 401) {
-        router.push('/login');
-        return;
+  const loadTree = useCallback(
+    async (options?: { silent?: boolean }) => {
+      if (!options?.silent) setIsLoading(true);
+      setError(null);
+      try {
+        const response = await fetch('/api/members/tree', { credentials: 'include' });
+        if (response.status === 401) {
+          router.push('/login');
+          return;
+        }
+        if (!response.ok) {
+          setError('Không thể tải dữ liệu gia phả. Vui lòng thử lại.');
+          return;
+        }
+        const data = (await response.json()) as FamilyMember | null;
+        setFamilyTree(data);
+      } catch {
+        setError('Không thể kết nối tới máy chủ. Vui lòng thử lại.');
+      } finally {
+        if (!options?.silent) setIsLoading(false);
       }
-      if (!response.ok) {
-        setError('Không thể tải dữ liệu gia phả. Vui lòng thử lại.');
-        return;
-      }
-      const data = (await response.json()) as FamilyMember | null;
-      setFamilyTree(data);
-    } catch {
-      setError('Không thể kết nối tới máy chủ. Vui lòng thử lại.');
-    } finally {
-      setIsLoading(false);
-    }
-  }, [router]);
+    },
+    [router],
+  );
 
   useEffect(() => {
     loadTree();
@@ -74,7 +77,7 @@ export default function Home() {
               <p className="text-sm text-danger">{error}</p>
               <button
                 type="button"
-                onClick={loadTree}
+                onClick={() => loadTree()}
                 className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-on-primary hover:opacity-90"
               >
                 Thử lại
@@ -83,14 +86,70 @@ export default function Home() {
           )}
           {!isLoading && !error && !familyTree && (
             <div className="flex h-full items-center justify-center bg-app">
-              <p className="text-sm text-muted">Chưa có dữ liệu gia phả.</p>
+              <EmptyTreeState onCreated={() => loadTree({ silent: true })} />
             </div>
           )}
           {!isLoading && !error && familyTree && (
-            <GenealogyTree familyTree={familyTree} focusRequest={focusRequest} />
+            <GenealogyTree
+              familyTree={familyTree}
+              focusRequest={focusRequest}
+              onDataChanged={() => loadTree({ silent: true })}
+            />
           )}
         </div>
       </div>
     </div>
+  );
+}
+
+function EmptyTreeState({ onCreated }: { onCreated: () => void }) {
+  const [fullName, setFullName] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!fullName.trim()) return;
+    setIsSubmitting(true);
+    setError(null);
+    try {
+      const response = await fetch('/api/members', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ full_name: fullName.trim(), parent_id: null }),
+      });
+      if (!response.ok) {
+        setError('Không thể thêm. Vui lòng thử lại.');
+        return;
+      }
+      onCreated();
+    } catch {
+      setError('Không thể kết nối tới máy chủ.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="flex flex-col items-center gap-y-4">
+      <p className="text-sm text-muted">Chưa có dữ liệu gia phả. Thêm người đầu tiên:</p>
+      <div className="flex items-center gap-x-2">
+        <input
+          value={fullName}
+          onChange={(e) => setFullName(e.target.value)}
+          placeholder="Họ và tên"
+          className="rounded-lg border-default border bg-surface px-3 py-2 text-sm text-default placeholder:text-muted focus:outline-none"
+        />
+        <button
+          type="submit"
+          disabled={isSubmitting || !fullName.trim()}
+          className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-on-primary hover:opacity-90 disabled:opacity-50"
+        >
+          Thêm
+        </button>
+      </div>
+      {error && <p className="text-sm text-danger">{error}</p>}
+    </form>
   );
 }

@@ -2,8 +2,8 @@
 
 import dynamic from 'next/dynamic';
 import React, { useEffect, useRef, useState } from 'react';
-import type { CustomNodeElementProps } from 'react-d3-tree';
-import { MemberDetailPanel } from '@/components/tree/MemberDetailPanel';
+import type { CustomNodeElementProps, TreeNodeDatum } from 'react-d3-tree';
+import { MemberDetailPanel, type MutationResult } from '@/components/tree/MemberDetailPanel';
 import { TreeControls } from '@/components/tree/TreeControls';
 import { getMemberAtPath } from '@/lib/tree/search';
 import type { FamilyMember } from '@/lib/tree/types';
@@ -16,11 +16,18 @@ export type FocusRequest = {
 };
 
 type SelectedMember = {
+  id: number;
+  parentId: number | null;
   name: string;
   generation: number;
   ancestorPath: string[];
   childrenNames: string[];
 };
+
+// The API's tree nodes carry an `id` that react-d3-tree's own RawNodeDatum/TreeNodeDatum
+// types don't declare (they only know about `name`/`children`/`attributes`) - the field
+// survives at runtime since react-d3-tree doesn't strip unknown properties.
+type MemberNodeData = TreeNodeDatum & { id: number };
 
 // Derived from CustomNodeElementProps rather than imported directly from 'd3-hierarchy' -
 // react-d3-tree bundles its own (older) @types/d3-hierarchy, and the two HierarchyPointNode
@@ -49,9 +56,10 @@ const SCALE_EXTENT = { min: 0.3, max: 2.5 };
 export type GenealogyTreeProps = {
   familyTree: FamilyMember;
   focusRequest?: FocusRequest | null;
+  onDataChanged: () => void;
 };
 
-export default function GenealogyTree({ familyTree, focusRequest }: GenealogyTreeProps) {
+export default function GenealogyTree({ familyTree, focusRequest, onDataChanged }: GenealogyTreeProps) {
   const [translate, setTranslate] = useState({ x: 0, y: 0 });
   const [initialTranslate, setInitialTranslate] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(INITIAL_ZOOM);
@@ -86,9 +94,13 @@ export default function GenealogyTree({ familyTree, focusRequest }: GenealogyTre
 
   function handleNodeClick(hierarchyPointNode: HierarchyPointNodeOf) {
     const ancestorPath = pathOfHierarchyNode(hierarchyPointNode);
-    const childrenNames = hierarchyPointNode.data.children?.map((child) => child.name) ?? [];
+    const data = hierarchyPointNode.data as MemberNodeData;
+    const parentData = hierarchyPointNode.parent?.data as MemberNodeData | undefined;
+    const childrenNames = data.children?.map((child) => child.name) ?? [];
     setSelectedMember({
-      name: hierarchyPointNode.data.name,
+      id: data.id,
+      parentId: parentData ? parentData.id : null,
+      name: data.name,
       generation: ancestorPath.length,
       ancestorPath,
       childrenNames,
@@ -99,13 +111,77 @@ export default function GenealogyTree({ familyTree, focusRequest }: GenealogyTre
     if (!selectedMember) return;
     const newPath = [...selectedMember.ancestorPath, childName];
     const member = getMemberAtPath(familyTree, newPath);
-    if (!member) return;
+    if (!member || member.id === undefined) return;
     setSelectedMember({
+      id: member.id,
+      parentId: selectedMember.id,
       name: member.name,
       generation: newPath.length,
       ancestorPath: newPath,
       childrenNames: member.children?.map((child) => child.name) ?? [],
     });
+  }
+
+  async function handleRenameMember(newName: string): Promise<MutationResult> {
+    if (!selectedMember) return { ok: false, error: 'Không tìm thấy thành viên.' };
+    try {
+      const response = await fetch(`/api/members/${selectedMember.id}`, {
+        method: 'PUT',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ full_name: newName, parent_id: selectedMember.parentId }),
+      });
+      if (!response.ok) return { ok: false, error: 'Không thể lưu. Vui lòng thử lại.' };
+      // ancestorPath's last entry is this member's own (old) name - update it too, or
+      // handleSelectChild's name-based path lookup would silently fail for any child
+      // navigated to after a rename.
+      const newAncestorPath = [...selectedMember.ancestorPath.slice(0, -1), newName];
+      setSelectedMember({ ...selectedMember, name: newName, ancestorPath: newAncestorPath });
+      onDataChanged();
+      return { ok: true };
+    } catch {
+      return { ok: false, error: 'Không thể kết nối tới máy chủ.' };
+    }
+  }
+
+  async function handleAddChildMember(childName: string): Promise<MutationResult> {
+    if (!selectedMember) return { ok: false, error: 'Không tìm thấy thành viên.' };
+    try {
+      const response = await fetch('/api/members', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ full_name: childName, parent_id: selectedMember.id }),
+      });
+      if (!response.ok) return { ok: false, error: 'Không thể thêm. Vui lòng thử lại.' };
+      setSelectedMember({
+        ...selectedMember,
+        childrenNames: [...selectedMember.childrenNames, childName],
+      });
+      onDataChanged();
+      return { ok: true };
+    } catch {
+      return { ok: false, error: 'Không thể kết nối tới máy chủ.' };
+    }
+  }
+
+  async function handleDeleteMember(): Promise<MutationResult> {
+    if (!selectedMember) return { ok: false, error: 'Không tìm thấy thành viên.' };
+    try {
+      const response = await fetch(`/api/members/${selectedMember.id}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      });
+      if (response.status === 409) {
+        return { ok: false, error: 'Không thể xoá vì còn con. Hãy xoá hoặc chuyển con trước.' };
+      }
+      if (!response.ok) return { ok: false, error: 'Không thể xoá. Vui lòng thử lại.' };
+      setSelectedMember(null);
+      onDataChanged();
+      return { ok: true };
+    } catch {
+      return { ok: false, error: 'Không thể kết nối tới máy chủ.' };
+    }
   }
 
   function renderNode({ nodeDatum, hierarchyPointNode, toggleNode }: CustomNodeElementProps) {
@@ -204,6 +280,9 @@ export default function GenealogyTree({ familyTree, focusRequest }: GenealogyTre
             onSelect: () => handleSelectChild(childName),
           }))}
           onClose={() => setSelectedMember(null)}
+          onRename={handleRenameMember}
+          onAddChild={handleAddChildMember}
+          onDelete={handleDeleteMember}
         />
       )}
     </div>
