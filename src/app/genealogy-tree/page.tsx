@@ -45,6 +45,7 @@ type MemberNodeData = TreeNodeDatum & {
   death_year?: number | null;
   gender?: Gender | null;
   notes?: string | null;
+  avatar_url?: string | null;
   spouses?: Spouse[];
 };
 
@@ -329,6 +330,8 @@ export default function GenealogyTree({ familyTree, focusRequest, onDataChanged 
     const hasChildren = Boolean(nodeDatum.children && nodeDatum.children.length > 0);
     const isCollapsed = nodeDatum.__rd3t.collapsed;
     const isHighlighted = nodeDatum.name === highlightedName;
+    const data = nodeDatum as MemberNodeData;
+    const avatarClipId = `avatar-clip-${data.id}`;
 
     return (
       <g>
@@ -346,9 +349,48 @@ export default function GenealogyTree({ familyTree, focusRequest, onDataChanged 
           }}
           onClick={() => handleNodeClick(hierarchyPointNode)}
         />
+        {data.avatar_url ? (
+          <>
+            <clipPath id={avatarClipId}>
+              <circle cx={0} cy={-12} r={14} />
+            </clipPath>
+            <image
+              href={data.avatar_url}
+              x={-14}
+              y={-26}
+              width={28}
+              height={28}
+              clipPath={`url(#${avatarClipId})`}
+              preserveAspectRatio="xMidYMid slice"
+              style={{ cursor: 'pointer' }}
+              onClick={() => handleNodeClick(hierarchyPointNode)}
+            />
+          </>
+        ) : (
+          <>
+            <circle
+              cx={0}
+              cy={-12}
+              r={14}
+              className="fill-primary"
+              style={{ cursor: 'pointer' }}
+              onClick={() => handleNodeClick(hierarchyPointNode)}
+            />
+            <text
+              x={0}
+              y={-12}
+              textAnchor="middle"
+              dominantBaseline="middle"
+              className="fill-on-primary text-xs"
+              style={{ pointerEvents: 'none' }}
+            >
+              {nodeDatum.name.charAt(0).toUpperCase()}
+            </text>
+          </>
+        )}
         <text
           x={0}
-          y={0}
+          y={18}
           textAnchor="middle"
           dominantBaseline="middle"
           className="fill-text text-sm"
