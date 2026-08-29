@@ -9,6 +9,7 @@ export type MemberDetailPanelChild = {
 };
 
 export type MutationResult = { ok: boolean; error?: string };
+export type AvatarUploadResult = { ok: boolean; error?: string; avatarUrl?: string };
 
 export type MemberUpdateInput = {
   name: string;
@@ -51,6 +52,7 @@ export type MemberDetailPanelProps = {
   deathYear: number | null;
   gender: Gender | null;
   notes: string | null;
+  avatarUrl: string | null;
   childMembers: MemberDetailPanelChild[];
   spouses: PanelSpouse[];
   onClose: () => void;
@@ -60,6 +62,8 @@ export type MemberDetailPanelProps = {
   onAddSpouse: (input: SpouseAddInput) => Promise<MutationResult>;
   onUpdateSpouse: (marriageId: number, input: SpouseUpdateInput) => Promise<MutationResult>;
   onDeleteSpouse: (spouseId: number) => Promise<MutationResult>;
+  onUploadAvatar: (file: File) => Promise<AvatarUploadResult>;
+  onDeleteAvatar: () => Promise<MutationResult>;
 };
 
 const GENDER_LABELS: Record<Gender, string> = {
@@ -103,6 +107,27 @@ function draftFromSpouse(spouse: PanelSpouse): SpouseDraft {
   };
 }
 
+function AvatarOrInitial({ src, initial, size }: { src: string | null; initial: string; size: number }) {
+  if (src) {
+    return (
+      <img
+        src={src}
+        alt=""
+        style={{ width: size, height: size }}
+        className="rounded-full object-cover"
+      />
+    );
+  }
+  return (
+    <div
+      style={{ width: size, height: size }}
+      className="flex items-center justify-center rounded-full bg-primary text-on-primary"
+    >
+      {initial.toUpperCase() || '?'}
+    </div>
+  );
+}
+
 export function MemberDetailPanel({
   name,
   generation,
@@ -111,6 +136,7 @@ export function MemberDetailPanel({
   deathYear,
   gender,
   notes,
+  avatarUrl,
   childMembers,
   spouses,
   onClose,
@@ -120,6 +146,8 @@ export function MemberDetailPanel({
   onAddSpouse,
   onUpdateSpouse,
   onDeleteSpouse,
+  onUploadAvatar,
+  onDeleteAvatar,
 }: MemberDetailPanelProps) {
   const ancestors = ancestorPath.slice(0, -1);
 
@@ -133,10 +161,21 @@ export function MemberDetailPanel({
   const [actionError, setActionError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [avatarPreviewUrl, setAvatarPreviewUrl] = useState<string | null>(null);
+  const [removeAvatar, setRemoveAvatar] = useState(false);
+
   const [editingSpouseId, setEditingSpouseId] = useState<number | null>(null);
   const [spouseDraft, setSpouseDraft] = useState<SpouseDraft | null>(null);
   const [newSpouseName, setNewSpouseName] = useState('');
   const [newSpouseMarriageYear, setNewSpouseMarriageYear] = useState('');
+
+  function resetAvatarDraft() {
+    if (avatarPreviewUrl) URL.revokeObjectURL(avatarPreviewUrl);
+    setAvatarFile(null);
+    setAvatarPreviewUrl(null);
+    setRemoveAvatar(false);
+  }
 
   function startEditing() {
     setEditedName(name);
@@ -144,13 +183,46 @@ export function MemberDetailPanel({
     setEditedDeathYear(toInputValue(deathYear));
     setEditedGender(gender ?? '');
     setEditedNotes(notes ?? '');
+    resetAvatarDraft();
     setIsEditing(true);
+  }
+
+  function handleAvatarFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0] ?? null;
+    if (avatarPreviewUrl) URL.revokeObjectURL(avatarPreviewUrl);
+    setAvatarFile(file);
+    setRemoveAvatar(false);
+    setAvatarPreviewUrl(file ? URL.createObjectURL(file) : null);
+  }
+
+  function handleRemoveAvatarClick() {
+    if (avatarPreviewUrl) URL.revokeObjectURL(avatarPreviewUrl);
+    setAvatarFile(null);
+    setAvatarPreviewUrl(null);
+    setRemoveAvatar(true);
   }
 
   async function handleSave() {
     if (!editedName.trim()) return;
     setIsSubmitting(true);
     setActionError(null);
+
+    if (removeAvatar) {
+      const avatarResult = await onDeleteAvatar();
+      if (!avatarResult.ok) {
+        setIsSubmitting(false);
+        setActionError(avatarResult.error ?? 'Không thể xoá ảnh. Vui lòng thử lại.');
+        return;
+      }
+    } else if (avatarFile) {
+      const avatarResult = await onUploadAvatar(avatarFile);
+      if (!avatarResult.ok) {
+        setIsSubmitting(false);
+        setActionError(avatarResult.error ?? 'Không thể tải ảnh lên. Vui lòng thử lại.');
+        return;
+      }
+    }
+
     const result = await onUpdate({
       name: editedName.trim(),
       birthYear: parseYear(editedBirthYear),
@@ -161,6 +233,7 @@ export function MemberDetailPanel({
     setIsSubmitting(false);
     if (result.ok) {
       setIsEditing(false);
+      resetAvatarDraft();
     } else {
       setActionError(result.error ?? 'Không thể lưu. Vui lòng thử lại.');
     }
@@ -245,6 +318,8 @@ export function MemberDetailPanel({
   }
 
   const lifespan = lifespanOf(birthYear, deathYear);
+  const editAvatarSrc = removeAvatar ? null : (avatarPreviewUrl ?? avatarUrl);
+  const canRemoveAvatar = !removeAvatar && Boolean(avatarPreviewUrl || avatarUrl);
 
   return (
     <aside className="fixed inset-y-0 right-0 z-40 w-80 overflow-y-auto border-default border-l bg-surface p-4 shadow-lg">
@@ -254,6 +329,21 @@ export function MemberDetailPanel({
 
       {isEditing ? (
         <div className="space-y-3">
+          <div className="flex items-center gap-x-3">
+            <AvatarOrInitial src={editAvatarSrc} initial={editedName.charAt(0)} size={64} />
+            <div className="flex flex-col gap-y-1">
+              <input type="file" accept="image/*" onChange={handleAvatarFileChange} className="text-xs text-muted" />
+              {canRemoveAvatar && (
+                <button
+                  type="button"
+                  onClick={handleRemoveAvatarClick}
+                  className="whitespace-nowrap text-left text-xs text-danger hover:underline"
+                >
+                  Xoá ảnh
+                </button>
+              )}
+            </div>
+          </div>
           <div>
             <label className="text-xs text-muted">Họ tên</label>
             <input
@@ -308,21 +398,33 @@ export function MemberDetailPanel({
             <button type="button" onClick={handleSave} disabled={isSubmitting} className="whitespace-nowrap text-sm accent-text hover:underline disabled:opacity-50">
               Lưu
             </button>
-            <button type="button" onClick={() => setIsEditing(false)} className="whitespace-nowrap text-sm text-muted hover:text-default">
+            <button
+              type="button"
+              onClick={() => {
+                resetAvatarDraft();
+                setIsEditing(false);
+              }}
+              className="whitespace-nowrap text-sm text-muted hover:text-default"
+            >
               Huỷ
             </button>
           </div>
         </div>
       ) : (
         <div>
-          <div className="flex items-center justify-between gap-x-2">
-            <h2 className="text-lg font-semibold text-default">{name}</h2>
-            <button type="button" onClick={startEditing} className="whitespace-nowrap text-sm text-muted hover:text-default">
-              Sửa
-            </button>
+          <div className="flex items-center gap-x-3">
+            <AvatarOrInitial src={avatarUrl} initial={name.charAt(0)} size={64} />
+            <div className="flex-1">
+              <div className="flex items-center justify-between gap-x-2">
+                <h2 className="text-lg font-semibold text-default">{name}</h2>
+                <button type="button" onClick={startEditing} className="whitespace-nowrap text-sm text-muted hover:text-default">
+                  Sửa
+                </button>
+              </div>
+              {lifespan && <p className="mt-1 text-sm text-muted">{lifespan}</p>}
+              {gender && <p className="mt-1 text-sm text-muted">{GENDER_LABELS[gender]}</p>}
+            </div>
           </div>
-          {lifespan && <p className="mt-1 text-sm text-muted">{lifespan}</p>}
-          {gender && <p className="mt-1 text-sm text-muted">{GENDER_LABELS[gender]}</p>}
           {notes && <p className="mt-2 whitespace-pre-wrap text-sm text-default">{notes}</p>}
         </div>
       )}
