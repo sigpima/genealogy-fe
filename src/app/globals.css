@@ -10,6 +10,7 @@
   --color-text-muted: #64748b;
   --color-border: #e2e8f0;
   --color-on-primary: #ffffff;
+  --color-danger: #dc2626;
 }
 
 :root[data-theme='warm'] {
@@ -21,6 +22,7 @@
   --color-text-muted: #7a6a5d;
   --color-border: #e8ddd0;
   --color-on-primary: #ffffff;
+  --color-danger: #dc2626;
 }
 
 :root[data-theme='elegant'] {
@@ -32,6 +34,7 @@
   --color-text-muted: #b8aa98;
   --color-border: #332c25;
   --color-on-primary: #14110f;
+  --color-danger: #f87171;
 }
 
 @layer components {
@@ -55,6 +58,9 @@
   }
   .accent-text {
     color: var(--color-accent);
+  }
+  .text-danger {
+    color: var(--color-danger);
   }
   .border-default {
     border-color: var(--color-border);
