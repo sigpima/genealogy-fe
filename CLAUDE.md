@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 - Install dependencies: `npm install`
 - First-time setup: `cp .env.example .env` (sets `API_BASE_URL` for the `/api/*` proxy — see Architecture)
-- Run the dev server: `npm run dev` (Turbopack) — auth features (login/signup/logout, and the protected `/`/`/genealogy-tree` routes) need `genealogy-api` also running locally (`uv run uvicorn app.main:app --reload` in that sibling repo) with its `FRONTEND_ORIGIN`/`.env` pointing back at this app
+- Run the dev server: `npm run dev` (Turbopack) — needs `genealogy-api` also running locally (`uv run uvicorn app.main:app --reload` in that sibling repo, with its `FRONTEND_ORIGIN`/`.env` pointing back at this app) for auth (login/signup/logout) *and* the tree itself, which now fetches real data from `/api/members/tree` rather than reading a bundled file
 - Run all unit tests: `npm run test` (or `npx vitest run`)
 - Run a single test file: `npx vitest run src/lib/tree/search.test.ts`
 - Typecheck: `npx tsc --noEmit`
@@ -23,11 +23,17 @@ afterward if needed.
 ## Architecture
 
 Next.js 15 App Router / React 19 / Tailwind v4 app: an interactive family
-tree (`react-d3-tree`) plus login/signup pages wired to the sibling
-`genealogy-api` project. The tree data itself is still a static JSON file
-(`new_treeData.json`) — only auth is real so far; Member/Family CRUD
-against the API is a separate future piece of work (see
-`docs/superpowers/specs/`).
+tree (`react-d3-tree`) plus login/signup pages, both wired to the sibling
+`genealogy-api` project. `Home` (`src/app/page.tsx`) fetches
+`/api/members/tree` on mount and passes the result to `GenealogyTree` as
+a prop — there is no bundled tree JSON anymore (`new_treeData.json` was
+deleted once its content was migrated into the database via
+`genealogy-api`'s seed script). A 401 from that fetch redirects to
+`/login`; other failures show an inline error with a retry button while
+the sidebar/header keep rendering normally. The API backing this is one
+shared tree for every logged-in user — no per-user data. Editing the tree
+(the backend already has full Member CRUD) has no frontend UI yet — that
+remains a separate future piece of work (see `docs/superpowers/specs/`).
 
 **Auth architecture — same-origin proxy, not direct cross-origin calls.**
 `genealogy-api` runs on a different origin (`http://localhost:8000`) and
@@ -99,14 +105,17 @@ nested) match:
 **Search/lookup logic is pure and tested independently of the tree UI**:
 `src/lib/tree/search.ts` (`findMembersByName`, `findPathToMember`,
 `generationOf`, `getMemberAtPath`) operates on the plain
-`{name, children?}` shape (`FamilyMember`, `src/lib/tree/types.ts`) — the
-same shape as `new_treeData.json` — with no react-d3-tree dependency.
+`{name, children?}` shape (`FamilyMember`, `src/lib/tree/types.ts`) —
+the same shape `GET /api/members/tree` returns (it also includes an
+`id` per node, which `FamilyMember` doesn't declare and nothing here
+currently reads — TypeScript's structural typing allows the extra field
+through untyped) — with no react-d3-tree dependency.
 
-**Tree data (`src/app/genealogy-tree/new_treeData.json`) has only `name`
-and `children`** — no birth/death dates, gender, or notes. The member
-detail panel (`src/components/tree/MemberDetailPanel.tsx`) only shows
-what that data actually has (name, generation, ancestor breadcrumb,
-children); don't invent fields the data doesn't contain.
+**Tree data has only a name and children** — the backend's `Member` model
+has no birth/death dates, gender, or notes fields. The member detail
+panel (`src/components/tree/MemberDetailPanel.tsx`) only shows what that
+data actually has (name, generation, ancestor breadcrumb, children);
+don't invent fields the data doesn't contain.
 
 **`FormAction` (`src/components/FormAction.tsx`) must not receive a
 `handleSubmit` prop when used inside a `<form onSubmit={...}>`** — its
