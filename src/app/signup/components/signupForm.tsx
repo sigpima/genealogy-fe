@@ -6,7 +6,7 @@ import FormAction from '@/components/FormAction';
 import Input from '@/components/Input';
 
 const fields = signupFields;
-let fieldsState: { [key: string]: string } = {};
+const fieldsState: { [key: string]: string } = {};
 fields.forEach((field) => (fieldsState[field.id] = ''));
 
 export default function Signup() {

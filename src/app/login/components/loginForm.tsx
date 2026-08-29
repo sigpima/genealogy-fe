@@ -7,7 +7,7 @@ import FormExtra from '@/components/FormExtra';
 import Input from '@/components/Input';
 
 const fields = loginFields;
-let fieldsState: { [key: string]: string } = {};
+const fieldsState: { [key: string]: string } = {};
 fields.forEach((field) => (fieldsState[field.id] = ''));
 
 export default function Login() {
