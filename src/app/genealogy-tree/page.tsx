@@ -190,15 +190,19 @@ export default function GenealogyTree({ familyTree, focusRequest, onDataChanged 
       // handleSelectChild's name-based path lookup would silently fail for any child
       // navigated to after a rename.
       const newAncestorPath = [...selectedMember.ancestorPath.slice(0, -1), input.name];
-      setSelectedMember({
-        ...selectedMember,
-        name: input.name,
-        ancestorPath: newAncestorPath,
-        birthYear: input.birthYear,
-        deathYear: input.deathYear,
-        gender: input.gender,
-        notes: input.notes,
-      });
+      setSelectedMember((prev) =>
+        prev
+          ? {
+              ...prev,
+              name: input.name,
+              ancestorPath: newAncestorPath,
+              birthYear: input.birthYear,
+              deathYear: input.deathYear,
+              gender: input.gender,
+              notes: input.notes,
+            }
+          : prev
+      );
       onDataChanged();
       return { ok: true };
     } catch {
@@ -216,10 +220,9 @@ export default function GenealogyTree({ familyTree, focusRequest, onDataChanged 
         body: JSON.stringify({ full_name: childName, parent_id: selectedMember.id }),
       });
       if (!response.ok) return { ok: false, error: 'Không thể thêm. Vui lòng thử lại.' };
-      setSelectedMember({
-        ...selectedMember,
-        childrenNames: [...selectedMember.childrenNames, childName],
-      });
+      setSelectedMember((prev) =>
+        prev ? { ...prev, childrenNames: [...prev.childrenNames, childName] } : prev
+      );
       onDataChanged();
       return { ok: true };
     } catch {
@@ -257,10 +260,9 @@ export default function GenealogyTree({ familyTree, focusRequest, onDataChanged 
       });
       if (!response.ok) return { ok: false, error: 'Không thể thêm. Vui lòng thử lại.' };
       const body: Spouse = await response.json();
-      setSelectedMember({
-        ...selectedMember,
-        spouses: [...selectedMember.spouses, ...toPanelSpouses([body])],
-      });
+      setSelectedMember((prev) =>
+        prev ? { ...prev, spouses: [...prev.spouses, ...toPanelSpouses([body])] } : prev
+      );
       onDataChanged();
       return { ok: true };
     } catch {
@@ -288,22 +290,26 @@ export default function GenealogyTree({ familyTree, focusRequest, onDataChanged 
         }),
       });
       if (!response.ok) return { ok: false, error: 'Không thể lưu. Vui lòng thử lại.' };
-      setSelectedMember({
-        ...selectedMember,
-        spouses: selectedMember.spouses.map((spouse) =>
-          spouse.marriageId === marriageId
-            ? {
-                ...spouse,
-                name: input.name,
-                birthYear: input.birthYear,
-                deathYear: input.deathYear,
-                gender: input.gender,
-                notes: input.notes,
-                marriageYear: input.marriageYear,
-              }
-            : spouse
-        ),
-      });
+      setSelectedMember((prev) =>
+        prev
+          ? {
+              ...prev,
+              spouses: prev.spouses.map((spouse) =>
+                spouse.marriageId === marriageId
+                  ? {
+                      ...spouse,
+                      name: input.name,
+                      birthYear: input.birthYear,
+                      deathYear: input.deathYear,
+                      gender: input.gender,
+                      notes: input.notes,
+                      marriageYear: input.marriageYear,
+                    }
+                  : spouse
+              ),
+            }
+          : prev
+      );
       onDataChanged();
       return { ok: true };
     } catch {
@@ -319,10 +325,11 @@ export default function GenealogyTree({ familyTree, focusRequest, onDataChanged 
         credentials: 'include',
       });
       if (!response.ok) return { ok: false, error: 'Không thể xoá. Vui lòng thử lại.' };
-      setSelectedMember({
-        ...selectedMember,
-        spouses: selectedMember.spouses.filter((spouse) => spouse.spouseId !== spouseId),
-      });
+      setSelectedMember((prev) =>
+        prev
+          ? { ...prev, spouses: prev.spouses.filter((spouse) => spouse.spouseId !== spouseId) }
+          : prev
+      );
       onDataChanged();
       return { ok: true };
     } catch {
@@ -342,7 +349,7 @@ export default function GenealogyTree({ familyTree, focusRequest, onDataChanged 
       });
       if (!response.ok) return { ok: false, error: 'Không thể tải ảnh lên. Vui lòng thử lại.' };
       const body: { avatar_url: string } = await response.json();
-      setSelectedMember({ ...selectedMember, avatarUrl: body.avatar_url });
+      setSelectedMember((prev) => (prev ? { ...prev, avatarUrl: body.avatar_url } : prev));
       onDataChanged();
       return { ok: true, avatarUrl: body.avatar_url };
     } catch {
@@ -358,7 +365,7 @@ export default function GenealogyTree({ familyTree, focusRequest, onDataChanged 
         credentials: 'include',
       });
       if (!response.ok) return { ok: false, error: 'Không thể xoá ảnh. Vui lòng thử lại.' };
-      setSelectedMember({ ...selectedMember, avatarUrl: null });
+      setSelectedMember((prev) => (prev ? { ...prev, avatarUrl: null } : prev));
       onDataChanged();
       return { ok: true };
     } catch {
