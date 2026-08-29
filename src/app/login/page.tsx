@@ -1,11 +1,11 @@
-import Header from '@/components/Header';
+import AuthHeader from '@/components/auth/AuthHeader';
 import Login from './components/loginForm';
 
 export default function LoginPage() {
   return (
-    <div className="min-h-full h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
-        <Header
+    <div className="flex h-screen min-h-full items-center justify-center bg-app px-4 py-12 sm:px-6 lg:px-8">
+      <div className="w-full max-w-md space-y-8">
+        <AuthHeader
           heading="Login to your account"
           paragraph="Don't have an account yet? "
           linkName="Signup"
