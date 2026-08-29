@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { findMembersByName, findPathToMember, generationOf, getMemberAtPath } from './search';
+import {
+  findMembersByName,
+  findPathToMember,
+  generationOf,
+  getMemberAtPath,
+  getReparentCandidates,
+} from './search';
 import type { FamilyMember } from './types';
 
 const tree: FamilyMember = {
@@ -71,5 +77,34 @@ describe('getMemberAtPath', () => {
 
   it('returns null when the path does not start at the root', () => {
     expect(getMemberAtPath(tree, ['nguyễn văn mít'])).toBeNull();
+  });
+});
+
+describe('getReparentCandidates', () => {
+  const idTree: FamilyMember = {
+    id: 1,
+    name: 'Root',
+    children: [
+      {
+        id: 2,
+        name: 'Child A',
+        children: [{ id: 4, name: 'Grandchild A1' }, { id: 5, name: 'Grandchild A2' }],
+      },
+      { id: 3, name: 'Child B' },
+    ],
+  };
+
+  it('excludes the member itself and its own descendants', () => {
+    const candidates = getReparentCandidates(idTree, 2);
+    expect(candidates.map((c) => c.id).sort()).toEqual([1, 3]);
+  });
+
+  it('returns an empty list for the root, since its descendants are the whole tree', () => {
+    expect(getReparentCandidates(idTree, 1)).toEqual([]);
+  });
+
+  it('includes every non-descendant blood-line member for a leaf', () => {
+    const candidates = getReparentCandidates(idTree, 4);
+    expect(candidates.map((c) => c.id).sort()).toEqual([1, 2, 3, 5]);
   });
 });

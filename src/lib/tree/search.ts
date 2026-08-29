@@ -54,3 +54,36 @@ export function getMemberAtPath(root: FamilyMember, path: string[]): FamilyMembe
 function normalize(value: string): string {
   return value.trim().toLowerCase();
 }
+
+export type ReparentCandidate = { id: number; name: string };
+
+export function getReparentCandidates(root: FamilyMember, memberId: number): ReparentCandidate[] {
+  const excluded = new Set<number>([memberId]);
+
+  function collectDescendants(node: FamilyMember) {
+    (node.children ?? []).forEach((child) => {
+      if (child.id !== undefined) excluded.add(child.id);
+      collectDescendants(child);
+    });
+  }
+
+  function findAndCollect(node: FamilyMember): boolean {
+    if (node.id === memberId) {
+      collectDescendants(node);
+      return true;
+    }
+    return (node.children ?? []).some(findAndCollect);
+  }
+
+  findAndCollect(root);
+
+  const candidates: ReparentCandidate[] = [];
+  function walk(node: FamilyMember) {
+    if (node.id !== undefined && !excluded.has(node.id)) {
+      candidates.push({ id: node.id, name: node.name });
+    }
+    node.children?.forEach(walk);
+  }
+  walk(root);
+  return candidates;
+}
