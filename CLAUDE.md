@@ -20,6 +20,17 @@ corrupt the build manifest, producing a spurious "Internal Server Error" /
 server (kill the port 3000 listener) before building, then restart dev
 afterward if needed.
 
+**Docker:** `next.config.ts` sets `output: 'standalone'` and `Dockerfile`
+here is a multi-stage build producing that standalone bundle. **`API_BASE_URL`
+must be passed as a Docker build ARG, not just a container-run env var** —
+`next build` resolves `rewrites()`'s destinations into a static routes
+manifest baked into the standalone output; the production `server.js` does
+*not* re-read `API_BASE_URL` at container start the way `next dev` re-reads
+`.env` on every dev-server launch. `../docker-compose.yml` (see
+`../DOCKER.md`) passes it correctly via `build.args`; building this
+Dockerfile directly without that arg silently falls back to
+`http://localhost:8000`, which is wrong inside a container network.
+
 ## Architecture
 
 Next.js 15 App Router / React 19 / Tailwind v4 app: an interactive family
