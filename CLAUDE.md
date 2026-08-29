@@ -31,9 +31,13 @@ deleted once its content was migrated into the database via
 `genealogy-api`'s seed script). A 401 from that fetch redirects to
 `/login`; other failures show an inline error with a retry button while
 the sidebar/header keep rendering normally. The API backing this is one
-shared tree for every logged-in user — no per-user data. Editing the tree
-(the backend already has full Member CRUD) has no frontend UI yet — that
-remains a separate future piece of work (see `docs/superpowers/specs/`).
+shared tree for every logged-in user — no per-user data. The member
+detail panel supports renaming, adding a child, and deleting (the empty
+state supports creating the first member) — all three call
+`genealogy-api`'s Member CRUD endpoints directly and trigger a **silent**
+tree refetch on success (see the `loadTree({ silent: true })` note
+below). Re-parenting an existing member via the UI (the backend already
+supports it through `PUT`) has no UI yet — still a future piece of work.
 
 **Auth architecture — same-origin proxy, not direct cross-origin calls.**
 `genealogy-api` runs on a different origin (`http://localhost:8000`) and
@@ -105,11 +109,33 @@ nested) match:
 **Search/lookup logic is pure and tested independently of the tree UI**:
 `src/lib/tree/search.ts` (`findMembersByName`, `findPathToMember`,
 `generationOf`, `getMemberAtPath`) operates on the plain
-`{name, children?}` shape (`FamilyMember`, `src/lib/tree/types.ts`) —
-the same shape `GET /api/members/tree` returns (it also includes an
-`id` per node, which `FamilyMember` doesn't declare and nothing here
-currently reads — TypeScript's structural typing allows the extra field
-through untyped) — with no react-d3-tree dependency.
+`{id?, name, children?}` shape (`FamilyMember`, `src/lib/tree/types.ts`)
+— the same shape `GET /api/members/tree` returns — with no react-d3-tree
+dependency. `id` is optional on the type (existing tests construct
+`FamilyMember` literals without one) but always present on real API data
+— the CRUD mutation handlers in `genealogy-tree/page.tsx` depend on it
+being there.
+
+**Two gotchas hit while adding member mutations (rename/add child/delete),
+worth re-reading before touching this flow again:**
+- `Home`'s `loadTree()` (`src/app/page.tsx`) takes a `{ silent?: boolean }`
+  option. The initial page-load call omits it (shows the full-screen
+  spinner, correct for a true first load), but every post-mutation
+  refetch passes `{ silent: true }`. Without that, `isLoading` becoming
+  `true` again flips the render guard (`{!isLoading && ... && <GenealogyTree ...>}`)
+  and **unmounts `GenealogyTree` entirely** for the duration of the
+  refetch — closing the open detail panel and losing zoom/pan/collapse
+  state on every single edit, even though the fetch itself is fast.
+- `handleRenameMember` (`genealogy-tree/page.tsx`) must update the *last
+  entry* of `selectedMember.ancestorPath` to the new name, not just
+  `.name` — `ancestorPath` includes the member's own name as its last
+  element by design, and `handleSelectChild`'s child-navigation does a
+  name-based path lookup (`getMemberAtPath`) against the freshly-fetched
+  tree. Forgetting this makes navigating to any child *after* a rename
+  silently fail (the stale old name no longer matches), leaving the panel
+  pointed at the just-renamed member instead of the clicked child — which
+  then surfaces as a *second*, confusing `DELETE` 409 if the user then
+  tries to delete what they think is the child.
 
 **Tree data has only a name and children** — the backend's `Member` model
 has no birth/death dates, gender, or notes fields. The member detail
