@@ -13,9 +13,10 @@ import {
   type SpouseUpdateInput,
 } from '@/components/tree/MemberDetailPanel';
 import { TreeControls } from '@/components/tree/TreeControls';
+import { idsNeedingDetail } from '@/lib/tree/detail-cache';
 import { computeDetailSet } from '@/lib/tree/lod';
 import { getMemberAtPath, getReparentCandidates } from '@/lib/tree/search';
-import type { FamilyMember, Gender, Spouse } from '@/lib/tree/types';
+import type { FamilyMember, Gender, MemberDetail, Spouse } from '@/lib/tree/types';
 
 const Tree = dynamic(() => import('react-d3-tree'), { ssr: false });
 
@@ -37,19 +38,16 @@ type SelectedMember = {
   notes: string | null;
   avatarUrl: string | null;
   spouses: PanelSpouse[];
+  isDetailLoading: boolean;
+  detailLoadError: boolean;
 };
 
-// The API's tree nodes carry fields that react-d3-tree's own RawNodeDatum/TreeNodeDatum
-// types don't declare (they only know about `name`/`children`/`attributes`) - these
-// survive at runtime since react-d3-tree doesn't strip unknown properties.
+// The API's tree nodes carry an id react-d3-tree's own RawNodeDatum/TreeNodeDatum types
+// don't declare (they only know about `name`/`children`/`attributes`) - it survives at
+// runtime since react-d3-tree doesn't strip unknown properties. Everything else about a
+// member (birth/death/gender/notes/avatar/spouses) is fetched lazily - see detailsById.
 type MemberNodeData = TreeNodeDatum & {
   id: number;
-  birth_year?: number | null;
-  death_year?: number | null;
-  gender?: Gender | null;
-  notes?: string | null;
-  avatar_url?: string | null;
-  spouses?: Spouse[];
 };
 
 function toPanelSpouses(spouses: Spouse[] | undefined): PanelSpouse[] {
@@ -109,6 +107,52 @@ export default function GenealogyTree({ familyTree, focusRequest, onDataChanged 
       familyTree ? computeDetailSet(familyTree, focalId ?? familyTree.id ?? -1, DETAIL_RADIUS) : new Set<number>(),
     [familyTree, focalId]
   );
+  const [detailsById, setDetailsById] = useState<Map<number, MemberDetail>>(new Map());
+  // Tracks in-flight/completed fetch attempts (including failures, cached as a resolved
+  // null) so the LOD-driven prefetch effect and a panel click never issue two requests for
+  // the same id, and so a failed fetch doesn't silently retry itself.
+  const detailFetches = useRef<Map<number, Promise<MemberDetail | null>>>(new Map());
+
+  function ensureMemberDetail(id: number): Promise<MemberDetail | null> {
+    const existing = detailFetches.current.get(id);
+    if (existing) return existing;
+    const promise = fetch(`/api/members/${id}`, { credentials: 'include' })
+      .then((res) => (res.ok ? (res.json() as Promise<MemberDetail>) : null))
+      .then((detail) => {
+        if (detail) setDetailsById((prev) => new Map(prev).set(id, detail));
+        return detail;
+      })
+      .catch(() => null);
+    detailFetches.current.set(id, promise);
+    return promise;
+  }
+
+  function patchMemberDetail(id: number, patch: Partial<Omit<MemberDetail, 'id'>>) {
+    setDetailsById((prev) => {
+      const next = new Map(prev);
+      const existing = next.get(id) ?? {
+        id,
+        birth_year: null,
+        death_year: null,
+        gender: null,
+        notes: null,
+        avatar_url: null,
+        spouses: [],
+      };
+      next.set(id, { ...existing, ...patch });
+      return next;
+    });
+  }
+
+  useEffect(() => {
+    idsNeedingDetail(detailSet, detailsById).forEach((id) => {
+      void ensureMemberDetail(id);
+    });
+    // detailsById intentionally excluded: ensureMemberDetail's own ref-backed dedup already
+    // prevents duplicate fetches, so this only needs to re-scan when detailSet changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [detailSet]);
+
   // react-d3-tree doesn't export a clean ref-typed public API; `generateTree`/`centerNode`
   // are real (non-private) instance methods used here the same way the library uses them
   // internally to center a clicked node. Verified against node_modules/react-d3-tree source.
@@ -136,25 +180,53 @@ export default function GenealogyTree({ familyTree, focusRequest, onDataChanged 
     return () => clearTimeout(timer);
   }, [focusRequest]);
 
+  async function openMemberDetail(
+    id: number,
+    parentId: number | null,
+    name: string,
+    ancestorPath: string[],
+    childrenNames: string[]
+  ) {
+    setSelectedMember({
+      id,
+      parentId,
+      name,
+      generation: ancestorPath.length,
+      ancestorPath,
+      childrenNames,
+      birthYear: null,
+      deathYear: null,
+      gender: null,
+      notes: null,
+      avatarUrl: null,
+      spouses: [],
+      isDetailLoading: true,
+      detailLoadError: false,
+    });
+    const detail = await ensureMemberDetail(id);
+    setSelectedMember((prev) => {
+      if (!prev || prev.id !== id) return prev;
+      if (!detail) return { ...prev, isDetailLoading: false, detailLoadError: true };
+      return {
+        ...prev,
+        isDetailLoading: false,
+        detailLoadError: false,
+        birthYear: detail.birth_year,
+        deathYear: detail.death_year,
+        gender: detail.gender,
+        notes: detail.notes,
+        avatarUrl: detail.avatar_url,
+        spouses: toPanelSpouses(detail.spouses),
+      };
+    });
+  }
+
   function handleNodeClick(hierarchyPointNode: HierarchyPointNodeOf) {
     const ancestorPath = pathOfHierarchyNode(hierarchyPointNode);
     const data = hierarchyPointNode.data as MemberNodeData;
     const parentData = hierarchyPointNode.parent?.data as MemberNodeData | undefined;
     const childrenNames = data.children?.map((child) => child.name) ?? [];
-    setSelectedMember({
-      id: data.id,
-      parentId: parentData ? parentData.id : null,
-      name: data.name,
-      generation: ancestorPath.length,
-      ancestorPath,
-      childrenNames,
-      birthYear: data.birth_year ?? null,
-      deathYear: data.death_year ?? null,
-      gender: data.gender ?? null,
-      notes: data.notes ?? null,
-      avatarUrl: data.avatar_url ?? null,
-      spouses: toPanelSpouses(data.spouses),
-    });
+    void openMemberDetail(data.id, parentData ? parentData.id : null, data.name, ancestorPath, childrenNames);
   }
 
   function handleSelectChild(childName: string) {
@@ -162,20 +234,25 @@ export default function GenealogyTree({ familyTree, focusRequest, onDataChanged 
     const newPath = [...selectedMember.ancestorPath, childName];
     const member = getMemberAtPath(familyTree, newPath);
     if (!member || member.id === undefined) return;
-    setSelectedMember({
-      id: member.id,
-      parentId: selectedMember.id,
-      name: member.name,
-      generation: newPath.length,
-      ancestorPath: newPath,
-      childrenNames: member.children?.map((child) => child.name) ?? [],
-      birthYear: member.birth_year ?? null,
-      deathYear: member.death_year ?? null,
-      gender: member.gender ?? null,
-      notes: member.notes ?? null,
-      avatarUrl: member.avatar_url ?? null,
-      spouses: toPanelSpouses(member.spouses),
-    });
+    void openMemberDetail(
+      member.id,
+      selectedMember.id,
+      member.name,
+      newPath,
+      member.children?.map((child) => child.name) ?? []
+    );
+  }
+
+  function handleRetryLoadDetail() {
+    if (!selectedMember) return;
+    detailFetches.current.delete(selectedMember.id);
+    void openMemberDetail(
+      selectedMember.id,
+      selectedMember.parentId,
+      selectedMember.name,
+      selectedMember.ancestorPath,
+      selectedMember.childrenNames
+    );
   }
 
   async function handleUpdateMember(input: MemberUpdateInput): Promise<MutationResult> {
@@ -200,6 +277,13 @@ export default function GenealogyTree({ familyTree, focusRequest, onDataChanged 
         }
         return { ok: false, error: 'Không thể lưu. Vui lòng thử lại.' };
       }
+
+      patchMemberDetail(selectedMember.id, {
+        birth_year: input.birthYear,
+        death_year: input.deathYear,
+        gender: input.gender,
+        notes: input.notes,
+      });
 
       if (input.parentId !== selectedMember.parentId) {
         // Re-parenting changes this member's position in the tree, so ancestorPath and
@@ -287,6 +371,9 @@ export default function GenealogyTree({ familyTree, focusRequest, onDataChanged 
       setSelectedMember((prev) =>
         prev ? { ...prev, spouses: [...prev.spouses, ...toPanelSpouses([body])] } : prev
       );
+      patchMemberDetail(selectedMember.id, {
+        spouses: [...(detailsById.get(selectedMember.id)?.spouses ?? []), body],
+      });
       onDataChanged();
       return { ok: true };
     } catch {
@@ -334,6 +421,21 @@ export default function GenealogyTree({ familyTree, focusRequest, onDataChanged 
             }
           : prev
       );
+      patchMemberDetail(selectedMember.id, {
+        spouses: (detailsById.get(selectedMember.id)?.spouses ?? []).map((spouse) =>
+          spouse.marriage_id === marriageId
+            ? {
+                ...spouse,
+                full_name: input.name,
+                birth_year: input.birthYear,
+                death_year: input.deathYear,
+                gender: input.gender,
+                notes: input.notes,
+                marriage_year: input.marriageYear,
+              }
+            : spouse
+        ),
+      });
       onDataChanged();
       return { ok: true };
     } catch {
@@ -354,6 +456,11 @@ export default function GenealogyTree({ familyTree, focusRequest, onDataChanged 
           ? { ...prev, spouses: prev.spouses.filter((spouse) => spouse.spouseId !== spouseId) }
           : prev
       );
+      patchMemberDetail(selectedMember.id, {
+        spouses: (detailsById.get(selectedMember.id)?.spouses ?? []).filter(
+          (spouse) => spouse.id !== spouseId
+        ),
+      });
       onDataChanged();
       return { ok: true };
     } catch {
@@ -374,6 +481,7 @@ export default function GenealogyTree({ familyTree, focusRequest, onDataChanged 
       if (!response.ok) return { ok: false, error: 'Không thể tải ảnh lên. Vui lòng thử lại.' };
       const body: { avatar_url: string } = await response.json();
       setSelectedMember((prev) => (prev ? { ...prev, avatarUrl: body.avatar_url } : prev));
+      patchMemberDetail(selectedMember.id, { avatar_url: body.avatar_url });
       onDataChanged();
       return { ok: true, avatarUrl: body.avatar_url };
     } catch {
@@ -390,6 +498,7 @@ export default function GenealogyTree({ familyTree, focusRequest, onDataChanged 
       });
       if (!response.ok) return { ok: false, error: 'Không thể xoá ảnh. Vui lòng thử lại.' };
       setSelectedMember((prev) => (prev ? { ...prev, avatarUrl: null } : prev));
+      patchMemberDetail(selectedMember.id, { avatar_url: null });
       onDataChanged();
       return { ok: true };
     } catch {
@@ -404,6 +513,7 @@ export default function GenealogyTree({ familyTree, focusRequest, onDataChanged 
     const data = nodeDatum as MemberNodeData;
     const avatarClipId = `avatar-clip-${data.id}`;
     const isDetailed = detailSet.has(data.id);
+    const avatarUrl = detailsById.get(data.id)?.avatar_url ?? null;
 
     return (
       <g>
@@ -422,13 +532,13 @@ export default function GenealogyTree({ familyTree, focusRequest, onDataChanged 
           onClick={() => handleNodeClick(hierarchyPointNode)}
         />
         {isDetailed &&
-          (data.avatar_url ? (
+          (avatarUrl ? (
             <>
               <clipPath id={avatarClipId}>
                 <circle cx={0} cy={-12} r={14} />
               </clipPath>
               <image
-                href={data.avatar_url}
+                href={avatarUrl}
                 x={-14}
                 y={-26}
                 width={28}
@@ -540,6 +650,9 @@ export default function GenealogyTree({ familyTree, focusRequest, onDataChanged 
           parentId={selectedMember.parentId}
           parentOptions={getReparentCandidates(familyTree, selectedMember.id)}
           spouses={selectedMember.spouses}
+          isDetailLoading={selectedMember.isDetailLoading}
+          detailLoadError={selectedMember.detailLoadError}
+          onRetryLoadDetail={handleRetryLoadDetail}
           childMembers={selectedMember.childrenNames.map((childName) => ({
             name: childName,
             onSelect: () => handleSelectChild(childName),

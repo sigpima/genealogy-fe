@@ -60,6 +60,9 @@ export type MemberDetailPanelProps = {
   parentOptions: ParentOption[];
   childMembers: MemberDetailPanelChild[];
   spouses: PanelSpouse[];
+  isDetailLoading: boolean;
+  detailLoadError: boolean;
+  onRetryLoadDetail: () => void;
   onClose: () => void;
   onUpdate: (input: MemberUpdateInput) => Promise<MutationResult>;
   onAddChild: (name: string) => Promise<MutationResult>;
@@ -146,6 +149,9 @@ export function MemberDetailPanel({
   parentOptions,
   childMembers,
   spouses,
+  isDetailLoading,
+  detailLoadError,
+  onRetryLoadDetail,
   onClose,
   onUpdate,
   onAddChild,
@@ -443,15 +449,26 @@ export function MemberDetailPanel({
             <div className="flex-1">
               <div className="flex items-center justify-between gap-x-2">
                 <h2 className="text-lg font-semibold text-default">{name}</h2>
-                <button type="button" onClick={startEditing} className="whitespace-nowrap text-sm text-muted hover:text-default">
-                  Sửa
-                </button>
+                {!isDetailLoading && !detailLoadError && (
+                  <button type="button" onClick={startEditing} className="whitespace-nowrap text-sm text-muted hover:text-default">
+                    Sửa
+                  </button>
+                )}
               </div>
-              {lifespan && <p className="mt-1 text-sm text-muted">{lifespan}</p>}
-              {gender && <p className="mt-1 text-sm text-muted">{GENDER_LABELS[gender]}</p>}
+              {isDetailLoading && <p className="mt-1 text-sm text-muted">Đang tải chi tiết...</p>}
+              {detailLoadError && (
+                <p className="mt-1 text-sm text-danger">
+                  Không thể tải chi tiết.{' '}
+                  <button type="button" onClick={onRetryLoadDetail} className="underline">
+                    Thử lại
+                  </button>
+                </p>
+              )}
+              {!isDetailLoading && !detailLoadError && lifespan && <p className="mt-1 text-sm text-muted">{lifespan}</p>}
+              {!isDetailLoading && !detailLoadError && gender && <p className="mt-1 text-sm text-muted">{GENDER_LABELS[gender]}</p>}
             </div>
           </div>
-          {notes && <p className="mt-2 whitespace-pre-wrap text-sm text-default">{notes}</p>}
+          {!isDetailLoading && !detailLoadError && notes && <p className="mt-2 whitespace-pre-wrap text-sm text-default">{notes}</p>}
         </div>
       )}
 
@@ -463,7 +480,9 @@ export function MemberDetailPanel({
 
       <div className="mt-6">
         <h3 className="text-sm font-medium text-default">Vợ/chồng ({spouses.length})</h3>
-        {spouses.length > 0 && (
+        {isDetailLoading && <p className="mt-2 text-sm text-muted">Đang tải...</p>}
+        {detailLoadError && <p className="mt-2 text-sm text-muted">Không thể tải.</p>}
+        {!isDetailLoading && !detailLoadError && spouses.length > 0 && (
           <ul className="mt-2 space-y-3">
             {spouses.map((spouse) =>
               editingSpouseId === spouse.marriageId && spouseDraft ? (
@@ -553,24 +572,26 @@ export function MemberDetailPanel({
             )}
           </ul>
         )}
-        <div className="mt-3 flex items-center gap-x-2">
-          <input
-            value={newSpouseName}
-            onChange={(e) => setNewSpouseName(e.target.value)}
-            placeholder="Tên vợ/chồng..."
-            className="w-full rounded-lg border-default border bg-app px-2 py-1 text-sm text-default placeholder:text-muted focus:outline-none"
-          />
-          <input
-            type="number"
-            value={newSpouseMarriageYear}
-            onChange={(e) => setNewSpouseMarriageYear(e.target.value)}
-            placeholder="Năm cưới"
-            className="w-24 shrink-0 rounded-lg border-default border bg-app px-2 py-1 text-sm text-default placeholder:text-muted focus:outline-none"
-          />
-          <button type="button" onClick={handleAddSpouse} disabled={isSubmitting || !newSpouseName.trim()} className="whitespace-nowrap text-sm accent-text hover:underline disabled:opacity-50">
-            Thêm
-          </button>
-        </div>
+        {!isDetailLoading && !detailLoadError && (
+          <div className="mt-3 flex items-center gap-x-2">
+            <input
+              value={newSpouseName}
+              onChange={(e) => setNewSpouseName(e.target.value)}
+              placeholder="Tên vợ/chồng..."
+              className="w-full rounded-lg border-default border bg-app px-2 py-1 text-sm text-default placeholder:text-muted focus:outline-none"
+            />
+            <input
+              type="number"
+              value={newSpouseMarriageYear}
+              onChange={(e) => setNewSpouseMarriageYear(e.target.value)}
+              placeholder="Năm cưới"
+              className="w-24 shrink-0 rounded-lg border-default border bg-app px-2 py-1 text-sm text-default placeholder:text-muted focus:outline-none"
+            />
+            <button type="button" onClick={handleAddSpouse} disabled={isSubmitting || !newSpouseName.trim()} className="whitespace-nowrap text-sm accent-text hover:underline disabled:opacity-50">
+              Thêm
+            </button>
+          </div>
+        )}
       </div>
 
       <div className="mt-6">
