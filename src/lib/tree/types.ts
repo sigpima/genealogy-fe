@@ -22,3 +22,13 @@ export type FamilyMember = {
   spouses?: Spouse[];
   children?: FamilyMember[];
 };
+
+export type MemberDetail = {
+  id: number;
+  birth_year: number | null;
+  death_year: number | null;
+  gender: Gender | null;
+  notes: string | null;
+  avatar_url: string | null;
+  spouses: Spouse[];
+};
