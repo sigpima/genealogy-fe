@@ -105,7 +105,8 @@ export default function GenealogyTree({ familyTree, focusRequest, onDataChanged 
   const [selectedMember, setSelectedMember] = useState<SelectedMember | null>(null);
   const [focalId, setFocalId] = useState<number | null>(null);
   const detailSet = useMemo(
-    () => computeDetailSet(familyTree, focalId ?? familyTree.id ?? -1, DETAIL_RADIUS),
+    () =>
+      familyTree ? computeDetailSet(familyTree, focalId ?? familyTree.id ?? -1, DETAIL_RADIUS) : new Set<number>(),
     [familyTree, focalId]
   );
   // react-d3-tree doesn't export a clean ref-typed public API; `generateTree`/`centerNode`
