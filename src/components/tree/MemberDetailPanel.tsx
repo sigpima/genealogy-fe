@@ -63,6 +63,7 @@ export type MemberDetailPanelProps = {
   isDetailLoading: boolean;
   detailLoadError: boolean;
   onRetryLoadDetail: () => void;
+  onViewAncestors: () => void;
   onClose: () => void;
   onUpdate: (input: MemberUpdateInput) => Promise<MutationResult>;
   onAddChild: (name: string) => Promise<MutationResult>;
@@ -152,6 +153,7 @@ export function MemberDetailPanel({
   isDetailLoading,
   detailLoadError,
   onRetryLoadDetail,
+  onViewAncestors,
   onClose,
   onUpdate,
   onAddChild,
@@ -474,7 +476,18 @@ export function MemberDetailPanel({
 
       <p className="mt-1 text-sm text-muted">Đời thứ {generation}</p>
 
-      {ancestors.length > 0 && <p className="mt-4 text-xs text-muted">{ancestors.join(' → ')}</p>}
+      {ancestors.length > 0 && (
+        <div className="mt-4">
+          <p className="text-xs text-muted">{ancestors.join(' → ')}</p>
+          <button
+            type="button"
+            onClick={onViewAncestors}
+            className="mt-1 text-xs accent-text hover:underline"
+          >
+            Xem tổ tiên 4 đời
+          </button>
+        </div>
+      )}
 
       {actionError && <p className="mt-4 text-sm text-danger">{actionError}</p>}
 

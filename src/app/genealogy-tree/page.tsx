@@ -16,7 +16,7 @@ import type { TreeCanvasHandle } from '@/components/tree/TreeCanvas';
 import { TreeControls } from '@/components/tree/TreeControls';
 import { idsNeedingDetail } from '@/lib/tree/detail-cache';
 import { computeDetailSet } from '@/lib/tree/lod';
-import { getMemberAtPath, getReparentCandidates } from '@/lib/tree/search';
+import { findAncestorChainById, getMemberAtPath, getReparentCandidates } from '@/lib/tree/search';
 import type { FamilyMember, Gender, MemberDetail, Spouse } from '@/lib/tree/types';
 
 const TreeCanvas = dynamic(() => import('@/components/tree/TreeCanvas'), { ssr: false });
@@ -71,6 +71,12 @@ export type GenealogyTreeProps = {
 
 export default function GenealogyTree({ familyTree, focusRequest, onDataChanged }: GenealogyTreeProps) {
   const [collapsedIds, setCollapsedIds] = useState<Set<number>>(new Set());
+  const [ancestorViewRootId, setAncestorViewRootId] = useState<number | null>(null);
+  const displayRoot = useMemo(() => {
+    if (ancestorViewRootId === null) return familyTree;
+    const chain = findAncestorChainById(familyTree, ancestorViewRootId);
+    return chain ? chain[chain.length - 1] : familyTree;
+  }, [familyTree, ancestorViewRootId]);
   const [highlightedName, setHighlightedName] = useState<string | null>(null);
   const [selectedMember, setSelectedMember] = useState<SelectedMember | null>(null);
   const [focalId, setFocalId] = useState<number | null>(null);
@@ -129,12 +135,28 @@ export default function GenealogyTree({ familyTree, focusRequest, onDataChanged 
 
   useEffect(() => {
     if (!focusRequest || !canvasRef.current) return;
-    canvasRef.current.centerOnNode(focusRequest.id);
+    setAncestorViewRootId(null);
+    requestAnimationFrame(() => {
+      canvasRef.current?.centerOnNode(focusRequest.id);
+    });
     setHighlightedName(focusRequest.name);
     setFocalId(focusRequest.id);
     const timer = setTimeout(() => setHighlightedName(null), 2000);
     return () => clearTimeout(timer);
   }, [focusRequest]);
+
+  function handleViewAncestors(memberId: number) {
+    const chain = findAncestorChainById(familyTree, memberId);
+    if (!chain) return;
+    const ancestor = chain[Math.max(0, chain.length - 1 - 4)];
+    if (ancestor.id === undefined) return;
+    setAncestorViewRootId(ancestor.id);
+    setFocalId(memberId);
+    setSelectedMember(null);
+    requestAnimationFrame(() => {
+      canvasRef.current?.centerOnNode(memberId);
+    });
+  }
 
   async function openMemberDetail(
     id: number,
@@ -581,7 +603,7 @@ export default function GenealogyTree({ familyTree, focusRequest, onDataChanged 
     <div className="relative h-full w-full overflow-hidden bg-app">
       <TreeCanvas
         ref={canvasRef}
-        familyTree={familyTree}
+        familyTree={displayRoot}
         collapsedIds={collapsedIds}
         nodeSize={NODE_SIZE}
         separation={SEPARATION}
@@ -589,6 +611,15 @@ export default function GenealogyTree({ familyTree, focusRequest, onDataChanged 
         initialZoom={INITIAL_ZOOM}
         renderNode={renderNode}
       />
+      {ancestorViewRootId !== null && (
+        <button
+          type="button"
+          onClick={() => setAncestorViewRootId(null)}
+          className="absolute left-4 top-4 z-30 rounded-lg border-default border bg-surface px-3 py-1.5 text-sm text-default shadow-md hover:bg-app"
+        >
+          Xem toàn bộ cây gia phả
+        </button>
+      )}
       <TreeControls
         onZoomIn={() => canvasRef.current?.zoomIn()}
         onZoomOut={() => canvasRef.current?.zoomOut()}
@@ -610,6 +641,7 @@ export default function GenealogyTree({ familyTree, focusRequest, onDataChanged 
           isDetailLoading={selectedMember.isDetailLoading}
           detailLoadError={selectedMember.detailLoadError}
           onRetryLoadDetail={handleRetryLoadDetail}
+          onViewAncestors={() => handleViewAncestors(selectedMember.id)}
           childMembers={selectedMember.childrenNames.map((childName) => ({
             name: childName,
             onSelect: () => handleSelectChild(childName),
