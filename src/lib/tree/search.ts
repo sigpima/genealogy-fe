@@ -36,6 +36,19 @@ export function findPathToMember(root: FamilyMember, target: FamilyMember): stri
   return walk(root, []);
 }
 
+export function findAncestorChainById(root: FamilyMember, id: number): FamilyMember[] | null {
+  function walk(node: FamilyMember, chain: FamilyMember[]): FamilyMember[] | null {
+    const nextChain = [...chain, node];
+    if (node.id === id) return nextChain;
+    for (const child of node.children ?? []) {
+      const found = walk(child, nextChain);
+      if (found) return found;
+    }
+    return null;
+  }
+  return walk(root, []);
+}
+
 export function generationOf(path: string[]): number {
   return path.length;
 }

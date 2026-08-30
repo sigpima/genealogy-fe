@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  findAncestorChainById,
   findMembersByName,
   findPathToMember,
   generationOf,
@@ -106,5 +107,34 @@ describe('getReparentCandidates', () => {
   it('includes every non-descendant blood-line member for a leaf', () => {
     const candidates = getReparentCandidates(idTree, 4);
     expect(candidates.map((c) => c.id).sort()).toEqual([1, 2, 3, 5]);
+  });
+});
+
+describe('findAncestorChainById', () => {
+  const duplicateNameTree: FamilyMember = {
+    id: 1,
+    name: 'root',
+    children: [
+      {
+        id: 2,
+        name: 'dup',
+        children: [{ id: 4, name: 'dup' }],
+      },
+      { id: 3, name: 'other' },
+    ],
+  };
+
+  it('returns the root-to-target chain of member objects', () => {
+    const chain = findAncestorChainById(duplicateNameTree, 4);
+    expect(chain?.map((m) => m.id)).toEqual([1, 2, 4]);
+  });
+
+  it('returns null for a nonexistent id', () => {
+    expect(findAncestorChainById(duplicateNameTree, 999)).toBeNull();
+  });
+
+  it('disambiguates same-named members by id', () => {
+    const chain = findAncestorChainById(duplicateNameTree, 2);
+    expect(chain?.map((m) => m.id)).toEqual([1, 2]);
   });
 });
