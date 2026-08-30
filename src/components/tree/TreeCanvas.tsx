@@ -2,6 +2,7 @@
 
 import type { HierarchyPointNode } from 'd3-hierarchy';
 import { select } from 'd3-selection';
+import 'd3-transition';
 import { zoom as d3zoom, zoomIdentity, type D3ZoomEvent, type ZoomBehavior } from 'd3-zoom';
 import { AnimatePresence, motion } from 'framer-motion';
 import React, { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
@@ -82,20 +83,20 @@ const TreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps>(function TreeCa
       const next = zoomIdentity
         .translate(dimensions.width / 2 - node.x * k, dimensions.height / 2 - node.y * k)
         .scale(k);
-      select(svgRef.current).call(zoomBehaviorRef.current.transform, next);
+      select(svgRef.current).transition().duration(400).call(zoomBehaviorRef.current.transform, next);
     },
     zoomIn() {
       if (!svgRef.current || !zoomBehaviorRef.current) return;
-      select(svgRef.current).call(zoomBehaviorRef.current.scaleBy, 1.2);
+      select(svgRef.current).transition().duration(400).call(zoomBehaviorRef.current.scaleBy, 1.2);
     },
     zoomOut() {
       if (!svgRef.current || !zoomBehaviorRef.current) return;
-      select(svgRef.current).call(zoomBehaviorRef.current.scaleBy, 1 / 1.2);
+      select(svgRef.current).transition().duration(400).call(zoomBehaviorRef.current.scaleBy, 1 / 1.2);
     },
     resetView() {
       if (!dimensions || !svgRef.current || !zoomBehaviorRef.current) return;
       const initial = zoomIdentity.translate(dimensions.width / 2, dimensions.height / 6).scale(initialZoom);
-      select(svgRef.current).call(zoomBehaviorRef.current.transform, initial);
+      select(svgRef.current).transition().duration(400).call(zoomBehaviorRef.current.transform, initial);
     },
   }));
 
