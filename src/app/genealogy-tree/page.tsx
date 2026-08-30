@@ -1,7 +1,7 @@
 'use client';
 
 import dynamic from 'next/dynamic';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import type { CustomNodeElementProps, TreeNodeDatum } from 'react-d3-tree';
 import {
   MemberDetailPanel,
@@ -13,6 +13,7 @@ import {
   type SpouseUpdateInput,
 } from '@/components/tree/MemberDetailPanel';
 import { TreeControls } from '@/components/tree/TreeControls';
+import { computeDetailSet } from '@/lib/tree/lod';
 import { getMemberAtPath, getReparentCandidates } from '@/lib/tree/search';
 import type { FamilyMember, Gender, Spouse } from '@/lib/tree/types';
 
@@ -87,6 +88,7 @@ function arraysEqual(a: string[], b: string[]): boolean {
 
 const INITIAL_ZOOM = 0.9;
 const SCALE_EXTENT = { min: 0.3, max: 2.5 };
+const DETAIL_RADIUS = 3;
 
 export type GenealogyTreeProps = {
   familyTree: FamilyMember;
@@ -101,6 +103,11 @@ export default function GenealogyTree({ familyTree, focusRequest, onDataChanged 
   const [dimensions, setDimensions] = useState<{ width: number; height: number } | null>(null);
   const [highlightedName, setHighlightedName] = useState<string | null>(null);
   const [selectedMember, setSelectedMember] = useState<SelectedMember | null>(null);
+  const [focalId, setFocalId] = useState<number | null>(null);
+  const detailSet = useMemo(
+    () => computeDetailSet(familyTree, focalId ?? familyTree.id ?? -1, DETAIL_RADIUS),
+    [familyTree, focalId]
+  );
   // react-d3-tree doesn't export a clean ref-typed public API; `generateTree`/`centerNode`
   // are real (non-private) instance methods used here the same way the library uses them
   // internally to center a clicked node. Verified against node_modules/react-d3-tree source.
@@ -123,6 +130,7 @@ export default function GenealogyTree({ familyTree, focusRequest, onDataChanged 
     if (!target) return;
     treeRef.current.centerNode(target);
     setHighlightedName(target.data.name);
+    setFocalId((target.data as MemberNodeData).id);
     const timer = setTimeout(() => setHighlightedName(null), 2000);
     return () => clearTimeout(timer);
   }, [focusRequest]);
@@ -394,6 +402,7 @@ export default function GenealogyTree({ familyTree, focusRequest, onDataChanged 
     const isHighlighted = nodeDatum.name === highlightedName;
     const data = nodeDatum as MemberNodeData;
     const avatarClipId = `avatar-clip-${data.id}`;
+    const isDetailed = detailSet.has(data.id);
 
     return (
       <g>
@@ -411,45 +420,46 @@ export default function GenealogyTree({ familyTree, focusRequest, onDataChanged 
           }}
           onClick={() => handleNodeClick(hierarchyPointNode)}
         />
-        {data.avatar_url ? (
-          <>
-            <clipPath id={avatarClipId}>
-              <circle cx={0} cy={-12} r={14} />
-            </clipPath>
-            <image
-              href={data.avatar_url}
-              x={-14}
-              y={-26}
-              width={28}
-              height={28}
-              clipPath={`url(#${avatarClipId})`}
-              preserveAspectRatio="xMidYMid slice"
-              style={{ cursor: 'pointer' }}
-              onClick={() => handleNodeClick(hierarchyPointNode)}
-            />
-          </>
-        ) : (
-          <>
-            <circle
-              cx={0}
-              cy={-12}
-              r={14}
-              className="fill-primary"
-              style={{ cursor: 'pointer' }}
-              onClick={() => handleNodeClick(hierarchyPointNode)}
-            />
-            <text
-              x={0}
-              y={-12}
-              textAnchor="middle"
-              dominantBaseline="middle"
-              className="fill-on-primary text-xs"
-              style={{ pointerEvents: 'none' }}
-            >
-              {nodeDatum.name.charAt(0).toUpperCase()}
-            </text>
-          </>
-        )}
+        {isDetailed &&
+          (data.avatar_url ? (
+            <>
+              <clipPath id={avatarClipId}>
+                <circle cx={0} cy={-12} r={14} />
+              </clipPath>
+              <image
+                href={data.avatar_url}
+                x={-14}
+                y={-26}
+                width={28}
+                height={28}
+                clipPath={`url(#${avatarClipId})`}
+                preserveAspectRatio="xMidYMid slice"
+                style={{ cursor: 'pointer' }}
+                onClick={() => handleNodeClick(hierarchyPointNode)}
+              />
+            </>
+          ) : (
+            <>
+              <circle
+                cx={0}
+                cy={-12}
+                r={14}
+                className="fill-primary"
+                style={{ cursor: 'pointer' }}
+                onClick={() => handleNodeClick(hierarchyPointNode)}
+              />
+              <text
+                x={0}
+                y={-12}
+                textAnchor="middle"
+                dominantBaseline="middle"
+                className="fill-on-primary text-xs"
+                style={{ pointerEvents: 'none' }}
+              >
+                {nodeDatum.name.charAt(0).toUpperCase()}
+              </text>
+            </>
+          ))}
         <text
           x={0}
           y={18}
@@ -466,6 +476,7 @@ export default function GenealogyTree({ familyTree, focusRequest, onDataChanged 
             style={{ cursor: 'pointer' }}
             onClick={(event) => {
               event.stopPropagation();
+              setFocalId(data.id);
               toggleNode();
             }}
           >
