@@ -3,6 +3,7 @@
 import type { HierarchyPointNode } from 'd3-hierarchy';
 import { select } from 'd3-selection';
 import { zoom as d3zoom, zoomIdentity, type D3ZoomEvent, type ZoomBehavior } from 'd3-zoom';
+import { AnimatePresence, motion } from 'framer-motion';
 import React, { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
 import { computeLayout, stepPath, type TreeNodeSize, type TreeSeparation } from '@/lib/tree/layout';
 import { filterVisibleLinks, filterVisibleNodes, visibleRect } from '@/lib/tree/viewport';
@@ -102,18 +103,31 @@ const TreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps>(function TreeCa
     <div ref={handleContainerRef} className="relative h-full w-full overflow-hidden bg-app">
       <svg ref={svgRef} className="h-full w-full">
         <g transform={`translate(${transform.x},${transform.y}) scale(${transform.k})`}>
-          {visibleLinks.map((link) => (
-            <path
-              key={`${link.source.data.id}-${link.target.data.id}`}
-              d={stepPath(link.source, link.target)}
-              className="fill-none stroke-border"
-            />
-          ))}
-          {visibleNodes.map((node) => (
-            <g key={node.data.id} transform={`translate(${node.x},${node.y})`}>
-              {renderNode(node)}
-            </g>
-          ))}
+          <AnimatePresence>
+            {visibleLinks.map((link) => (
+              <motion.path
+                key={`${link.source.data.id}-${link.target.data.id}`}
+                d={stepPath(link.source, link.target)}
+                className="fill-none stroke-border"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.18 }}
+              />
+            ))}
+            {visibleNodes.map((node) => (
+              <motion.g
+                key={node.data.id}
+                transform={`translate(${node.x},${node.y})`}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.18 }}
+              >
+                {renderNode(node)}
+              </motion.g>
+            ))}
+          </AnimatePresence>
         </g>
       </svg>
     </div>
