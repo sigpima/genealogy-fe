@@ -7,6 +7,7 @@ import { zoom as d3zoom, zoomIdentity, type D3ZoomEvent, type ZoomBehavior } fro
 import { AnimatePresence, motion } from 'framer-motion';
 import React, { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
 import { computeLayout, stepPath, type TreeNodeSize, type TreeSeparation } from '@/lib/tree/layout';
+import { computeVelocity, isMomentumDone, nextMomentumStep, type Sample } from '@/lib/tree/momentum';
 import { filterVisibleLinks, filterVisibleNodes, visibleRect } from '@/lib/tree/viewport';
 import type { FamilyMember } from '@/lib/tree/types';
 
@@ -35,6 +36,8 @@ const TreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps>(function TreeCa
   const zoomBehaviorRef = useRef<ZoomBehavior<SVGSVGElement, unknown> | null>(null);
   const [dimensions, setDimensions] = useState<{ width: number; height: number } | null>(null);
   const [transform, setTransform] = useState({ x: 0, y: 0, k: initialZoom });
+  const transformRef = useRef(transform);
+  transformRef.current = transform;
 
   const handleContainerRef = (node: HTMLDivElement | null) => {
     if (node && !dimensions) {
@@ -43,12 +46,61 @@ const TreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps>(function TreeCa
     }
   };
 
+  const lastSampleRef = useRef<Sample | null>(null);
+  const velocityRef = useRef({ vx: 0, vy: 0 });
+  const momentumFrameRef = useRef<number | null>(null);
+
   useEffect(() => {
     if (!svgRef.current || !dimensions) return;
+
+    function runMomentum() {
+      if (isMomentumDone(velocityRef.current.vx, velocityRef.current.vy)) return;
+      let lastFrameTime = performance.now();
+      const step = () => {
+        const now = performance.now();
+        const dt = now - lastFrameTime;
+        lastFrameTime = now;
+        const { vx, vy } = velocityRef.current;
+        if (!svgRef.current || !zoomBehaviorRef.current || isMomentumDone(vx, vy)) {
+          momentumFrameRef.current = null;
+          return;
+        }
+        select(svgRef.current).call(
+          zoomBehaviorRef.current.translateBy,
+          (vx * dt) / transformRef.current.k,
+          (vy * dt) / transformRef.current.k
+        );
+        velocityRef.current = nextMomentumStep(vx, vy);
+        momentumFrameRef.current = requestAnimationFrame(step);
+      };
+      momentumFrameRef.current = requestAnimationFrame(step);
+    }
+
     const zoomBehavior = d3zoom<SVGSVGElement, unknown>()
       .scaleExtent([scaleExtent.min, scaleExtent.max])
+      .on('start', (event: D3ZoomEvent<SVGSVGElement, unknown>) => {
+        if (momentumFrameRef.current !== null) {
+          cancelAnimationFrame(momentumFrameRef.current);
+          momentumFrameRef.current = null;
+        }
+        lastSampleRef.current = { x: event.transform.x, y: event.transform.y, t: performance.now() };
+        velocityRef.current = { vx: 0, vy: 0 };
+      })
       .on('zoom', (event: D3ZoomEvent<SVGSVGElement, unknown>) => {
         setTransform({ x: event.transform.x, y: event.transform.y, k: event.transform.k });
+        const sourceType = (event.sourceEvent as Event | undefined)?.type;
+        if (sourceType === 'mousemove' || sourceType === 'touchmove') {
+          const sample: Sample = { x: event.transform.x, y: event.transform.y, t: performance.now() };
+          if (lastSampleRef.current) {
+            velocityRef.current = computeVelocity(lastSampleRef.current, sample);
+          }
+          lastSampleRef.current = sample;
+        }
+      })
+      .on('end', (event: D3ZoomEvent<SVGSVGElement, unknown>) => {
+        const sourceType = (event.sourceEvent as Event | undefined)?.type;
+        if (sourceType !== 'mouseup' && sourceType !== 'touchend') return;
+        runMomentum();
       });
     zoomBehaviorRef.current = zoomBehavior;
     const selection = select(svgRef.current);
