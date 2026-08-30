@@ -1,8 +1,8 @@
 'use client';
 
+import type { HierarchyPointNode } from 'd3-hierarchy';
 import dynamic from 'next/dynamic';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import type { CustomNodeElementProps, TreeNodeDatum } from 'react-d3-tree';
 import {
   MemberDetailPanel,
   type AvatarUploadResult,
@@ -12,16 +12,18 @@ import {
   type SpouseAddInput,
   type SpouseUpdateInput,
 } from '@/components/tree/MemberDetailPanel';
+import type { TreeCanvasHandle } from '@/components/tree/TreeCanvas';
 import { TreeControls } from '@/components/tree/TreeControls';
 import { idsNeedingDetail } from '@/lib/tree/detail-cache';
 import { computeDetailSet } from '@/lib/tree/lod';
 import { getMemberAtPath, getReparentCandidates } from '@/lib/tree/search';
 import type { FamilyMember, Gender, MemberDetail, Spouse } from '@/lib/tree/types';
 
-const Tree = dynamic(() => import('react-d3-tree'), { ssr: false });
+const TreeCanvas = dynamic(() => import('@/components/tree/TreeCanvas'), { ssr: false });
 
 export type FocusRequest = {
-  path: string[];
+  id: number;
+  name: string;
   token: number;
 };
 
@@ -42,14 +44,6 @@ type SelectedMember = {
   detailLoadError: boolean;
 };
 
-// The API's tree nodes carry an id react-d3-tree's own RawNodeDatum/TreeNodeDatum types
-// don't declare (they only know about `name`/`children`/`attributes`) - it survives at
-// runtime since react-d3-tree doesn't strip unknown properties. Everything else about a
-// member (birth/death/gender/notes/avatar/spouses) is fetched lazily - see detailsById.
-type MemberNodeData = TreeNodeDatum & {
-  id: number;
-};
-
 function toPanelSpouses(spouses: Spouse[] | undefined): PanelSpouse[] {
   return (spouses ?? []).map((spouse) => ({
     marriageId: spouse.marriage_id,
@@ -63,27 +57,8 @@ function toPanelSpouses(spouses: Spouse[] | undefined): PanelSpouse[] {
   }));
 }
 
-// Derived from CustomNodeElementProps rather than imported directly from 'd3-hierarchy' -
-// react-d3-tree bundles its own (older) @types/d3-hierarchy, and the two HierarchyPointNode
-// types are structurally incompatible for TS even though they're the same shape at runtime.
-type HierarchyPointNodeOf = CustomNodeElementProps['hierarchyPointNode'];
-
-type TreeInstanceHandle = {
-  generateTree: () => { nodes: HierarchyPointNodeOf[] };
-  centerNode: (node: HierarchyPointNodeOf) => void;
-};
-
-function pathOfHierarchyNode(node: HierarchyPointNodeOf): string[] {
-  return node
-    .ancestors()
-    .reverse()
-    .map((ancestor) => ancestor.data.name);
-}
-
-function arraysEqual(a: string[], b: string[]): boolean {
-  return a.length === b.length && a.every((value, index) => value === b[index]);
-}
-
+const NODE_SIZE = { x: 250, y: 150 };
+const SEPARATION = { siblings: 0.8, nonSiblings: 1.5 };
 const INITIAL_ZOOM = 0.9;
 const SCALE_EXTENT = { min: 0.3, max: 2.5 };
 const DETAIL_RADIUS = 3;
@@ -95,10 +70,7 @@ export type GenealogyTreeProps = {
 };
 
 export default function GenealogyTree({ familyTree, focusRequest, onDataChanged }: GenealogyTreeProps) {
-  const [translate, setTranslate] = useState({ x: 0, y: 0 });
-  const [initialTranslate, setInitialTranslate] = useState({ x: 0, y: 0 });
-  const [zoom, setZoom] = useState(INITIAL_ZOOM);
-  const [dimensions, setDimensions] = useState<{ width: number; height: number } | null>(null);
+  const [collapsedIds, setCollapsedIds] = useState<Set<number>>(new Set());
   const [highlightedName, setHighlightedName] = useState<string | null>(null);
   const [selectedMember, setSelectedMember] = useState<SelectedMember | null>(null);
   const [focalId, setFocalId] = useState<number | null>(null);
@@ -153,29 +125,13 @@ export default function GenealogyTree({ familyTree, focusRequest, onDataChanged 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [detailSet]);
 
-  // react-d3-tree doesn't export a clean ref-typed public API; `generateTree`/`centerNode`
-  // are real (non-private) instance methods used here the same way the library uses them
-  // internally to center a clicked node. Verified against node_modules/react-d3-tree source.
-  const treeRef = useRef<TreeInstanceHandle | null>(null);
-
-  const handleContainerRef = (containerRef: HTMLDivElement | null) => {
-    if (containerRef && !dimensions) {
-      const rect = containerRef.getBoundingClientRect();
-      const centered = { x: rect.width / 2, y: rect.height / 6 };
-      setTranslate(centered);
-      setInitialTranslate(centered);
-      setDimensions({ width: rect.width, height: rect.height });
-    }
-  };
+  const canvasRef = useRef<TreeCanvasHandle | null>(null);
 
   useEffect(() => {
-    if (!focusRequest || !treeRef.current) return;
-    const { nodes } = treeRef.current.generateTree();
-    const target = nodes.find((node) => arraysEqual(pathOfHierarchyNode(node), focusRequest.path));
-    if (!target) return;
-    treeRef.current.centerNode(target);
-    setHighlightedName(target.data.name);
-    setFocalId((target.data as MemberNodeData).id);
+    if (!focusRequest || !canvasRef.current) return;
+    canvasRef.current.centerOnNode(focusRequest.id);
+    setHighlightedName(focusRequest.name);
+    setFocalId(focusRequest.id);
     const timer = setTimeout(() => setHighlightedName(null), 2000);
     return () => clearTimeout(timer);
   }, [focusRequest]);
@@ -221,12 +177,19 @@ export default function GenealogyTree({ familyTree, focusRequest, onDataChanged 
     });
   }
 
-  function handleNodeClick(hierarchyPointNode: HierarchyPointNodeOf) {
-    const ancestorPath = pathOfHierarchyNode(hierarchyPointNode);
-    const data = hierarchyPointNode.data as MemberNodeData;
-    const parentData = hierarchyPointNode.parent?.data as MemberNodeData | undefined;
-    const childrenNames = data.children?.map((child) => child.name) ?? [];
-    void openMemberDetail(data.id, parentData ? parentData.id : null, data.name, ancestorPath, childrenNames);
+  function handleNodeClick(node: HierarchyPointNode<FamilyMember>) {
+    const ancestorPath = node
+      .ancestors()
+      .reverse()
+      .map((ancestor) => ancestor.data.name);
+    const childrenNames = node.data.children?.map((child) => child.name) ?? [];
+    void openMemberDetail(
+      node.data.id ?? -1,
+      node.parent?.data.id ?? null,
+      node.data.name,
+      ancestorPath,
+      childrenNames
+    );
   }
 
   function handleSelectChild(childName: string) {
@@ -506,14 +469,14 @@ export default function GenealogyTree({ familyTree, focusRequest, onDataChanged 
     }
   }
 
-  function renderNode({ nodeDatum, hierarchyPointNode, toggleNode }: CustomNodeElementProps) {
-    const hasChildren = Boolean(nodeDatum.children && nodeDatum.children.length > 0);
-    const isCollapsed = nodeDatum.__rd3t.collapsed;
-    const isHighlighted = nodeDatum.name === highlightedName;
-    const data = nodeDatum as MemberNodeData;
-    const avatarClipId = `avatar-clip-${data.id}`;
-    const isDetailed = detailSet.has(data.id);
-    const avatarUrl = detailsById.get(data.id)?.avatar_url ?? null;
+  function renderNode(node: HierarchyPointNode<FamilyMember>) {
+    const id = node.data.id ?? -1;
+    const hasChildren = Boolean(node.data.children && node.data.children.length > 0);
+    const isCollapsed = collapsedIds.has(id);
+    const isHighlighted = node.data.name === highlightedName;
+    const avatarClipId = `avatar-clip-${id}`;
+    const isDetailed = detailSet.has(id);
+    const avatarUrl = detailsById.get(id)?.avatar_url ?? null;
 
     return (
       <g>
@@ -529,7 +492,7 @@ export default function GenealogyTree({ familyTree, focusRequest, onDataChanged 
             strokeWidth: isHighlighted ? 3 : 1.5,
             stroke: isHighlighted ? 'var(--color-accent)' : undefined,
           }}
-          onClick={() => handleNodeClick(hierarchyPointNode)}
+          onClick={() => handleNodeClick(node)}
         />
         {isDetailed &&
           (avatarUrl ? (
@@ -546,7 +509,7 @@ export default function GenealogyTree({ familyTree, focusRequest, onDataChanged 
                 clipPath={`url(#${avatarClipId})`}
                 preserveAspectRatio="xMidYMid slice"
                 style={{ cursor: 'pointer' }}
-                onClick={() => handleNodeClick(hierarchyPointNode)}
+                onClick={() => handleNodeClick(node)}
               />
             </>
           ) : (
@@ -557,7 +520,7 @@ export default function GenealogyTree({ familyTree, focusRequest, onDataChanged 
                 r={14}
                 className="fill-primary"
                 style={{ cursor: 'pointer' }}
-                onClick={() => handleNodeClick(hierarchyPointNode)}
+                onClick={() => handleNodeClick(node)}
               />
               <text
                 x={0}
@@ -567,7 +530,7 @@ export default function GenealogyTree({ familyTree, focusRequest, onDataChanged 
                 className="fill-on-primary text-xs"
                 style={{ pointerEvents: 'none' }}
               >
-                {nodeDatum.name.charAt(0).toUpperCase()}
+                {node.data.name.charAt(0).toUpperCase()}
               </text>
             </>
           ))}
@@ -577,9 +540,9 @@ export default function GenealogyTree({ familyTree, focusRequest, onDataChanged 
           textAnchor="middle"
           dominantBaseline="middle"
           className="fill-text text-sm"
-          onClick={() => handleNodeClick(hierarchyPointNode)}
+          onClick={() => handleNodeClick(node)}
         >
-          {nodeDatum.name}
+          {node.data.name}
         </text>
         {hasChildren && (
           <g
@@ -587,8 +550,16 @@ export default function GenealogyTree({ familyTree, focusRequest, onDataChanged 
             style={{ cursor: 'pointer' }}
             onClick={(event) => {
               event.stopPropagation();
-              setFocalId(data.id);
-              toggleNode();
+              setFocalId(id);
+              setCollapsedIds((prev) => {
+                const next = new Set(prev);
+                if (next.has(id)) {
+                  next.delete(id);
+                } else {
+                  next.add(id);
+                }
+                return next;
+              });
             }}
           >
             <circle r={10} className="fill-primary" />
@@ -607,35 +578,21 @@ export default function GenealogyTree({ familyTree, focusRequest, onDataChanged 
   }
 
   return (
-    <div ref={handleContainerRef} className="relative h-full w-full overflow-hidden bg-app">
-      <Tree
-        // @ts-expect-error react-d3-tree's exported type doesn't model its class instance ref through next/dynamic
-        ref={treeRef}
-        data={familyTree}
-        dimensions={dimensions ?? undefined}
-        renderCustomNodeElement={renderNode}
-        nodeSize={{ x: 250, y: 150 }}
-        translate={translate}
-        zoomable
-        zoom={zoom}
+    <div className="relative h-full w-full overflow-hidden bg-app">
+      <TreeCanvas
+        ref={canvasRef}
+        familyTree={familyTree}
+        collapsedIds={collapsedIds}
+        nodeSize={NODE_SIZE}
+        separation={SEPARATION}
         scaleExtent={SCALE_EXTENT}
-        orientation="vertical"
-        collapsible
-        separation={{ siblings: 0.8, nonSiblings: 1.5 }}
-        pathFunc="step"
-        draggable
-        onUpdate={({ zoom: liveZoom, translate: liveTranslate }) => {
-          setZoom(liveZoom);
-          setTranslate(liveTranslate);
-        }}
+        initialZoom={INITIAL_ZOOM}
+        renderNode={renderNode}
       />
       <TreeControls
-        onZoomIn={() => setZoom((z) => Math.min(SCALE_EXTENT.max, z * 1.2))}
-        onZoomOut={() => setZoom((z) => Math.max(SCALE_EXTENT.min, z / 1.2))}
-        onReset={() => {
-          setZoom(INITIAL_ZOOM);
-          setTranslate(initialTranslate);
-        }}
+        onZoomIn={() => canvasRef.current?.zoomIn()}
+        onZoomOut={() => canvasRef.current?.zoomOut()}
+        onReset={() => canvasRef.current?.resetView()}
       />
       {selectedMember && (
         <MemberDetailPanel

@@ -62,7 +62,7 @@ export default function Home() {
           searchResults={matches.map((match) => ({
             key: match.path.join(' > '),
             label: match.path.join(' → '),
-            onSelect: () => setFocusRequest({ path: match.path, token: Date.now() }),
+            onSelect: () => setFocusRequest({ id: match.member.id ?? -1, name: match.member.name, token: Date.now() }),
           }))}
           onLogout={handleLogout}
         />
