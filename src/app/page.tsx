@@ -6,6 +6,7 @@ import { Header } from '@/components/layout/Header';
 import GenealogyTree, { type FocusRequest } from './genealogy-tree/page';
 import Sidebar from './sidebar';
 import { clanName } from '@/lib/tree/generations';
+import { generateSyntheticTree } from '@/lib/tree/synthetic';
 import { findMembersByName } from '@/lib/tree/search';
 import type { FamilyMember } from '@/lib/tree/types';
 
@@ -15,10 +16,22 @@ export default function Home() {
   const [focusRequest, setFocusRequest] = useState<FocusRequest | null>(null);
   const [familyTree, setFamilyTree] = useState<FamilyMember | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isSynthetic, setIsSynthetic] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const loadTree = useCallback(
     async (options?: { silent?: boolean }) => {
+      // Dev-only load test: /?synthetic=2000 swaps the API for a generated tree.
+      const syntheticCount =
+        process.env.NODE_ENV !== 'production'
+          ? Number(new URLSearchParams(window.location.search).get('synthetic'))
+          : 0;
+      if (syntheticCount > 0) {
+        setFamilyTree(generateSyntheticTree(syntheticCount));
+        setIsSynthetic(true);
+        setIsLoading(false);
+        return;
+      }
       if (!options?.silent) setIsLoading(true);
       setError(null);
       try {
@@ -64,7 +77,10 @@ export default function Home() {
           searchResults={matches.map((match) => ({
             key: match.path.join(' > '),
             label: match.path.join(' → '),
-            onSelect: () => setFocusRequest({ id: match.member.id ?? -1, name: match.member.name, token: Date.now() }),
+            onSelect: () => {
+              setFocusRequest({ id: match.member.id ?? -1, name: match.member.name, token: Date.now() });
+              setSearchQuery('');
+            },
           }))}
           onLogout={handleLogout}
         />
@@ -96,6 +112,7 @@ export default function Home() {
               familyTree={familyTree}
               focusRequest={focusRequest}
               onDataChanged={() => loadTree({ silent: true })}
+              synthetic={isSynthetic}
             />
           )}
         </div>

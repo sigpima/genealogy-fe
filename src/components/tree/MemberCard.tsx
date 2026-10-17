@@ -26,7 +26,15 @@ export type MemberCardProps = {
 };
 
 const COMPACT = { width: 160, height: 56 };
+// While zoomed out the compact card is scaled up (via --inv-k) to stay readable, but never past what
+// fits the 272px layout slot (160 * 1.6 = 256).
+const COMPACT_MAX_SCALE = 1.6;
 const DETAILED = { width: 240, height: 110 };
+
+// `r` is a valid SVG2 CSS property but missing from React's CSSProperties type.
+export function cssRadius(value: string): React.CSSProperties {
+  return { r: value } as React.CSSProperties;
+}
 
 function tierColor(tier: GenerationTier): string {
   return `var(--color-tier-${tier})`;
@@ -78,12 +86,14 @@ function DotCard({ name, generation, tier, isHighlighted, isSelected }: MemberCa
   return (
     <>
       <title>{`${name} · Đời ${generation}`}</title>
-      <circle r={14} fill="transparent" />
+      {/* Radii are CSS lengths scaled by --inv-k (set by TreeCanvas) so a dot stays 16px on screen. */}
+      <circle fill="transparent" style={cssRadius('calc(var(--inv-k, 1) * 14px)')} />
       <circle
-        r={emphasized ? 11 : 8}
         fill={tierColor(tier)}
         className={emphasized ? 'stroke-primary' : undefined}
         strokeWidth={emphasized ? 3 : 0}
+        vectorEffect="non-scaling-stroke"
+        style={cssRadius(`calc(var(--inv-k, 1) * ${emphasized ? 11 : 8}px)`)}
       />
     </>
   );
@@ -162,7 +172,7 @@ function CompactCard(props: MemberCardProps & { tier: GenerationTier; emphasized
   const frame = cardFrame(tier, emphasized);
   const { width, height } = COMPACT;
   return (
-    <>
+    <g style={{ transform: `scale(min(var(--inv-k, 1), ${COMPACT_MAX_SCALE}))` }}>
       <rect
         x={-width / 2}
         y={-height / 2}
@@ -203,7 +213,7 @@ function CompactCard(props: MemberCardProps & { tier: GenerationTier; emphasized
           onToggle={props.onToggle}
         />
       )}
-    </>
+    </g>
   );
 }
 

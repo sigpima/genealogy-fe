@@ -17,8 +17,9 @@ export function generateSyntheticTree(count: number, seed = 1): FamilyMember {
     const parent = queue[head++];
     if (!parent) break;
     const remaining = count - created;
-    // Never let the frontier run dry before `count` is reached.
-    const minChildren = head >= queue.length ? 1 : 0;
+    // The first members always branch so the tree is shaped like a family, not a chain;
+    // afterwards never let the frontier run dry before `count` is reached.
+    const minChildren = head <= 6 ? 2 : head >= queue.length ? 1 : 0;
     const childCount = Math.min(remaining, Math.max(minChildren, Math.floor(nextRandom() * 5)));
     if (childCount === 0) continue;
     parent.children = [];

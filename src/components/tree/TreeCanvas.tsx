@@ -27,6 +27,7 @@ import {
   type ZoomLevel,
 } from '@/lib/tree/zoom';
 import type { FamilyMember } from '@/lib/tree/types';
+import { cssRadius } from './MemberCard';
 import { Minimap } from './Minimap';
 
 export type { ViewState } from '@/lib/tree/zoom';
@@ -58,6 +59,8 @@ export type TreeCanvasHandle = {
   setZoom: (k: number) => void;
   subscribe: (listener: (view: ViewState) => void) => () => void;
 };
+
+const CENTER_MIN_ZOOM = 0.5;
 
 const TreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps>(function TreeCanvas(
   { familyTree, collapsedIds, nodeSize, separation, scaleExtent, initialZoom, renderNode, onVisibleChange },
@@ -136,7 +139,10 @@ const TreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps>(function TreeCa
       .on('zoom', (event: D3ZoomEvent<SVGSVGElement, unknown>) => {
         const t: Transform = { x: event.transform.x, y: event.transform.y, k: event.transform.k };
         transformRef.current = t;
-        contentRef.current?.setAttribute('transform', `translate(${t.x},${t.y}) scale(${t.k})`);
+        const content = contentRef.current;
+        content?.setAttribute('transform', `translate(${t.x},${t.y}) scale(${t.k})`);
+        // Lets dots and junctions keep a constant on-screen size via CSS (no React re-render).
+        content?.style.setProperty('--inv-k', String(1 / t.k));
         notify();
         const dims = dimensionsRef.current;
         if (dims && needsRecommit(committedRef.current, t, dims.width, dims.height)) {
@@ -248,7 +254,8 @@ const TreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps>(function TreeCa
         if (!dims) return;
         const node = layout.nodes.find((n) => n.data.id === id);
         if (!node) return;
-        const k = transformRef.current.k;
+        // Landing on a bare dot is not useful: zoom in to at least the compact level.
+        const k = Math.min(Math.max(transformRef.current.k, CENTER_MIN_ZOOM), maxZoomRef.current);
         applyTransform({ x: dims.width / 2 - node.x * k, y: dims.height / 2 - node.y * k, k }, true);
       },
       zoomIn() {
@@ -305,8 +312,8 @@ const TreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps>(function TreeCa
                   key={`junction-${node.data.id}`}
                   cx={node.x}
                   cy={node.y + nodeSize.y / 2}
-                  r={3}
                   className="fill-connector"
+                  style={cssRadius('calc(var(--inv-k, 1) * 3px)')}
                 />
               )
           )}

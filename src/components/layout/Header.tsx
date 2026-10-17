@@ -18,7 +18,7 @@ export type HeaderProps = {
 
 export function Header({ clanName, searchQuery, onSearchQueryChange, searchResults, onLogout }: HeaderProps) {
   return (
-    <header className="relative z-20 flex items-center gap-x-3 border-default border-b bg-surface px-4 py-3 sm:gap-x-6 sm:px-6">
+    <header className="relative z-30 flex items-center gap-x-3 border-default border-b bg-surface px-4 py-3 sm:gap-x-6 sm:px-6">
       <h1 className="font-display shrink-0 truncate text-lg font-bold text-primary sm:text-xl">{clanName}</h1>
       <div className="relative w-full max-w-sm">
         <SearchIcon />

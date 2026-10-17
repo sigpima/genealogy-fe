@@ -2,7 +2,7 @@
 
 import type { HierarchyPointNode } from 'd3-hierarchy';
 import dynamic from 'next/dynamic';
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   MemberDetailPanel,
   type AvatarUploadResult,
@@ -12,10 +12,23 @@ import {
   type SpouseAddInput,
   type SpouseUpdateInput,
 } from '@/components/tree/MemberDetailPanel';
-import type { TreeCanvasHandle } from '@/components/tree/TreeCanvas';
-import { TreeControls } from '@/components/tree/TreeControls';
+import { GenerationFilterBar } from '@/components/tree/GenerationFilterBar';
+import { MemberCard } from '@/components/tree/MemberCard';
+import { StatusStrip } from '@/components/tree/StatusStrip';
+import type { TreeCanvasHandle, VisibleChange } from '@/components/tree/TreeCanvas';
+import { ViewportControls } from '@/components/tree/ViewportControls';
 import { idsNeedingDetail } from '@/lib/tree/detail-cache';
+import { pickIdsToFetch } from '@/lib/tree/detail-queue';
+import { collapsedIdsForDepth, expandPathTo, expandedDepthOf } from '@/lib/tree/expansion';
+import {
+  DEFAULT_EXPANDED_GENERATIONS,
+  descendantCount,
+  generationCounts,
+  totalMembers,
+} from '@/lib/tree/generations';
 import { computeDetailSet } from '@/lib/tree/lod';
+import { lifespanLabel, memberStatus } from '@/lib/tree/member-status';
+import type { ZoomLevel } from '@/lib/tree/zoom';
 import { findAncestorChainById, getMemberAtPath, getReparentCandidates } from '@/lib/tree/search';
 import type { FamilyMember, Gender, MemberDetail, Spouse } from '@/lib/tree/types';
 
@@ -57,26 +70,38 @@ function toPanelSpouses(spouses: Spouse[] | undefined): PanelSpouse[] {
   }));
 }
 
-const NODE_SIZE = { x: 250, y: 150 };
-const SEPARATION = { siblings: 0.8, nonSiblings: 1.5 };
+// Slot sized for the detailed card (240x110): siblings 272px apart = card + 32px gap,
+// generations 206px apart = card + 96px gap. Never changes with zoom level.
+const NODE_SIZE = { x: 272, y: 206 };
+const SEPARATION = { siblings: 1, nonSiblings: 1.25 };
 const INITIAL_ZOOM = 0.9;
-const SCALE_EXTENT = { min: 0.3, max: 2.5 };
+const SCALE_EXTENT = { min: 0.15, max: 2.5 };
 const DETAIL_RADIUS = 3;
 
 export type GenealogyTreeProps = {
   familyTree: FamilyMember;
   focusRequest?: FocusRequest | null;
   onDataChanged: () => void;
+  /** Dev-only load-test mode: no per-member detail requests are made. */
+  synthetic?: boolean;
 };
 
-export default function GenealogyTree({ familyTree, focusRequest, onDataChanged }: GenealogyTreeProps) {
-  const [collapsedIds, setCollapsedIds] = useState<Set<number>>(new Set());
+export default function GenealogyTree({ familyTree, focusRequest, onDataChanged, synthetic = false }: GenealogyTreeProps) {
+  // Opens collapsed to the first few generations; later refetches keep the user's own state.
+  const [collapsedIds, setCollapsedIds] = useState<Set<number>>(() =>
+    collapsedIdsForDepth(familyTree, DEFAULT_EXPANDED_GENERATIONS)
+  );
+  const [pendingCenter, setPendingCenter] = useState<{ id: number } | null>(null);
   const [ancestorViewRootId, setAncestorViewRootId] = useState<number | null>(null);
   const displayRoot = useMemo(() => {
     if (ancestorViewRootId === null) return familyTree;
     const chain = findAncestorChainById(familyTree, ancestorViewRootId);
     return chain ? chain[chain.length - 1] : familyTree;
   }, [familyTree, ancestorViewRootId]);
+  const displayRootGeneration = useMemo(() => {
+    if (displayRoot.id === undefined) return 1;
+    return findAncestorChainById(familyTree, displayRoot.id)?.length ?? 1;
+  }, [familyTree, displayRoot]);
   const [highlightedName, setHighlightedName] = useState<string | null>(null);
   const [selectedMember, setSelectedMember] = useState<SelectedMember | null>(null);
   const [focalId, setFocalId] = useState<number | null>(null);
@@ -90,6 +115,11 @@ export default function GenealogyTree({ familyTree, focusRequest, onDataChanged 
   // null) so the LOD-driven prefetch effect and a panel click never issue two requests for
   // the same id, and so a failed fetch doesn't silently retry itself.
   const detailFetches = useRef<Map<number, Promise<MemberDetail | null>>>(new Map());
+  const failedDetailIds = useRef<Set<number>>(new Set());
+  const [, setFailedTick] = useState(0);
+  const inflightDetails = useRef(0);
+  const lastVisible = useRef<VisibleChange | null>(null);
+  const pumpDetailFetches = useRef<() => void>(() => {});
 
   function ensureMemberDetail(id: number): Promise<MemberDetail | null> {
     const existing = detailFetches.current.get(id);
@@ -97,10 +127,19 @@ export default function GenealogyTree({ familyTree, focusRequest, onDataChanged 
     const promise = fetch(`/api/members/${id}`, { credentials: 'include' })
       .then((res) => (res.ok ? (res.json() as Promise<MemberDetail>) : null))
       .then((detail) => {
-        if (detail) setDetailsById((prev) => new Map(prev).set(id, detail));
+        if (detail) {
+          setDetailsById((prev) => new Map(prev).set(id, detail));
+        } else {
+          failedDetailIds.current.add(id);
+          setFailedTick((tick) => tick + 1);
+        }
         return detail;
       })
-      .catch(() => null);
+      .catch(() => {
+        failedDetailIds.current.add(id);
+        setFailedTick((tick) => tick + 1);
+        return null;
+      });
     detailFetches.current.set(id, promise);
     return promise;
   }
@@ -122,7 +161,24 @@ export default function GenealogyTree({ familyTree, focusRequest, onDataChanged 
     });
   }
 
+  pumpDetailFetches.current = () => {
+    const change = lastVisible.current;
+    if (synthetic || !change || change.level === 'dot') return;
+    pickIdsToFetch(change.nodes, change.center, detailFetches.current, inflightDetails.current).forEach((id) => {
+      inflightDetails.current += 1;
+      void ensureMemberDetail(id).finally(() => {
+        inflightDetails.current -= 1;
+        pumpDetailFetches.current();
+      });
+    });
+  };
+  const handleVisibleChange = useCallback((change: VisibleChange) => {
+    lastVisible.current = change;
+    pumpDetailFetches.current();
+  }, []);
+
   useEffect(() => {
+    if (synthetic) return;
     idsNeedingDetail(detailSet, detailsById).forEach((id) => {
       void ensureMemberDetail(id);
     });
@@ -136,14 +192,22 @@ export default function GenealogyTree({ familyTree, focusRequest, onDataChanged 
   useEffect(() => {
     if (!focusRequest || !canvasRef.current) return;
     setAncestorViewRootId(null);
-    requestAnimationFrame(() => {
-      canvasRef.current?.centerOnNode(focusRequest.id);
-    });
+    setCollapsedIds((prev) => expandPathTo(familyTree, prev, focusRequest.id));
+    setPendingCenter({ id: focusRequest.id });
     setHighlightedName(focusRequest.name);
     setFocalId(focusRequest.id);
     const timer = setTimeout(() => setHighlightedName(null), 2000);
     return () => clearTimeout(timer);
+    // familyTree intentionally excluded: only a new focus request should trigger this.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [focusRequest]);
+
+  // Centre once the render that includes the expanded path (and the new layout) has committed.
+  useEffect(() => {
+    if (!pendingCenter) return;
+    canvasRef.current?.centerOnNode(pendingCenter.id);
+    setPendingCenter(null);
+  }, [pendingCenter, collapsedIds, ancestorViewRootId]);
 
   function handleViewAncestors(memberId: number) {
     const chain = findAncestorChainById(familyTree, memberId);
@@ -151,11 +215,10 @@ export default function GenealogyTree({ familyTree, focusRequest, onDataChanged 
     const ancestor = chain[Math.max(0, chain.length - 1 - 4)];
     if (ancestor.id === undefined) return;
     setAncestorViewRootId(ancestor.id);
+    setCollapsedIds((prev) => expandPathTo(familyTree, prev, memberId));
     setFocalId(memberId);
     setSelectedMember(null);
-    requestAnimationFrame(() => {
-      canvasRef.current?.centerOnNode(memberId);
-    });
+    setPendingCenter({ id: memberId });
   }
 
   async function openMemberDetail(
@@ -199,20 +262,35 @@ export default function GenealogyTree({ familyTree, focusRequest, onDataChanged 
     });
   }
 
-  function handleNodeClick(node: HierarchyPointNode<FamilyMember>) {
-    const ancestorPath = node
-      .ancestors()
-      .reverse()
-      .map((ancestor) => ancestor.data.name);
-    const childrenNames = node.data.children?.map((child) => child.name) ?? [];
+  // Resolves the path from the real root (not the ancestor-view root) so the name-based
+  // lookups in handleSelectChild keep working while the ancestor view is active.
+  function handleSelectMember(id: number) {
+    const chain = findAncestorChainById(familyTree, id);
+    if (!chain) return;
+    const member = chain[chain.length - 1];
     void openMemberDetail(
-      node.data.id ?? -1,
-      node.parent?.data.id ?? null,
-      node.data.name,
-      ancestorPath,
-      childrenNames
+      id,
+      chain[chain.length - 2]?.id ?? null,
+      member.name,
+      chain.map((ancestor) => ancestor.name),
+      member.children?.map((child) => child.name) ?? []
     );
   }
+  const selectMemberRef = useRef(handleSelectMember);
+  selectMemberRef.current = handleSelectMember;
+  const handleCardSelect = useCallback((id: number) => selectMemberRef.current(id), []);
+  const handleCardToggle = useCallback((id: number) => {
+    setFocalId(id);
+    setCollapsedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  }, []);
 
   function handleSelectChild(childName: string) {
     if (!selectedMember) return;
@@ -231,6 +309,7 @@ export default function GenealogyTree({ familyTree, focusRequest, onDataChanged 
   function handleRetryLoadDetail() {
     if (!selectedMember) return;
     detailFetches.current.delete(selectedMember.id);
+    failedDetailIds.current.delete(selectedMember.id);
     void openMemberDetail(
       selectedMember.id,
       selectedMember.parentId,
@@ -316,6 +395,13 @@ export default function GenealogyTree({ familyTree, focusRequest, onDataChanged 
       setSelectedMember((prev) =>
         prev ? { ...prev, childrenNames: [...prev.childrenNames, childName] } : prev
       );
+      const parentId = selectedMember.id;
+      setCollapsedIds((prev) => {
+        if (!prev.has(parentId)) return prev;
+        const next = new Set(prev);
+        next.delete(parentId);
+        return next;
+      });
       onDataChanged();
       return { ok: true };
     } catch {
@@ -491,113 +577,43 @@ export default function GenealogyTree({ familyTree, focusRequest, onDataChanged 
     }
   }
 
-  function renderNode(node: HierarchyPointNode<FamilyMember>) {
+  function renderNode(node: HierarchyPointNode<FamilyMember>, level: ZoomLevel) {
     const id = node.data.id ?? -1;
-    const hasChildren = Boolean(node.data.children && node.data.children.length > 0);
+    const detail = detailsById.get(id);
+    const childCount = node.data.children?.length ?? 0;
     const isCollapsed = collapsedIds.has(id);
-    const isHighlighted = node.data.name === highlightedName;
-    const avatarClipId = `avatar-clip-${id}`;
-    const isDetailed = detailSet.has(id);
-    const avatarUrl = detailsById.get(id)?.avatar_url ?? null;
+    const detailState = detail ? 'loaded' : synthetic || failedDetailIds.current.has(id) ? 'failed' : 'loading';
+    const birthYear = detail?.birth_year ?? null;
+    const deathYear = detail?.death_year ?? null;
+    const spouses = detail?.spouses ?? [];
+    const spouseLabel =
+      spouses.length === 0 ? null : spouses[0].full_name + (spouses.length > 1 ? ` +${spouses.length - 1}` : '');
 
     return (
-      <g>
-        <rect
-          width={200}
-          height={70}
-          x={-100}
-          y={-35}
-          rx={14}
-          ry={14}
-          className="fill-surface stroke-border"
-          style={{
-            strokeWidth: isHighlighted ? 3 : 1.5,
-            stroke: isHighlighted ? 'var(--color-accent)' : undefined,
-          }}
-          onClick={() => handleNodeClick(node)}
-        />
-        {isDetailed &&
-          (avatarUrl ? (
-            <>
-              <clipPath id={avatarClipId}>
-                <circle cx={0} cy={-12} r={14} />
-              </clipPath>
-              <image
-                href={avatarUrl}
-                x={-14}
-                y={-26}
-                width={28}
-                height={28}
-                clipPath={`url(#${avatarClipId})`}
-                preserveAspectRatio="xMidYMid slice"
-                style={{ cursor: 'pointer' }}
-                onClick={() => handleNodeClick(node)}
-              />
-            </>
-          ) : (
-            <>
-              <circle
-                cx={0}
-                cy={-12}
-                r={14}
-                className="fill-primary"
-                style={{ cursor: 'pointer' }}
-                onClick={() => handleNodeClick(node)}
-              />
-              <text
-                x={0}
-                y={-12}
-                textAnchor="middle"
-                dominantBaseline="middle"
-                className="fill-on-primary text-xs"
-                style={{ pointerEvents: 'none' }}
-              >
-                {node.data.name.charAt(0).toUpperCase()}
-              </text>
-            </>
-          ))}
-        <text
-          x={0}
-          y={18}
-          textAnchor="middle"
-          dominantBaseline="middle"
-          className="fill-text text-sm"
-          onClick={() => handleNodeClick(node)}
-        >
-          {node.data.name}
-        </text>
-        {hasChildren && (
-          <g
-            transform="translate(85, -25)"
-            style={{ cursor: 'pointer' }}
-            onClick={(event) => {
-              event.stopPropagation();
-              setFocalId(id);
-              setCollapsedIds((prev) => {
-                const next = new Set(prev);
-                if (next.has(id)) {
-                  next.delete(id);
-                } else {
-                  next.add(id);
-                }
-                return next;
-              });
-            }}
-          >
-            <circle r={10} className="fill-primary" />
-            <text
-              textAnchor="middle"
-              dominantBaseline="middle"
-              className="fill-on-primary text-xs"
-              style={{ pointerEvents: 'none' }}
-            >
-              {isCollapsed ? '+' : '−'}
-            </text>
-          </g>
-        )}
-      </g>
+      <MemberCard
+        id={id}
+        name={node.data.name}
+        generation={node.depth + displayRootGeneration}
+        level={level}
+        status={memberStatus(birthYear, deathYear)}
+        lifespan={lifespanLabel(birthYear, deathYear)}
+        detailState={detailState}
+        avatarUrl={detail?.avatar_url ?? null}
+        spouseLabel={spouseLabel}
+        childCount={childCount}
+        hasChildren={childCount > 0}
+        isCollapsed={isCollapsed}
+        hiddenDescendants={isCollapsed ? descendantCount(node.data) : 0}
+        isHighlighted={node.data.name === highlightedName}
+        isSelected={selectedMember?.id === id}
+        onSelect={handleCardSelect}
+        onToggle={handleCardToggle}
+      />
     );
   }
+
+  const counts = useMemo(() => generationCounts(familyTree), [familyTree]);
+  const activeDepth = useMemo(() => expandedDepthOf(familyTree, collapsedIds), [familyTree, collapsedIds]);
 
   return (
     <div className="relative h-full w-full overflow-hidden bg-app">
@@ -610,21 +626,24 @@ export default function GenealogyTree({ familyTree, focusRequest, onDataChanged 
         scaleExtent={SCALE_EXTENT}
         initialZoom={INITIAL_ZOOM}
         renderNode={renderNode}
+        onVisibleChange={handleVisibleChange}
+      />
+      <GenerationFilterBar
+        counts={counts}
+        activeDepth={activeDepth}
+        onSelectDepth={(depth) => setCollapsedIds(collapsedIdsForDepth(familyTree, depth))}
       />
       {ancestorViewRootId !== null && (
         <button
           type="button"
           onClick={() => setAncestorViewRootId(null)}
-          className="absolute left-4 top-4 z-30 rounded-lg border-default border bg-surface px-3 py-1.5 text-sm text-default shadow-md hover:bg-app"
+          className="shadow-float absolute left-4 top-20 z-30 min-h-11 rounded-lg border-default border bg-surface px-3 text-sm text-default hover:bg-surface-muted focus-visible:outline-2 focus-visible:outline-[var(--color-primary)]"
         >
           Xem toàn bộ cây gia phả
         </button>
       )}
-      <TreeControls
-        onZoomIn={() => canvasRef.current?.zoomIn()}
-        onZoomOut={() => canvasRef.current?.zoomOut()}
-        onReset={() => canvasRef.current?.resetView()}
-      />
+      <ViewportControls canvasRef={canvasRef} />
+      <StatusStrip total={totalMembers(familyTree)} generations={counts.length} canvasRef={canvasRef} />
       {selectedMember && (
         <MemberDetailPanel
           name={selectedMember.name}

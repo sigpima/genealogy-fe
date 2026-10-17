@@ -25,6 +25,11 @@ describe('generateSyntheticTree', () => {
   it('is deep enough to exercise several generations', () => {
     expect(generationCounts(generateSyntheticTree(2000)).length).toBeGreaterThanOrEqual(6);
   });
+  it('branches early instead of starting with a single-child chain', () => {
+    const tree = generateSyntheticTree(700);
+    expect(tree.children?.length ?? 0).toBeGreaterThanOrEqual(2);
+    expect(generationCounts(tree)[2]).toBeGreaterThanOrEqual(4);
+  });
   it('can be a single member', () => {
     const tree = generateSyntheticTree(1);
     expect(tree.children ?? []).toEqual([]);
