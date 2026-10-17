@@ -1,3 +1,4 @@
+import { foldText } from '../text';
 import type { FamilyMember } from './types';
 
 export type SearchMatch = {
@@ -64,8 +65,9 @@ export function getMemberAtPath(root: FamilyMember, path: string[]): FamilyMembe
   return current;
 }
 
+// Diacritic- and case-insensitive: typing "hoa" finds "Hòa" and "Hoà".
 function normalize(value: string): string {
-  return value.trim().toLowerCase();
+  return foldText(value);
 }
 
 export type ReparentCandidate = { id: number; name: string };

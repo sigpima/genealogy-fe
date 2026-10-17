@@ -360,6 +360,21 @@ generation, "missing X" chips, one branch via `under`), a completeness bar from 
 rejected file lists every bad row and imports nothing). Pure logic (query string, cell parsing, split names, import errors) is in
 `src/lib/data-entry/` with tests; the grid renders names as `<input>`s, so Playwright rows must be located by `aria-label`, not text.
 
+**GĐ3: search, branches (chi/phái) and statistics (backend design: `../genealogy-api/docs/superpowers/specs/2026-10-18-gd3-search-branches-design.md`)** —
+`foldText` (`src/lib/text.ts`) mirrors the API's `fold()`: the header search (`findMembersByName`, still client-side and instant)
+now ignores diacritics, and its dropdown ends with a "Tìm nâng cao" link to **`/tim-kiem?q=…`** (`SearchView`: name, generation,
+branch, birth years, hometown, gender, status; results paged by 30 from `GET /api/members/search`, spouses included and marked,
+"Có phải bạn muốn tìm…" suggestions when nothing matches). Choosing a result goes to **`/?focus=<id>`**: `Home` consumes the
+parameter once (reads `window.location.search`, not `useSearchParams`, to avoid a Suspense boundary; then `replaceState`) and turns
+it into a `focusRequest`; a spouse result leads to the partner because the tree shows blood members only. **Branches:** `Home`
+fetches `/api/branches` after the tree (a failure must never break the tree) and passes `branches` to `GenealogyTree`, which
+computes `assignBranches` (`src/lib/branches/branches.ts`, deepest head wins — same rule as the API) and gives each `MemberCard` a
+`branchColor`/`branchName` (a 4px strip inside the card's left edge; a coloured ring on dots) — keep those props primitive or the
+card's `React.memo` is lost. `BranchChips` (under the generation bar; the ancestor-view button moves down when it shows) flies to a
+branch head through `focusOn`; the panel shows "Thuộc chi" from `MemberDetail.branch`. **`/chi-phai`** (`BranchesView`, readable by
+everyone who can read the tree) shows overall figures from `/api/stats` and one card per branch from `/api/stats?branch=ID`; admins
+add/edit/delete branches (`BranchForm` picks the head by searching, spouses excluded). Sidebar items "Tìm kiếm" and "Chi phái".
+
 **`FormAction` (`src/components/FormAction.tsx`) must not receive a
 `handleSubmit` prop when used inside a `<form onSubmit={...}>`** — its
 button is `type="submit"`, so passing the same handler as `onClick` too

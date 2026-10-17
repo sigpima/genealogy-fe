@@ -43,8 +43,9 @@ export function Header({ clanName, user, search, onLogout }: HeaderProps) {
             aria-label="Tìm thành viên theo tên"
             className="h-10 w-full rounded-lg border-default border bg-app ps-9 pe-3 text-sm text-default placeholder:text-muted focus:border-[var(--color-primary)] focus:outline-none focus:ring-4 focus:ring-[rgba(197,155,39,0.2)]"
           />
-          {search.query && search.results.length > 0 && (
+          {search.query.trim() && (
             <ul className="shadow-float absolute left-0 right-0 top-full z-50 mt-1 max-h-72 overflow-y-auto rounded-lg border-default border bg-surface">
+              {search.results.length === 0 && <li className="px-3 py-2 text-sm text-muted">Không có kết quả khớp tên.</li>}
               {search.results.map((result) => (
                 <li key={result.key}>
                   <button
@@ -56,6 +57,14 @@ export function Header({ clanName, user, search, onLogout }: HeaderProps) {
                   </button>
                 </li>
               ))}
+              <li className="border-default border-t">
+                <Link
+                  href={`/tim-kiem?q=${encodeURIComponent(search.query.trim())}`}
+                  className="block min-h-11 px-3 py-3 text-sm font-medium text-primary hover:bg-surface-muted focus-visible:bg-surface-muted focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-primary)]"
+                >
+                  Tìm nâng cao “{search.query.trim()}” (cả vợ/chồng, bộ lọc)
+                </Link>
+              </li>
             </ul>
           )}
         </div>

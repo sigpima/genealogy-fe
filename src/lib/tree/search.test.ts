@@ -35,6 +35,11 @@ describe('findMembersByName', () => {
     ]);
   });
 
+  it('ignores diacritics: typing without tone marks still finds the member', () => {
+    expect(findMembersByName(tree, 'lang').map((m) => m.member.name)).toEqual(['nguyễn văn lãng']);
+    expect(findMembersByName(tree, 'dai LAN').map((m) => m.member.name)).toEqual(['nguyễn đại lan']);
+  });
+
   it('returns an empty array for a blank query', () => {
     expect(findMembersByName(tree, '   ')).toEqual([]);
   });

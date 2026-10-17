@@ -12,6 +12,7 @@ import {
   parseBoundedInt,
   toNullableText,
 } from '@/lib/tree/profile';
+import type { BranchRef } from '@/lib/branches/branches';
 import type { Gender, PanelProfile } from '@/lib/tree/types';
 
 export type { PanelProfile };
@@ -73,6 +74,8 @@ export type MemberDetailPanelProps = {
   avatarUrl: string | null;
   profile: PanelProfile;
   siblingRank: string | null;
+  /** The member's chi/phái, if any. */
+  branch: BranchRef | null;
   parentId: number | null;
   parentOptions: ParentOption[];
   /** The father's recorded spouses: the only valid choices for "Mẹ". */
@@ -276,6 +279,7 @@ export function MemberDetailPanel({
   avatarUrl,
   profile,
   siblingRank,
+  branch,
   parentId,
   parentOptions,
   motherOptions,
@@ -614,6 +618,7 @@ export function MemberDetailPanel({
       profile.burialLatitude !== null ||
       showBirthDate ||
       showDeathDate ||
+      branch !== null ||
       profile.birthOrder !== null ||
       profile.isAdopted ||
       motherName
@@ -924,6 +929,17 @@ export function MemberDetailPanel({
                       {profile.title && <InfoRow label="Chức vị" value={profile.title} />}
                       {showBirthDate && <InfoRow label="Ngày sinh" value={birthDate} />}
                       {showDeathDate && <InfoRow label="Ngày mất" value={deathDate} />}
+                      {branch && (
+                        <InfoRow
+                          label="Thuộc chi"
+                          value={
+                            <span className="inline-flex items-center gap-x-2">
+                              <span aria-hidden="true" className="inline-block size-3 rounded-full" style={{ backgroundColor: branch.color }} />
+                              {branch.name}
+                            </span>
+                          }
+                        />
+                      )}
                       {profile.hometown && <InfoRow label="Quê quán" value={profile.hometown} />}
                       {profile.residence && <InfoRow label="Nơi ở" value={profile.residence} />}
                       {motherName && <InfoRow label="Mẹ" value={motherName} />}

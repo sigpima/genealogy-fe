@@ -6,9 +6,11 @@ import { useSession } from '@/components/auth/useSession';
 import { AppShell } from '@/components/layout/AppShell';
 import GenealogyTree, { type FocusRequest } from '@/components/tree/GenealogyTree';
 import { canEdit } from '@/lib/auth/session';
+import type { Branch } from '@/lib/branches/branches';
+import { parseFocusParam } from '@/lib/search/search';
 import { clanName } from '@/lib/tree/generations';
 import { generateSyntheticTree } from '@/lib/tree/synthetic';
-import { findMembersByName } from '@/lib/tree/search';
+import { findAncestorChainById, findMembersByName } from '@/lib/tree/search';
 import type { FamilyMember } from '@/lib/tree/types';
 
 export default function Home() {
@@ -19,6 +21,7 @@ export default function Home() {
   const [focusRequest, setFocusRequest] = useState<FocusRequest | null>(null);
   const [familyTree, setFamilyTree] = useState<FamilyMember | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [branches, setBranches] = useState<Branch[]>([]);
   const [isSynthetic, setIsSynthetic] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -48,6 +51,11 @@ export default function Home() {
         }
         const data = (await response.json()) as FamilyMember | null;
         setFamilyTree(data);
+        // Branch colours are a nicety: a failure here must never break the tree.
+        fetch('/api/branches', { credentials: 'include' })
+          .then((r) => (r.ok ? (r.json() as Promise<Branch[]>) : []))
+          .then(setBranches)
+          .catch(() => undefined);
       } catch {
         setError('Không thể kết nối tới máy chủ. Vui lòng thử lại.');
       } finally {
@@ -60,6 +68,18 @@ export default function Home() {
   useEffect(() => {
     loadTree();
   }, [loadTree]);
+
+  // /?focus=<id> (a search result, a branch link) opens the tree on that person, once.
+  useEffect(() => {
+    if (!familyTree) return;
+    const id = parseFocusParam(window.location.search);
+    if (id === null) return;
+    window.history.replaceState(null, '', window.location.pathname);
+    const chain = findAncestorChainById(familyTree, id);
+    if (chain) setFocusRequest({ id, name: chain[chain.length - 1].name, token: Date.now() });
+    // only the first tree load should consume the parameter
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [familyTree === null]);
 
   const matches = familyTree ? findMembersByName(familyTree, searchQuery) : [];
 
@@ -125,6 +145,7 @@ export default function Home() {
             <GenealogyTree
               familyTree={familyTree}
               focusRequest={focusRequest}
+              branches={branches}
               onDataChanged={() => loadTree({ silent: true })}
               synthetic={isSynthetic}
               canEdit={userCanEdit}

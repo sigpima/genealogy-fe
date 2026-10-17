@@ -16,6 +16,9 @@ export type MemberCardProps = {
   detailState: 'loading' | 'loaded' | 'failed';
   rank: string | null;
   avatarUrl: string | null;
+  /** Colour of the member's branch (chi/phái), drawn as a strip on the card; null = no branch. */
+  branchColor: string | null;
+  branchName: string | null;
   spouseLabel: string | null;
   childCount: number;
   hasChildren: boolean;
@@ -71,7 +74,7 @@ export const MemberCard = React.memo(function MemberCard(props: MemberCardProps)
       <g
         role="button"
         tabIndex={0}
-        aria-label={`${name}, đời ${generation}`}
+        aria-label={`${name}, đời ${generation}${props.branchName ? `, ${props.branchName}` : ''}`}
         className="tree-card"
         data-member-id={id}
         style={{ cursor: 'pointer', outline: 'none' }}
@@ -99,13 +102,16 @@ export const MemberCard = React.memo(function MemberCard(props: MemberCardProps)
   );
 });
 
-function DotCard({ name, generation, tier, isHighlighted, isSelected }: MemberCardProps & { tier: GenerationTier }) {
+function DotCard({ name, generation, tier, isHighlighted, isSelected, branchColor }: MemberCardProps & { tier: GenerationTier }) {
   const emphasized = isHighlighted || isSelected;
   return (
     <>
       <title>{`${name} · Đời ${generation}`}</title>
       {/* Radii are CSS lengths scaled by --inv-k (set by TreeCanvas) so a dot stays 16px on screen. */}
       <circle r={14} fill="transparent" style={cssRadius('calc(var(--inv-k, 1) * 14px)')} />
+      {branchColor && !emphasized && (
+        <circle r={11} fill="none" stroke={branchColor} strokeWidth={2.5} vectorEffect="non-scaling-stroke" style={cssRadius('calc(var(--inv-k, 1) * 11px)')} />
+      )}
       <circle
         r={emphasized ? 11 : 8}
         fill={tierColor(tier)}
@@ -126,6 +132,11 @@ function cardFrame(tier: GenerationTier, emphasized: boolean) {
     }`,
     strokeWidth: emphasized ? 2.5 : ancestor ? 2 : 1,
   };
+}
+
+/** A thin vertical bar inside the card's left edge in the branch's colour. */
+function BranchStrip({ color, width, height }: { color: string; width: number; height: number }) {
+  return <rect x={-width / 2 + 3} y={-height / 2 + 8} width={4} height={height - 16} rx={2} fill={color} style={{ pointerEvents: 'none' }} />;
 }
 
 function GenerationBadge({ generation, tier }: { generation: number; tier: GenerationTier }) {
@@ -177,7 +188,7 @@ function ToggleControl({
 }
 
 function CompactCard(props: MemberCardProps & { tier: GenerationTier; emphasized: boolean }) {
-  const { name, generation, tier, emphasized, lifespan, detailState } = props;
+  const { name, generation, tier, emphasized, lifespan, detailState, branchColor } = props;
   const frame = cardFrame(tier, emphasized);
   const { width, height } = COMPACT;
   return (
@@ -191,6 +202,7 @@ function CompactCard(props: MemberCardProps & { tier: GenerationTier; emphasized
         className={frame.className}
         strokeWidth={frame.strokeWidth}
       />
+      {branchColor && <BranchStrip color={branchColor} width={width} height={height} />}
       <g transform="translate(-56, 0)">
         <GenerationBadge generation={generation} tier={tier} />
         <text
@@ -231,6 +243,7 @@ function DetailedCard(props: MemberCardProps & { tier: GenerationTier; emphasize
     spouseLabel,
     childCount,
     rank,
+    branchColor,
   } = props;
   const frame = cardFrame(tier, emphasized);
   const { width, height } = DETAILED;
@@ -248,6 +261,7 @@ function DetailedCard(props: MemberCardProps & { tier: GenerationTier; emphasize
         strokeWidth={frame.strokeWidth}
         style={{ filter: 'drop-shadow(0 4px 8px color-mix(in srgb, var(--color-text) 10%, transparent))' }}
       />
+      {branchColor && <BranchStrip color={branchColor} width={width} height={height} />}
       <g transform="translate(-86, -10)">
         {avatarUrl ? (
           <>

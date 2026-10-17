@@ -91,6 +91,8 @@ export type PanelProfile = {
   motherId: number | null;
 };
 
+import type { BranchRef } from '@/lib/branches/branches';
+
 export type MemberDetail = MemberProfile & {
   id: number;
   birth_year: number | null;
@@ -100,5 +102,7 @@ export type MemberDetail = MemberProfile & {
   avatar_url: string | null;
   /** "Trưởng nam", "Thứ nữ", "Út nam"... computed by the API from siblings. */
   sibling_rank: string | null;
+  /** The deepest branch (chi/phái) the member belongs to, if any. */
+  branch?: BranchRef | null;
   spouses: Spouse[];
 };

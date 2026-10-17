@@ -1,7 +1,7 @@
 import Link from 'next/link';
 
 export type SidebarProps = {
-  active: 'tree' | 'data' | 'admin' | 'platform';
+  active: 'tree' | 'search' | 'branches' | 'data' | 'admin' | 'platform';
   isAdmin: boolean;
   /** The platform owner also gets the page that manages every family. */
   isSuperadmin?: boolean;
@@ -17,6 +17,18 @@ export default function Sidebar({ active, isAdmin, isSuperadmin = false }: Sideb
             label="Cây Gia Phả"
             icon={<TreeIcon />}
             current={active === 'tree'}
+          />
+          <NavItem
+            href="/tim-kiem"
+            label="Tìm kiếm"
+            icon={<SearchNavIcon />}
+            current={active === 'search'}
+          />
+          <NavItem
+            href="/chi-phai"
+            label="Chi phái"
+            icon={<BranchesIcon />}
+            current={active === 'branches'}
           />
           {isAdmin && (
             <NavItem
@@ -124,6 +136,26 @@ function FamiliesIcon() {
   return (
     <svg {...iconProps}>
       <path d="M3 21V9l5-4 5 4v12M13 21V13l4-3 4 3v8M2 21h20" />
+    </svg>
+  );
+}
+
+function SearchNavIcon() {
+  return (
+    <svg {...iconProps}>
+      <circle cx="11" cy="11" r="7" />
+      <path d="m20 20-3.5-3.5" />
+    </svg>
+  );
+}
+
+function BranchesIcon() {
+  return (
+    <svg {...iconProps}>
+      <circle cx="6" cy="5" r="2" />
+      <circle cx="18" cy="12" r="2" />
+      <circle cx="6" cy="19" r="2" />
+      <path d="M6 7v10M6 12h10" />
     </svg>
   );
 }

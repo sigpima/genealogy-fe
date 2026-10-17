@@ -13,11 +13,13 @@ import {
   type SpouseAddInput,
   type SpouseUpdateInput,
 } from '@/components/tree/MemberDetailPanel';
+import { BranchChips } from '@/components/tree/BranchChips';
 import { GenerationFilterBar } from '@/components/tree/GenerationFilterBar';
 import { MemberCard } from '@/components/tree/MemberCard';
 import { StatusStrip } from '@/components/tree/StatusStrip';
 import type { TreeCanvasHandle, VisibleChange } from '@/components/tree/TreeCanvas';
 import { ViewportControls } from '@/components/tree/ViewportControls';
+import { assignBranches, type Branch, type BranchRef } from '@/lib/branches/branches';
 import { idsNeedingDetail } from '@/lib/tree/detail-cache';
 import { pickIdsToFetch } from '@/lib/tree/detail-queue';
 import { collapsedIdsForDepth, expandPathTo, expandedDepthOf } from '@/lib/tree/expansion';
@@ -57,6 +59,7 @@ type SelectedMember = {
   avatarUrl: string | null;
   profile: PanelProfile;
   siblingRank: string | null;
+  branch: BranchRef | null;
   /** The father's recorded spouses: the choices for "Mẹ". */
   motherOptions: { id: number; name: string }[];
   spouses: PanelSpouse[];
@@ -90,6 +93,8 @@ const DETAIL_RADIUS = 3;
 export type GenealogyTreeProps = {
   familyTree: FamilyMember;
   focusRequest?: FocusRequest | null;
+  /** The family's branches (chi/phái); cards of branch members get a coloured strip. */
+  branches?: Branch[];
   onDataChanged: () => void;
   /** Dev-only load-test mode: no per-member detail requests are made. */
   synthetic?: boolean;
@@ -100,6 +105,7 @@ export type GenealogyTreeProps = {
 export default function GenealogyTree({
   familyTree,
   focusRequest,
+  branches,
   onDataChanged,
   synthetic = false,
   canEdit,
@@ -254,6 +260,17 @@ export default function GenealogyTree({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [focusRequest]);
 
+  const branchByMember = useMemo(() => assignBranches(familyTree, branches ?? []), [familyTree, branches]);
+
+  function focusOn(id: number) {
+    setAncestorViewRootId(null);
+    setCollapsedIds((prev) => expandPathTo(familyTree, prev, id));
+    setPendingCenter({ id });
+    setHighlightedId(id);
+    setFocalId(id);
+    window.setTimeout(() => setHighlightedId(null), 2000);
+  }
+
   // Centre once the render that includes the expanded path (and the new layout) has committed.
   useEffect(() => {
     if (!pendingCenter) return;
@@ -294,6 +311,7 @@ export default function GenealogyTree({
       avatarUrl: null,
       profile: EMPTY_PROFILE,
       siblingRank: null,
+      branch: null,
       motherOptions: [],
       spouses: [],
       isDetailLoading: true,
@@ -314,6 +332,7 @@ export default function GenealogyTree({
         avatarUrl: detail.avatar_url,
         profile: toPanelProfile(detail),
         siblingRank: detail.sibling_rank,
+        branch: detail.branch ?? null,
         spouses: toPanelSpouses(detail.spouses),
       };
     });
@@ -671,6 +690,8 @@ export default function GenealogyTree({
         lifespan={lifespanLabel(birthYear, deathYear)}
         detailState={detailState}
         avatarUrl={detail?.avatar_url ?? null}
+        branchColor={branchByMember.get(id)?.color ?? null}
+        branchName={branchByMember.get(id)?.name ?? null}
         spouseLabel={spouseLabel}
         childCount={childCount}
         hasChildren={childCount > 0}
@@ -686,6 +707,7 @@ export default function GenealogyTree({
   }
 
   const counts = useMemo(() => generationCounts(familyTree), [familyTree]);
+  const hasBranches = (branches?.length ?? 0) > 0;
   const activeDepth = useMemo(() => expandedDepthOf(familyTree, collapsedIds), [familyTree, collapsedIds]);
 
   return (
@@ -706,11 +728,12 @@ export default function GenealogyTree({
         activeDepth={activeDepth}
         onSelectDepth={(depth) => setCollapsedIds(collapsedIdsForDepth(familyTree, depth))}
       />
+      {hasBranches && <BranchChips branches={branches ?? []} onSelect={(branch) => focusOn(branch.root_member_id)} />}
       {ancestorViewRootId !== null && (
         <button
           type="button"
           onClick={() => setAncestorViewRootId(null)}
-          className="shadow-float absolute left-4 top-20 z-30 min-h-11 rounded-lg border-default border bg-surface px-3 text-sm text-default hover:bg-surface-muted focus-visible:outline-2 focus-visible:outline-[var(--color-primary)]"
+          className={`shadow-float absolute left-4 ${hasBranches ? 'top-[7.5rem]' : 'top-20'} z-30 min-h-11 rounded-lg border-default border bg-surface px-3 text-sm text-default hover:bg-surface-muted focus-visible:outline-2 focus-visible:outline-[var(--color-primary)]`}
         >
           Xem toàn bộ cây gia phả
         </button>
@@ -731,6 +754,7 @@ export default function GenealogyTree({
           avatarUrl={selectedMember.avatarUrl}
           profile={selectedMember.profile}
           siblingRank={selectedMember.siblingRank}
+          branch={selectedMember.branch}
           parentId={selectedMember.parentId}
           parentOptions={getReparentCandidates(familyTree, selectedMember.id)}
           motherOptions={selectedMember.motherOptions}
