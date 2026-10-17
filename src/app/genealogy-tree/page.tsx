@@ -102,7 +102,7 @@ export default function GenealogyTree({ familyTree, focusRequest, onDataChanged,
     if (displayRoot.id === undefined) return 1;
     return findAncestorChainById(familyTree, displayRoot.id)?.length ?? 1;
   }, [familyTree, displayRoot]);
-  const [highlightedName, setHighlightedName] = useState<string | null>(null);
+  const [highlightedId, setHighlightedId] = useState<number | null>(null);
   const [selectedMember, setSelectedMember] = useState<SelectedMember | null>(null);
   const [focalId, setFocalId] = useState<number | null>(null);
   const detailSet = useMemo(
@@ -120,6 +120,8 @@ export default function GenealogyTree({ familyTree, focusRequest, onDataChanged,
   const inflightDetails = useRef(0);
   const lastVisible = useRef<VisibleChange | null>(null);
   const pumpDetailFetches = useRef<() => void>(() => {});
+  // Focal-radius members wanted by the LOD set; fetched through the same limiter as visible ones.
+  const focalIds = useRef<number[]>([]);
 
   function ensureMemberDetail(id: number): Promise<MemberDetail | null> {
     const existing = detailFetches.current.get(id);
@@ -162,9 +164,16 @@ export default function GenealogyTree({ familyTree, focusRequest, onDataChanged,
   }
 
   pumpDetailFetches.current = () => {
+    if (synthetic) return;
     const change = lastVisible.current;
-    if (synthetic || !change || change.level === 'dot') return;
-    pickIdsToFetch(change.nodes, change.center, detailFetches.current, inflightDetails.current).forEach((id) => {
+    const center = change?.center ?? { x: 0, y: 0 };
+    // Focal members sit at the centre (distance 0) so they go first; visible ones follow nearest-first.
+    // The dot level never fetches visible members, only the focal set.
+    const candidates = [
+      ...focalIds.current.map((id) => ({ id, x: center.x, y: center.y })),
+      ...(change && change.level !== 'dot' ? change.nodes : []),
+    ];
+    pickIdsToFetch(candidates, center, detailFetches.current, inflightDetails.current).forEach((id) => {
       inflightDetails.current += 1;
       void ensureMemberDetail(id).finally(() => {
         inflightDetails.current -= 1;
@@ -179,24 +188,29 @@ export default function GenealogyTree({ familyTree, focusRequest, onDataChanged,
 
   useEffect(() => {
     if (synthetic) return;
-    idsNeedingDetail(detailSet, detailsById).forEach((id) => {
-      void ensureMemberDetail(id);
-    });
-    // detailsById intentionally excluded: ensureMemberDetail's own ref-backed dedup already
-    // prevents duplicate fetches, so this only needs to re-scan when detailSet changes.
+    focalIds.current = idsNeedingDetail(detailSet, detailsById);
+    pumpDetailFetches.current();
+    // detailsById intentionally excluded: the pump skips anything already requested, so this
+    // only needs to re-scan when detailSet changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [detailSet]);
 
   const canvasRef = useRef<TreeCanvasHandle | null>(null);
+  // Controls need to know when the (dynamically loaded) canvas handle appears or is replaced.
+  const [canvasHandle, setCanvasHandle] = useState<TreeCanvasHandle | null>(null);
+  const setCanvasRef = useCallback((handle: TreeCanvasHandle | null) => {
+    canvasRef.current = handle;
+    setCanvasHandle(handle);
+  }, []);
 
   useEffect(() => {
     if (!focusRequest || !canvasRef.current) return;
     setAncestorViewRootId(null);
     setCollapsedIds((prev) => expandPathTo(familyTree, prev, focusRequest.id));
     setPendingCenter({ id: focusRequest.id });
-    setHighlightedName(focusRequest.name);
+    setHighlightedId(focusRequest.id);
     setFocalId(focusRequest.id);
-    const timer = setTimeout(() => setHighlightedName(null), 2000);
+    const timer = setTimeout(() => setHighlightedId(null), 2000);
     return () => clearTimeout(timer);
     // familyTree intentionally excluded: only a new focus request should trigger this.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -604,7 +618,7 @@ export default function GenealogyTree({ familyTree, focusRequest, onDataChanged,
         hasChildren={childCount > 0}
         isCollapsed={isCollapsed}
         hiddenDescendants={isCollapsed ? descendantCount(node.data) : 0}
-        isHighlighted={node.data.name === highlightedName}
+        isHighlighted={id === highlightedId}
         isSelected={selectedMember?.id === id}
         onSelect={handleCardSelect}
         onToggle={handleCardToggle}
@@ -618,7 +632,7 @@ export default function GenealogyTree({ familyTree, focusRequest, onDataChanged,
   return (
     <div className="relative h-full w-full overflow-hidden bg-app">
       <TreeCanvas
-        ref={canvasRef}
+        ref={setCanvasRef}
         familyTree={displayRoot}
         collapsedIds={collapsedIds}
         nodeSize={NODE_SIZE}
@@ -642,8 +656,8 @@ export default function GenealogyTree({ familyTree, focusRequest, onDataChanged,
           Xem toàn bộ cây gia phả
         </button>
       )}
-      <ViewportControls canvasRef={canvasRef} />
-      <StatusStrip total={totalMembers(familyTree)} generations={counts.length} canvasRef={canvasRef} />
+      <ViewportControls handle={canvasHandle} />
+      <StatusStrip total={totalMembers(familyTree)} generations={counts.length} handle={canvasHandle} />
       {selectedMember && (
         <MemberDetailPanel
           key={selectedMember.id}

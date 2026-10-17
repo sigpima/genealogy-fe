@@ -4,6 +4,7 @@ import React from 'react';
 import { generationTier, toRoman, type GenerationTier } from '@/lib/tree/generations';
 import type { MemberStatus } from '@/lib/tree/member-status';
 import type { ZoomLevel } from '@/lib/tree/zoom';
+import { cssRadius } from './svg-style';
 
 export type MemberCardProps = {
   id: number;
@@ -31,11 +32,6 @@ const COMPACT = { width: 160, height: 56 };
 const COMPACT_MAX_SCALE = 1.6;
 const DETAILED = { width: 240, height: 110 };
 
-// `r` is a valid SVG2 CSS property but missing from React's CSSProperties type.
-export function cssRadius(value: string): React.CSSProperties {
-  return { r: value } as React.CSSProperties;
-}
-
 function tierColor(tier: GenerationTier): string {
   return `var(--color-tier-${tier})`;
 }
@@ -56,8 +52,9 @@ function statusRing(status: MemberStatus): string {
 }
 
 export const MemberCard = React.memo(function MemberCard(props: MemberCardProps) {
-  const { id, name, generation, level, isHighlighted, isSelected, onSelect } = props;
+  const { id, name, generation, level, isHighlighted, isSelected, onSelect, hasChildren } = props;
   const tier = generationTier(generation);
+  const emphasized = isHighlighted || isSelected;
 
   const handleKeyDown = (event: React.KeyboardEvent) => {
     if (event.key === 'Enter' || event.key === ' ') {
@@ -66,22 +63,35 @@ export const MemberCard = React.memo(function MemberCard(props: MemberCardProps)
     }
   };
 
+  // The expand/collapse control is a sibling of the card button, not a child: buttons' children are
+  // presentational for assistive tech, so a nested toggle would be invisible to screen readers.
   return (
-    <g
-      role="button"
-      tabIndex={0}
-      aria-label={`${name}, đời ${generation}`}
-      className="tree-card"
-      style={{ cursor: 'pointer', outline: 'none' }}
-      onClick={() => onSelect(id)}
-      onKeyDown={handleKeyDown}
-    >
-      {level === 'dot' ? (
-        <DotCard {...props} tier={tier} />
-      ) : level === 'compact' ? (
-        <CompactCard {...props} tier={tier} emphasized={isHighlighted || isSelected} />
-      ) : (
-        <DetailedCard {...props} tier={tier} emphasized={isHighlighted || isSelected} />
+    <g style={level === 'compact' ? { transform: `scale(min(var(--inv-k, 1), ${COMPACT_MAX_SCALE}))` } : undefined}>
+      <g
+        role="button"
+        tabIndex={0}
+        aria-label={`${name}, đời ${generation}`}
+        className="tree-card"
+        style={{ cursor: 'pointer', outline: 'none' }}
+        onClick={() => onSelect(id)}
+        onKeyDown={handleKeyDown}
+      >
+        {level === 'dot' ? (
+          <DotCard {...props} tier={tier} />
+        ) : level === 'compact' ? (
+          <CompactCard {...props} tier={tier} emphasized={emphasized} />
+        ) : (
+          <DetailedCard {...props} tier={tier} emphasized={emphasized} />
+        )}
+      </g>
+      {level !== 'dot' && hasChildren && (
+        <ToggleControl
+          id={id}
+          y={level === 'compact' ? COMPACT.height / 2 : DETAILED.height / 2 + 4}
+          isCollapsed={props.isCollapsed}
+          hiddenDescendants={props.hiddenDescendants}
+          onToggle={props.onToggle}
+        />
       )}
     </g>
   );
@@ -93,8 +103,9 @@ function DotCard({ name, generation, tier, isHighlighted, isSelected }: MemberCa
     <>
       <title>{`${name} · Đời ${generation}`}</title>
       {/* Radii are CSS lengths scaled by --inv-k (set by TreeCanvas) so a dot stays 16px on screen. */}
-      <circle fill="transparent" style={cssRadius('calc(var(--inv-k, 1) * 14px)')} />
+      <circle r={14} fill="transparent" style={cssRadius('calc(var(--inv-k, 1) * 14px)')} />
       <circle
+        r={emphasized ? 11 : 8}
         fill={tierColor(tier)}
         className={`tree-card-frame ${emphasized ? 'stroke-primary' : ''}`}
         strokeWidth={emphasized ? 3 : 0}
@@ -130,55 +141,45 @@ function ToggleControl({
   hiddenDescendants,
   onToggle,
 }: Pick<MemberCardProps, 'id' | 'isCollapsed' | 'hiddenDescendants' | 'onToggle'> & { y: number }) {
+  const showTag = isCollapsed && hiddenDescendants > 0;
   return (
-    <>
-      <g
-        role="button"
-        tabIndex={0}
-        aria-label={isCollapsed ? 'Mở nhánh' : 'Thu nhánh'}
-        transform={`translate(0, ${y})`}
-        style={{ cursor: 'pointer' }}
-        onClick={(event) => {
-          event.stopPropagation();
+    <g
+      role="button"
+      tabIndex={0}
+      aria-label={isCollapsed ? `Mở nhánh${showTag ? `, ${hiddenDescendants} hậu duệ` : ''}` : 'Thu nhánh'}
+      transform={`translate(0, ${y})`}
+      className="tree-toggle"
+      style={{ cursor: 'pointer', outline: 'none' }}
+      onClick={() => onToggle(id)}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
           onToggle(id);
-        }}
-        onKeyDown={(event) => {
-          if (event.key === 'Enter' || event.key === ' ') {
-            event.preventDefault();
-            event.stopPropagation();
-            onToggle(id);
-          }
-        }}
-      >
-        <circle r={10} className="fill-primary" />
-        <text
-          textAnchor="middle"
-          dominantBaseline="central"
-          fontSize={14}
-          className="fill-on-primary"
-          style={{ pointerEvents: 'none' }}
-        >
-          {isCollapsed ? '+' : '−'}
-        </text>
-      </g>
-      {isCollapsed && hiddenDescendants > 0 && (
-        <g transform={`translate(0, ${y + 24})`} style={{ pointerEvents: 'none' }}>
+        }
+      }}
+    >
+      <circle r={10} className="fill-primary" />
+      <text textAnchor="middle" dominantBaseline="central" fontSize={14} className="fill-on-primary" style={{ pointerEvents: 'none' }}>
+        {isCollapsed ? '+' : '−'}
+      </text>
+      {showTag && (
+        <g transform="translate(0, 24)">
           <rect x={-46} y={-10} width={92} height={20} rx={10} className="fill-surface-muted stroke-border" />
-          <text textAnchor="middle" dominantBaseline="central" fontSize={11} className="fill-muted">
+          <text textAnchor="middle" dominantBaseline="central" fontSize={11} className="fill-muted" style={{ pointerEvents: 'none' }}>
             {`${hiddenDescendants} hậu duệ`}
           </text>
         </g>
       )}
-    </>
+    </g>
   );
 }
 
 function CompactCard(props: MemberCardProps & { tier: GenerationTier; emphasized: boolean }) {
-  const { id, name, generation, tier, emphasized, lifespan, detailState, hasChildren } = props;
+  const { name, generation, tier, emphasized, lifespan, detailState } = props;
   const frame = cardFrame(tier, emphasized);
   const { width, height } = COMPACT;
   return (
-    <g style={{ transform: `scale(min(var(--inv-k, 1), ${COMPACT_MAX_SCALE}))` }}>
+    <>
       <rect
         x={-width / 2}
         y={-height / 2}
@@ -210,16 +211,7 @@ function CompactCard(props: MemberCardProps & { tier: GenerationTier; emphasized
         </text>
       )}
       {detailState === 'loading' && <rect x={-38} y={8} width={64} height={7} rx={3.5} className="fill-surface-muted" />}
-      {hasChildren && (
-        <ToggleControl
-          id={id}
-          y={height / 2}
-          isCollapsed={props.isCollapsed}
-          hiddenDescendants={props.hiddenDescendants}
-          onToggle={props.onToggle}
-        />
-      )}
-    </g>
+    </>
   );
 }
 
@@ -236,7 +228,6 @@ function DetailedCard(props: MemberCardProps & { tier: GenerationTier; emphasize
     avatarUrl,
     spouseLabel,
     childCount,
-    hasChildren,
   } = props;
   const frame = cardFrame(tier, emphasized);
   const { width, height } = DETAILED;
@@ -252,7 +243,7 @@ function DetailedCard(props: MemberCardProps & { tier: GenerationTier; emphasize
         rx={8}
         className={frame.className}
         strokeWidth={frame.strokeWidth}
-        style={{ filter: 'drop-shadow(0 4px 8px rgba(60, 42, 33, 0.08))' }}
+        style={{ filter: 'drop-shadow(0 4px 8px color-mix(in srgb, var(--color-text) 10%, transparent))' }}
       />
       <g transform="translate(-86, -10)">
         {avatarUrl ? (
@@ -330,15 +321,6 @@ function DetailedCard(props: MemberCardProps & { tier: GenerationTier; emphasize
         <text x={104} y={42} textAnchor="end" dominantBaseline="central" fontSize={12} fontWeight={600} className="fill-text">
           {`${childCount} con`}
         </text>
-      )}
-      {hasChildren && (
-        <ToggleControl
-          id={id}
-          y={height / 2 + 4}
-          isCollapsed={props.isCollapsed}
-          hiddenDescendants={props.hiddenDescendants}
-          onToggle={props.onToggle}
-        />
       )}
     </>
   );

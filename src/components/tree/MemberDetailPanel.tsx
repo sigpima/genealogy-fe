@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { generationTier, toRoman } from '@/lib/tree/generations';
 import { lifespanLabel, memberStatus } from '@/lib/tree/member-status';
 import type { Gender } from '@/lib/tree/types';
@@ -206,6 +206,38 @@ export function MemberDetailPanel({
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [onClose, isEditing, editingSpouseId]);
 
+  // Below xl the panel is a modal overlay (dimmed backdrop): move focus into it, keep Tab inside it
+  // and give focus back to whatever opened it. On desktop it is a plain side panel and focus is left alone.
+  const panelRef = useRef<HTMLElement | null>(null);
+  useEffect(() => {
+    const panel = panelRef.current;
+    if (!panel || !window.matchMedia('(max-width: 1279px)').matches) return;
+    const opener = document.activeElement as HTMLElement | null;
+    panel.focus();
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Tab') return;
+      const focusable = Array.from(
+        panel.querySelectorAll<HTMLElement>('button, input, select, textarea, [href], [tabindex]:not([tabindex="-1"])')
+      ).filter((el) => !el.hasAttribute('disabled') && el.offsetParent !== null);
+      if (focusable.length === 0) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      const active = document.activeElement;
+      if (event.shiftKey && (active === first || active === panel)) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && active === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+    panel.addEventListener('keydown', onKeyDown);
+    return () => {
+      panel.removeEventListener('keydown', onKeyDown);
+      if (opener && document.contains(opener)) opener.focus();
+    };
+  }, []);
+
   function resetAvatarDraft() {
     if (avatarPreviewUrl) URL.revokeObjectURL(avatarPreviewUrl);
     setAvatarFile(null);
@@ -364,11 +396,21 @@ export function MemberDetailPanel({
 
   return (
     <>
-      <div className="fixed inset-0 z-30 bg-black/30 xl:hidden" onClick={onClose} aria-hidden="true" />
+      <div
+        className="fixed inset-0 z-30 bg-black/30 xl:hidden"
+        onClick={() => {
+          // A stray tap on the backdrop must not throw away an edit in progress.
+          if (isEditing || editingSpouseId !== null) return;
+          onClose();
+        }}
+        aria-hidden="true"
+      />
       <aside
+        ref={panelRef}
+        tabIndex={-1}
         role="complementary"
         aria-label={`Hồ sơ ${name}`}
-        className="shadow-float fixed inset-x-0 bottom-0 z-40 flex max-h-[90vh] flex-col overflow-hidden rounded-t-2xl border-default border-t bg-surface md:inset-y-0 md:left-auto md:right-0 md:max-h-none md:w-[400px] md:rounded-none md:border-l md:border-t-0"
+        className="shadow-float fixed inset-x-0 bottom-0 z-40 flex max-h-[90vh] flex-col outline-none overflow-hidden rounded-t-2xl border-default border-t bg-surface md:inset-y-0 md:left-auto md:right-0 md:max-h-none md:w-[400px] md:rounded-none md:border-l md:border-t-0"
       >
         <div className="flex items-center justify-between px-5 pt-4">
           <span
@@ -377,8 +419,8 @@ export function MemberDetailPanel({
           >
             ĐỜI {toRoman(generation)}
           </span>
-          <button type="button" onClick={onClose} aria-label="Đóng hồ sơ" className={`${ghostButton} -me-2`}>
-            Đóng ✕
+          <button type="button" onClick={onClose} className={`${ghostButton} -me-2`}>
+            Đóng <span aria-hidden="true">✕</span>
           </button>
         </div>
 
@@ -425,7 +467,7 @@ export function MemberDetailPanel({
               role="tab"
               id={`panel-tab-${id}`}
               aria-selected={tab === id}
-              aria-controls={`panel-tabpanel-${id}`}
+              aria-controls={tab === id ? `panel-tabpanel-${id}` : undefined}
               onClick={() => setTab(id)}
               className={`min-h-11 border-b-2 px-3 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-[var(--color-primary)] ${
                 tab === id ? 'border-[var(--color-primary)] text-primary' : 'border-transparent text-muted hover:text-default'

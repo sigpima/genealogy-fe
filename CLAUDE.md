@@ -189,7 +189,12 @@ keep it fast — don't undo them casually:
 - All links are one `<path>` (`vector-effect: non-scaling-stroke`); there is
   no framer-motion or per-node animation. The minimap is one `<canvas>`.
 - The zoom floor is dynamic (`minZoomFor`): lower than 0.15 when needed so
-  "Toàn cảnh" (`fitToView`) can always fit the whole expanded tree.
+  "Toàn cảnh" (`fitToView`) can always fit the whole expanded tree; fit uses
+  per-side padding (`FIT_PADDING`) to stay clear of the floating bars, and a
+  current zoom that falls below a new floor is pulled back in (`clampZoom`).
+  The container is observed with a `ResizeObserver`, which recomputes the
+  culling rect, the zoom floor and the minimap frame. d3 transitions and
+  momentum are skipped under `prefers-reduced-motion`.
 - The tree **opens collapsed to `DEFAULT_EXPANDED_GENERATIONS` (4)**; the
   generation chips (`GenerationFilterBar`) set "expanded down to Đời N" via
   `collapsedIdsForDepth`, and search/focus/ancestor-view first call
@@ -197,12 +202,18 @@ keep it fast — don't undo them casually:
   `pendingCenter` state + effect (not `requestAnimationFrame`, which can fire
   before React re-renders). A silent refetch keeps the user's collapse state.
 - **Per-member detail** (years, spouses, avatar) is one request per member
-  (no batch endpoint). It is fetched for the 3-hop focal set (`lod.ts`) and
-  for members visible at the compact/detailed level, nearest the view centre
-  first, at most `DETAIL_FETCH_CONCURRENCY` (6) in flight
+  (no batch endpoint). Both the 3-hop focal set (`lod.ts`, first) and members
+  visible at the compact/detailed level (nearest the view centre first) go
+  through one pump, at most `DETAIL_FETCH_CONCURRENCY` (6) in flight
   (`pickIdsToFetch`, `src/lib/tree/detail-queue.ts`). Failed fetches are
   remembered (`failedDetailIds`) and never auto-retried (only the panel's
   retry button does); cards then show unknown styling, not a skeleton.
+- A card's expand/collapse control (`ToggleControl`, which also holds the
+  clickable "N hậu duệ" tag) is a **sibling** of the card's `role=button`
+  group, never a child — buttons' children are presentational for screen
+  readers. Keyboard focus is drawn by re-stroking `.tree-card-frame` (see
+  `globals.css`); `ViewportControls`/`StatusStrip` subscribe through the
+  `canvasHandle` state in `GenealogyTree` (no polling).
 - `MemberCard` is `React.memo`; keep `onSelect`/`onToggle` stable
   (`useCallback`) or memoisation is lost. Selection is by id
   (`handleSelectMember` resolves the path from the *real* root, so it also
@@ -211,7 +222,9 @@ keep it fast — don't undo them casually:
   (`src/lib/tree/member-status.ts`) — "living" only with a birth year, no
   death year and born within 100 years; otherwise unknown ("1850 – ?").
 - **Load-testing:** in development, `/?synthetic=2000` swaps the API for a
-  generated tree (`generateSyntheticTree`) and disables detail fetching.
+  generated tree (`generateSyntheticTree`) and disables detail fetching; add
+  `&details=1` to keep detail fetching on (point it at a mocked
+  `/api/members/{id}` to measure the fetch path).
 
 **Search/lookup logic is pure and tested independently of the tree UI**:
 `src/lib/tree/search.ts` (`findMembersByName`, `findPathToMember`,
@@ -260,7 +273,9 @@ member by id (`handleSelectMember`/`handleSelectChild` → `openMemberDetail`),
 fills the panel from `ensureMemberDetail`'s cache (snake_case, as the API
 returns it) and converts it to the panel's camelCase props. The panel is
 rendered with `key={selectedMember.id}` so edit-form state can never leak from
-one member onto another — keep that key.
+one member onto another — keep that key. Below `xl` the panel is a modal
+overlay: it takes focus on open, traps Tab, restores focus to the opener on
+close, and a backdrop click/Esc never discards an edit in progress.
 
 **`FormAction` (`src/components/FormAction.tsx`) must not receive a
 `handleSubmit` prop when used inside a `<form onSubmit={...}>`** — its

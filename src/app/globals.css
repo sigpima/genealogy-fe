@@ -225,6 +225,11 @@
   stroke-width: 3px;
 }
 
+.tree-toggle:focus-visible circle {
+  stroke: var(--color-text);
+  stroke-width: 3px;
+}
+
 body {
   background-color: var(--color-bg);
   color: var(--color-text);

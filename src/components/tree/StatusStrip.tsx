@@ -6,29 +6,16 @@ import type { TreeCanvasHandle } from './TreeCanvas';
 export type StatusStripProps = {
   total: number;
   generations: number;
-  canvasRef: React.RefObject<TreeCanvasHandle | null>;
+  handle: TreeCanvasHandle | null;
 };
 
-export function StatusStrip({ total, generations, canvasRef }: StatusStripProps) {
+export function StatusStrip({ total, generations, handle }: StatusStripProps) {
   const [zoomPercent, setZoomPercent] = useState(100);
 
   useEffect(() => {
-    let unsubscribe: (() => void) | undefined;
-    const attach = () => {
-      const handle = canvasRef.current;
-      if (!handle) return false;
-      unsubscribe = handle.subscribe((view) => setZoomPercent(Math.round(view.k * 100)));
-      return true;
-    };
-    if (attach()) return () => unsubscribe?.();
-    const timer = setInterval(() => {
-      if (attach()) clearInterval(timer);
-    }, 100);
-    return () => {
-      clearInterval(timer);
-      unsubscribe?.();
-    };
-  }, [canvasRef]);
+    if (!handle) return;
+    return handle.subscribe((view) => setZoomPercent(Math.round(view.k * 100)));
+  }, [handle]);
 
   return (
     <div className="absolute inset-x-0 bottom-0 z-20 flex items-center gap-x-6 border-default border-t bg-glass px-4 py-2 text-xs text-muted backdrop-blur-md">

@@ -18,6 +18,7 @@ import {
 } from '@/lib/tree/viewport';
 import {
   boundsOf,
+  clampZoom,
   fitTransform,
   minZoomFor,
   padBounds,
@@ -27,7 +28,7 @@ import {
   type ZoomLevel,
 } from '@/lib/tree/zoom';
 import type { FamilyMember } from '@/lib/tree/types';
-import { cssRadius } from './MemberCard';
+import { cssRadius } from './svg-style';
 import { Minimap } from './Minimap';
 
 export type { ViewState } from '@/lib/tree/zoom';
@@ -61,6 +62,12 @@ export type TreeCanvasHandle = {
 };
 
 const CENTER_MIN_ZOOM = 0.5;
+// Keeps "Toàn cảnh" clear of the floating generation bar (top) and zoom bar / minimap (bottom).
+const FIT_PADDING = { top: 96, right: 48, bottom: 112, left: 48 };
+
+function prefersReducedMotion(): boolean {
+  return typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+}
 
 const TreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps>(function TreeCanvas(
   { familyTree, collapsedIds, nodeSize, separation, scaleExtent, initialZoom, renderNode, onVisibleChange },
@@ -83,12 +90,23 @@ const TreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps>(function TreeCa
   const maxZoomRef = useRef(scaleExtent.max);
   maxZoomRef.current = scaleExtent.max;
 
-  const handleContainerRef = (node: HTMLDivElement | null) => {
-    if (node && !dimensions) {
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    const node = containerRef.current;
+    if (!node) return;
+    const measure = () => {
       const rect = node.getBoundingClientRect();
-      setDimensions({ width: rect.width, height: rect.height });
-    }
-  };
+      setDimensions((prev) =>
+        prev && Math.abs(prev.width - rect.width) < 1 && Math.abs(prev.height - rect.height) < 1
+          ? prev
+          : { width: rect.width, height: rect.height }
+      );
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, []);
 
   const notify = useCallback(() => {
     if (listenersRef.current.size === 0) return;
@@ -96,6 +114,7 @@ const TreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps>(function TreeCa
     listenersRef.current.forEach((listener) => listener(view));
   }, []);
 
+  const lastInvKRef = useRef<number | null>(null);
   const lastSampleRef = useRef<Sample | null>(null);
   const velocityRef = useRef({ vx: 0, vy: 0 });
   const momentumFrameRef = useRef<number | null>(null);
@@ -104,6 +123,7 @@ const TreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps>(function TreeCa
     if (!svgRef.current || !dimensions) return;
 
     function runMomentum() {
+      if (prefersReducedMotion()) return;
       if (isMomentumDone(velocityRef.current.vx, velocityRef.current.vy)) return;
       let lastFrameTime = performance.now();
       const step = () => {
@@ -142,7 +162,10 @@ const TreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps>(function TreeCa
         const content = contentRef.current;
         content?.setAttribute('transform', `translate(${t.x},${t.y}) scale(${t.k})`);
         // Lets dots and junctions keep a constant on-screen size via CSS (no React re-render).
-        content?.style.setProperty('--inv-k', String(1 / t.k));
+        if (lastInvKRef.current !== t.k) {
+          lastInvKRef.current = t.k;
+          content?.style.setProperty('--inv-k', String(1 / t.k));
+        }
         notify();
         const dims = dimensionsRef.current;
         if (dims && needsRecommit(committedRef.current, t, dims.width, dims.height)) {
@@ -172,9 +195,21 @@ const TreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps>(function TreeCa
     selection.call(zoomBehavior);
     const initial = zoomIdentity.translate(dimensions.width / 2, dimensions.height / 6).scale(initialZoom);
     selection.call(zoomBehavior.transform, initial);
-    // dimensions is measured once on mount, so this effect intentionally only re-runs when it
-    // changes from null. scaleExtent is kept in sync by the layout-bounds effect below.
+    // Runs once, when the container is first measured (later resizes are handled by the effects
+    // below). scaleExtent is kept in sync by the layout-bounds effect.
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dimensions !== null]);
+
+  // After a resize the committed (culling) rect must be recomputed for the new viewport size.
+  useEffect(() => {
+    if (!dimensions || !zoomBehaviorRef.current) return;
+    const t = transformRef.current;
+    const next: Committed = {
+      rect: visibleRect(t, dimensions.width, dimensions.height, VISIBLE_MARGIN),
+      level: zoomLevelFor(t.k),
+    };
+    committedRef.current = next;
+    setCommitted(next);
   }, [dimensions]);
 
   const layout = useMemo(
@@ -190,9 +225,15 @@ const TreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps>(function TreeCa
   // The zoom floor drops as far as needed for the whole expanded tree to fit on screen.
   useEffect(() => {
     if (!dimensions) return;
-    const fitK = fitTransform(bounds, dimensions.width, dimensions.height).k;
+    const fitK = fitTransform(bounds, dimensions.width, dimensions.height, FIT_PADDING).k;
     minZoomRef.current = minZoomFor(fitK, scaleExtent.min);
     zoomBehaviorRef.current?.scaleExtent([minZoomRef.current, scaleExtent.max]);
+    // d3 only clamps on the next gesture, so pull a now-out-of-range zoom back in immediately.
+    const k = transformRef.current.k;
+    const clamped = clampZoom(k, minZoomRef.current, scaleExtent.max);
+    if (clamped !== k && svgRef.current && zoomBehaviorRef.current) {
+      select(svgRef.current).call(zoomBehaviorRef.current.scaleTo, clamped);
+    }
     notify();
   }, [bounds, dimensions, scaleExtent.min, scaleExtent.max, notify]);
 
@@ -239,7 +280,7 @@ const TreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps>(function TreeCa
     if (!svgRef.current || !zoomBehaviorRef.current) return;
     const target = zoomIdentity.translate(next.x, next.y).scale(next.k);
     const selection = select(svgRef.current);
-    if (animate) {
+    if (animate && !prefersReducedMotion()) {
       selection.transition().duration(400).call(zoomBehaviorRef.current.transform, target);
     } else {
       selection.call(zoomBehaviorRef.current.transform, target);
@@ -260,11 +301,11 @@ const TreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps>(function TreeCa
       },
       zoomIn() {
         if (!svgRef.current || !zoomBehaviorRef.current) return;
-        select(svgRef.current).transition().duration(400).call(zoomBehaviorRef.current.scaleBy, 1.2);
+        select(svgRef.current).transition().duration(prefersReducedMotion() ? 0 : 400).call(zoomBehaviorRef.current.scaleBy, 1.2);
       },
       zoomOut() {
         if (!svgRef.current || !zoomBehaviorRef.current) return;
-        select(svgRef.current).transition().duration(400).call(zoomBehaviorRef.current.scaleBy, 1 / 1.2);
+        select(svgRef.current).transition().duration(prefersReducedMotion() ? 0 : 400).call(zoomBehaviorRef.current.scaleBy, 1 / 1.2);
       },
       resetView() {
         const dims = dimensionsRef.current;
@@ -274,7 +315,7 @@ const TreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps>(function TreeCa
       fitToView() {
         const dims = dimensionsRef.current;
         if (!dims) return;
-        applyTransform(fitTransform(bounds, dims.width, dims.height), true);
+        applyTransform(fitTransform(bounds, dims.width, dims.height, FIT_PADDING), true);
       },
       setZoom(k: number) {
         if (!svgRef.current || !zoomBehaviorRef.current) return;
@@ -289,7 +330,7 @@ const TreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps>(function TreeCa
 
   return (
     <div
-      ref={handleContainerRef}
+      ref={containerRef}
       className="relative h-full w-full overflow-hidden bg-app"
       style={{
         backgroundImage: 'radial-gradient(var(--color-grid) 1px, transparent 1px)',
@@ -312,6 +353,7 @@ const TreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps>(function TreeCa
                   key={`junction-${node.data.id}`}
                   cx={node.x}
                   cy={node.y + nodeSize.y / 2}
+                  r={3}
                   className="fill-connector"
                   style={cssRadius('calc(var(--inv-k, 1) * 3px)')}
                 />
