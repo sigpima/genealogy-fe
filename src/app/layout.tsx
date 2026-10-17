@@ -1,11 +1,18 @@
 import type { Metadata } from 'next';
-import { Inter } from 'next/font/google';
+import { Be_Vietnam_Pro, Noto_Serif } from 'next/font/google';
 import { ThemeProvider } from '@/components/theme/ThemeProvider';
 import './globals.css';
 
-const inter = Inter({
-  variable: '--font-inter',
-  subsets: ['latin'],
+const serif = Noto_Serif({
+  variable: '--font-serif',
+  subsets: ['latin', 'vietnamese'],
+  weight: ['600', '700'],
+});
+
+const ui = Be_Vietnam_Pro({
+  variable: '--font-ui',
+  subsets: ['latin', 'vietnamese'],
+  weight: ['400', '500', '600'],
 });
 
 export const metadata: Metadata = {
@@ -18,7 +25,7 @@ export const metadata: Metadata = {
 const THEME_INIT_SCRIPT = `
 try {
   var t = window.localStorage.getItem('genealogy-web:theme');
-  if (t === 'warm' || t === 'modern' || t === 'elegant') {
+  if (t === 'heritage' || t === 'warm' || t === 'modern' || t === 'elegant') {
     document.documentElement.setAttribute('data-theme', t);
   }
 } catch (e) {}
@@ -34,7 +41,7 @@ export default function RootLayout({
       <head>
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
       </head>
-      <body className={`${inter.variable} bg-app text-default antialiased`}>
+      <body className={`${serif.variable} ${ui.variable} font-ui bg-app text-default antialiased`}>
         <ThemeProvider>{children}</ThemeProvider>
       </body>
     </html>
