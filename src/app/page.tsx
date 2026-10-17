@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Header } from '@/components/layout/Header';
-import GenealogyTree, { type FocusRequest } from './genealogy-tree/page';
+import GenealogyTree, { type FocusRequest } from '@/components/tree/GenealogyTree';
 import Sidebar from './sidebar';
 import { clanName } from '@/lib/tree/generations';
 import { generateSyntheticTree } from '@/lib/tree/synthetic';

@@ -8,3 +8,8 @@ Dockerfile
 .dockerignore
 tsconfig.tsbuildinfo
 docs
+docker-compose.yml
+.superpowers
+.vscode
+.server.log
+coverage

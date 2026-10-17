@@ -1,0 +1,85 @@
+# Compose riêng cho frontend — chạy mỗi mình web, trỏ vào một API đã chạy sẵn.
+# Bản deploy đủ bộ nằm ở ../docker-compose.yml.
+#
+#   (cd ../genealogy-api && docker compose up -d --build --wait api)   # API trước
+#   docker compose up --build web              # bản production (như khi deploy)
+#   docker compose --profile dev up web-dev    # bản dev, hot reload, mount code vào container
+#
+# Mặc định web gọi API qua network "genealogy_dev" (tên cố định, cũng được khai
+# báo trong ../genealogy-api/docker-compose.yml) bằng http://api:8000 — API
+# không cần publish ra mọi interface của máy. Nếu API chạy ngoài Docker
+# (uvicorn trên máy) thì đặt API_BASE_URL=http://host.docker.internal:8000 và
+# cho uvicorn nghe 0.0.0.0 (port chỉ bind 127.0.0.1 thì container KHÔNG với tới
+# được). Đặt biến bằng môi trường hoặc file .env cạnh file này.
+# Browser không bao giờ gọi API trực tiếp — chỉ qua /api và /uploads của chính
+# web (xem next.config.ts), nên cookie đăng nhập cùng origin với trang.
+
+name: genealogy-web
+
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+services:
+
+  web:
+    build:
+      context: .
+      args:
+        # QUAN TRỌNG: với output "standalone", rewrites() của next.config.ts chỉ
+        # chạy 1 lần lúc `next build` và bị đóng băng vào image — đổi biến này
+        # lúc `up` không có tác dụng, phải build lại (xem Dockerfile).
+        API_BASE_URL: ${API_BASE_URL:-http://api:8000}
+    image: ${WEB_IMAGE:-genealogy-web}:${WEB_IMAGE_TAG:-latest}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - default
+      - dev
+    ports:
+      - "127.0.0.1:${WEB_PORT:-3000}:3000"
+    restart: unless-stopped
+    healthcheck:
+      # "/" redirect sang /login khi chưa đăng nhập (middleware) — 3xx vẫn là sống.
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000', r => process.exit(r.statusCode < 500 ? 0 : 1)).on('error', () => process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    logging: *default-logging
+
+  # Dev server có hot reload: mount code vào container. node_modules và .next
+  # nằm trong volume riêng của container để không đè lên node_modules của máy.
+  # Ở chế độ dev next đọc lại API_BASE_URL mỗi lần chạy (khác bản build).
+  # `npm ci` chỉ chạy lần đầu (lâu, vài phút); đổi package-lock.json thì cài lại
+  # bằng `docker compose --profile dev run --rm web-dev npm ci`.
+  web-dev:
+    profiles: ["dev"]
+    image: node:20-alpine
+    working_dir: /app
+    command: sh -c "[ -x node_modules/.bin/next ] || npm ci; npm run dev -- --hostname 0.0.0.0"
+    environment:
+      API_BASE_URL: ${API_BASE_URL:-http://api:8000}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - default
+      - dev
+    volumes:
+      - ./:/app
+      - web_dev_node_modules:/app/node_modules
+      - web_dev_next:/app/.next
+    ports:
+      - "127.0.0.1:${WEB_PORT:-3000}:3000"
+    logging: *default-logging
+
+networks:
+  # Cùng tên với network khai báo trong ../genealogy-api/docker-compose.yml.
+  dev:
+    name: genealogy_dev
+
+volumes:
+  web_dev_node_modules:
+  web_dev_next:

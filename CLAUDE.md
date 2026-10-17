@@ -30,6 +30,13 @@ manifest baked into the standalone output; the production `server.js` does
 `../DOCKER.md`) passes it correctly via `build.args`; building this
 Dockerfile directly without that arg silently falls back to
 `http://localhost:8000`, which is wrong inside a container network.
+`docker-compose.yml` *here* runs the frontend alone (`web`, production build,
+or `web-dev` with hot reload under `--profile dev`); it reaches the API at
+`http://api:8000` over the shared `genealogy_dev` network that
+`../genealogy-api/docker-compose.yml` creates — **not** via
+`host.docker.internal`, because an API published on `127.0.0.1:8000` is
+unreachable from another container through the host gateway. Everything about
+the three compose files is in `../DOCKER.md`.
 
 ## Architecture
 
@@ -66,7 +73,7 @@ the same class of staleness bug already documented below for renames.
 
 **Spouses (`MemberDetailPanel`'s "Vợ/chồng" section)** — a member can
 have zero or more spouses (`PanelSpouse[]`, converted in
-`genealogy-tree/page.tsx`'s `toPanelSpouses` from the API's snake_case
+`components/tree/GenealogyTree.tsx`'s `toPanelSpouses` from the API's snake_case
 `Spouse` shape). Each row has its own inline edit mode (name, birth
 year, death year, gender, notes, marriage year — one `SpouseDraft` per
 row, only one row editable at a time) submitted as a single `PUT
@@ -91,7 +98,7 @@ first (`POST /api/members/{id}/avatar` as `multipart/form-data` if a
 new file was picked, or `DELETE /api/members/{id}/avatar` if "Xoá ảnh"
 was clicked with no replacement), and only then sends the normal JSON
 `PUT` for the other fields — the general member-update endpoint never
-carries the avatar. **All of `genealogy-tree/page.tsx`'s mutation
+carries the avatar. **All of `components/tree/GenealogyTree.tsx`'s mutation
 handlers that update `selectedMember` from its previous value use the
 functional `setSelectedMember((prev) => ...)` form, not
 `setSelectedMember({ ...selectedMember, ... })`** — this was a real bug
@@ -166,6 +173,14 @@ doesn't match the server-rendered HTML, and that particular mismatch is
 expected and safe to suppress (React's hydration warning about it is
 otherwise a false positive, not a real bug).
 
+**Never put a prop-driven component in a route file** (`src/app/**/page.tsx`):
+`next build` prerenders every route without props, so the build crashes if the
+component dereferences them — dev mode never prerenders, so it only shows up in
+`npm run build` / the Docker image. `GenealogyTree` therefore lives in
+`src/components/tree/GenealogyTree.tsx`, and the old `/genealogy-tree` route just
+redirects to `/`. Run a production build (or `docker compose build web`) before
+merging anything that touches the tree.
+
 **The tree canvas (`src/components/tree/TreeCanvas.tsx`) is built for large
 trees (the real tree is ~700 members; measured in headless Chromium with
 software rendering at 2,000 and 5,000 synthetic members, fully expanded, p95
@@ -233,7 +248,7 @@ keep it fast — don't undo them casually:
 — the same shape `GET /api/members/tree` returns — with no rendering
 dependency. `id` is optional on the type (existing tests construct
 `FamilyMember` literals without one) but always present on real API data
-— the CRUD mutation handlers in `genealogy-tree/page.tsx` depend on it
+— the CRUD mutation handlers in `components/tree/GenealogyTree.tsx` depend on it
 being there.
 
 **Two gotchas hit while adding member mutations (rename/add child/delete),
@@ -246,7 +261,7 @@ worth re-reading before touching this flow again:**
   and **unmounts `GenealogyTree` entirely** for the duration of the
   refetch — closing the open detail panel and losing zoom/pan/collapse
   state on every single edit, even though the fetch itself is fast.
-- `handleRenameMember` (`genealogy-tree/page.tsx`) must update the *last
+- `handleRenameMember` (`components/tree/GenealogyTree.tsx`) must update the *last
   entry* of `selectedMember.ancestorPath` to the new name, not just
   `.name` — `ancestorPath` includes the member's own name as its last
   element by design, and `handleSelectChild`'s child-navigation does a
@@ -268,7 +283,7 @@ birth year with no death year), a gender label, and a notes block, each only
 when present. Edit mode (`Sửa`) expands into a full form — name,
 birth year, death year, gender dropdown, notes textarea — submitted as a
 **single `PUT`** via one `MemberUpdateInput` (`onUpdate` prop), unlike the
-add-child form which stays name-only. `genealogy-tree/page.tsx` opens a
+add-child form which stays name-only. `components/tree/GenealogyTree.tsx` opens a
 member by id (`handleSelectMember`/`handleSelectChild` → `openMemberDetail`),
 fills the panel from `ensureMemberDetail`'s cache (snake_case, as the API
 returns it) and converts it to the panel's camelCase props. The panel is
