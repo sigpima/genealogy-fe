@@ -2,7 +2,7 @@
 
 import { Header, type HeaderSearch } from './Header';
 import Sidebar from './Sidebar';
-import type { CurrentUser } from '@/lib/auth/session';
+import { canManage, type CurrentUser } from '@/lib/auth/session';
 
 export type AppShellProps = {
   clanName: string;
@@ -24,7 +24,7 @@ export function AppShell({
 }: AppShellProps) {
   return (
     <div className="flex h-screen">
-      <Sidebar active={active} isAdmin={user?.role === 'admin'} />
+      <Sidebar active={active} isAdmin={canManage(user)} />
       <div className="flex flex-1 flex-col overflow-hidden">
         <Header
           clanName={clanName}

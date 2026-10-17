@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   canEdit,
+  canManage,
   loginErrorMessage,
   roleLabel,
   signupNotice,
@@ -8,21 +9,27 @@ import {
   type CurrentUser,
 } from './session';
 
-const user = (role: 'admin' | 'member'): CurrentUser => ({
+const user = (role: 'superadmin' | 'admin' | 'member'): CurrentUser => ({
   id: 1,
   email: 'a@example.com',
   full_name: 'A',
   role,
   status: 'active',
+  tree_id: role === 'superadmin' ? null : 1,
+  tree_name: role === 'superadmin' ? null : 'Họ A',
 });
 
-describe('canEdit', () => {
-  it('is true only for an admin', () => {
-    expect(canEdit(user('admin'))).toBe(true);
-    expect(canEdit(user('member'))).toBe(false);
+describe('canEdit / canManage', () => {
+  it('is true for admins and superadmins, false for members', () => {
+    for (const check of [canEdit, canManage]) {
+      expect(check(user('admin'))).toBe(true);
+      expect(check(user('superadmin'))).toBe(true);
+      expect(check(user('member'))).toBe(false);
+    }
   });
   it('is false for a guest', () => {
     expect(canEdit(null)).toBe(false);
+    expect(canManage(null)).toBe(false);
   });
 });
 
@@ -78,5 +85,6 @@ describe('roleLabel', () => {
   it('uses Vietnamese labels', () => {
     expect(roleLabel('admin')).toBe('Quản trị viên');
     expect(roleLabel('member')).toBe('Thành viên');
+    expect(roleLabel('superadmin')).toBe('Quản trị tối cao');
   });
 });

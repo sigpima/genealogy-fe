@@ -289,6 +289,18 @@ redirects to `/login` itself when the API answers 401. Pitfalls: Next injects an
 `next-route-announcer` with `role="alert"`, so tests/selectors for error messages must be scoped
 (`form [role=alert]`); and in `UsersPanel` an error must be set *after* `load()` (which clears it).
 
+**Several families on one deployment (backend design: `../genealogy-api/docs/superpowers/specs/2026-10-17-multi-tree-design.md`)** —
+every user belongs to one family tree (`CurrentUser.tree_id`/`tree_name`; null for the platform
+`superadmin`, whose role label is "Quản trị tối cao"); `canManage`/`canEdit` are true for `admin` and
+`superadmin` (`src/lib/auth/session.ts`). The frontend never sends a tree id: a signed-in user's tree
+comes from their account (a superadmin sees the lowest-id tree until a tree switcher exists). Guests and
+signup need to know which family they mean: **`/t/<slug>`** (`src/app/t/[slug]/route.ts`) sets the
+`tree_slug` cookie (validated by `isValidTreeSlug`, `src/lib/auth/tree.ts`) and redirects to `/` with a
+*relative* `Location` (behind a proxy the request's own origin is not the public one). The signup page
+shows which family the visitor is joining, or asks for the family link when the API cannot tell
+(`/api/site/info` answers 404 with several families and no cookie, and the form is hidden). Trees and
+tree admins are created with `../genealogy-api/scripts/manage.py` (there is no superadmin page yet).
+
 **Member detail fields** — each member's `MemberDetail` (fetched per member
 from `GET /api/members/{id}`, not part of the tree skeleton) carries
 `birth_year`, `death_year`, `gender` (`'male' | 'female' | 'other'`, see the

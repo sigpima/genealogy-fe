@@ -11,6 +11,7 @@ import {
   type AccountStatus,
   type SiteInfo,
 } from '@/lib/auth/session';
+import { signupTreeNotice, type SiteInfoState } from '@/lib/auth/tree';
 
 const fields = signupFields;
 const fieldsState: { [key: string]: string } = {};
@@ -22,6 +23,8 @@ export default function Signup() {
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [siteInfo, setSiteInfo] = useState<SiteInfo | null>(null);
+  const [infoStatus, setInfoStatus] =
+    useState<SiteInfoState['status']>('loading');
   const [success, setSuccess] = useState<string | null>(null);
 
   useEffect(() => {
@@ -29,11 +32,24 @@ export default function Signup() {
       .then((response) =>
         response.ok ? (response.json() as Promise<SiteInfo>) : null,
       )
-      .then(setSiteInfo)
-      .catch(() => setSiteInfo(null));
+      .then((info) => {
+        setSiteInfo(info);
+        setInfoStatus(info ? 'ok' : 'unknown');
+      })
+      .catch(() => setInfoStatus('unknown'));
   }, []);
   const isClosed = siteInfo?.registration === 'closed';
-  const notice = signupNotice(siteInfo);
+  // Several families and no /t/<slug> link opened yet: we cannot know where this account would go.
+  const needsFamilyLink = infoStatus === 'unknown';
+  const notice = [
+    signupTreeNotice({
+      status: infoStatus,
+      treeName: siteInfo?.tree_name ?? null,
+    }),
+    signupNotice(siteInfo),
+  ]
+    .filter(Boolean)
+    .join(' ');
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSignupState({ ...signupState, [e.target.id]: e.target.value });
@@ -126,7 +142,7 @@ export default function Signup() {
               {error}
             </p>
           )}
-          {!isClosed && (
+          {!isClosed && !needsFamilyLink && (
             <FormAction text={isSubmitting ? 'Đang đăng ký...' : 'Signup'} />
           )}
         </div>

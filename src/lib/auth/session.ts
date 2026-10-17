@@ -1,4 +1,4 @@
-export type Role = 'admin' | 'member';
+export type Role = 'superadmin' | 'admin' | 'member';
 export type AccountStatus = 'pending' | 'active' | 'disabled';
 
 export type CurrentUser = {
@@ -7,20 +7,36 @@ export type CurrentUser = {
   full_name: string;
   role: Role;
   status: AccountStatus;
+  /** The one family tree the user belongs to; null for a superadmin (platform level). */
+  tree_id: number | null;
+  tree_name: string | null;
 };
 
 export type SiteInfo = {
   visibility: 'private' | 'public';
   registration: 'open' | 'approval' | 'closed';
+  tree_name?: string | null;
+  tree_slug?: string | null;
 };
 
-/** Only admins edit; members and guests read. (The API enforces the same rule.) */
-export function canEdit(user: CurrentUser | null): boolean {
-  return user?.role === 'admin';
+/** Admins (of their tree) and the superadmin manage; members and guests only read. The API enforces it too. */
+export function canManage(user: CurrentUser | null): boolean {
+  return user?.role === 'admin' || user?.role === 'superadmin';
 }
 
+/** Editing the tree needs the same permission as managing it. */
+export function canEdit(user: CurrentUser | null): boolean {
+  return canManage(user);
+}
+
+const ROLE_LABELS: Record<Role, string> = {
+  superadmin: 'Quản trị tối cao',
+  admin: 'Quản trị viên',
+  member: 'Thành viên',
+};
+
 export function roleLabel(role: Role): string {
-  return role === 'admin' ? 'Quản trị viên' : 'Thành viên';
+  return ROLE_LABELS[role];
 }
 
 export function loginErrorMessage(

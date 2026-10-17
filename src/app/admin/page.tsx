@@ -6,6 +6,7 @@ import { SettingsPanel } from '@/components/admin/SettingsPanel';
 import { UsersPanel } from '@/components/admin/UsersPanel';
 import { useSession } from '@/components/auth/useSession';
 import { AppShell } from '@/components/layout/AppShell';
+import { canManage } from '@/lib/auth/session';
 
 type Tab = 'users' | 'settings';
 
@@ -15,7 +16,7 @@ export default function AdminPage() {
   const [tab, setTab] = useState<Tab>('users');
   const [pending, setPending] = useState(0);
 
-  const isAdmin = session.user?.role === 'admin';
+  const isAdmin = canManage(session.user);
 
   useEffect(() => {
     if (session.isLoading) return;
@@ -46,7 +47,11 @@ export default function AdminPage() {
 
   return (
     <AppShell
-      clanName="Quản trị"
+      clanName={
+        session.user.tree_name
+          ? `Quản trị · ${session.user.tree_name}`
+          : 'Quản trị'
+      }
       user={session.user}
       active="admin"
       onLogout={handleLogout}
