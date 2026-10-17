@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ConverterCard, ReminderCard, SubscribeCard } from './CalendarTools';
 import { EventDialog } from './EventDialog';
+import { CardsDialog } from '@/components/invitations/CardsDialog';
 import {
   EVENT_KIND_LABELS,
   formatDayMonth,
@@ -43,6 +44,7 @@ export function CalendarView({ isAdmin, signedIn, onUnauthorized }: { isAdmin: b
   const [events, setEvents] = useState<FamilyEvent[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [dialog, setDialog] = useState<{ event?: FamilyEvent; date?: string } | null>(null);
+  const [cards, setCards] = useState<{ event: FamilyEvent; date: string } | null>(null);
   const [reload, setReload] = useState(0);
 
   // /lich?ngay=2024-09-17 (a notification's link) opens that month with the day selected.
@@ -249,6 +251,9 @@ export function CalendarView({ isAdmin, signedIn, onUnauthorized }: { isAdmin: b
                   {item.description && <p className="mt-1 whitespace-pre-wrap text-xs text-default">{item.description}</p>}
                   {isAdmin && item.event_id !== null && eventById.get(item.event_id) && (
                     <div className="flex">
+                      <button type="button" className={ghost} onClick={() => setCards({ event: eventById.get(item.event_id!)!, date: item.date })}>
+                        Thiệp mời
+                      </button>
                       <button type="button" className={ghost} onClick={() => setDialog({ event: eventById.get(item.event_id!) })}>
                         Sửa
                       </button>
@@ -294,6 +299,7 @@ export function CalendarView({ isAdmin, signedIn, onUnauthorized }: { isAdmin: b
         {signedIn && <ReminderCard />}
       </div>
 
+      {cards && <CardsDialog eventId={cards.event.id} eventTitle={cards.event.title} date={cards.date} onClose={() => setCards(null)} />}
       {dialog && <EventDialog event={dialog.event} initialDate={dialog.date} onClose={() => setDialog(null)} onSaved={refresh} />}
     </div>
   );

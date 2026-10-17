@@ -438,6 +438,15 @@ meaning never depends on colour. **Every bar leads to work:** the search page re
 (`filtersFromAddress`) — the board's "Bổ sung" links (admins only) open the grid already filtered to the people lacking that field. Only fields the grid can
 filter on get a link (`completenessLink`). Playwright: the card labels are upper-cased by CSS, so match text case-insensitively.
 
+**GĐ9: invitation cards (backend design: `../genealogy-api/docs/superpowers/specs/2026-10-19-gd9-invitations-design.md`)** — **`/thiep/[token]`**
+(`InvitationView`) is **public on purpose**: no `AppShell`, no session, not in the middleware matcher; the secret token in the address is the access control.
+It shows a card (family, event, weekday + solar date, **lunar date**, place with a directions link, the host's message, the totals) and the answer form
+(Tham dự / Không / Chưa chắc, number of people for "yes", a note). On a card's open link the browser keeps the **personal token** the API returns in
+`localStorage` (`storageKey`), so reopening the same link greets the guest with their answer and lets them change it (`Đổi câu trả lời`); a personal link greets
+by name and needs no name. A closed card shows a notice instead of the form. Guest text is rendered as plain text by React (a `<img onerror>` in a name stays
+text). Admins reach `CardsDialog` from an event in the calendar's day view ("Thiệp mời"): create a card for a date (the date must be an occurrence), copy the
+shared link, add personal links (one name per line), see every answer with names/notes, close/reopen, download the CSV, delete a card.
+
 **`FormAction` (`src/components/FormAction.tsx`) must not receive a
 `handleSubmit` prop when used inside a `<form onSubmit={...}>`** — its
 button is `type="submit"`, so passing the same handler as `onClick` too
