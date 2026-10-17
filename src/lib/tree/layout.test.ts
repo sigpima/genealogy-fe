@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { computeLayout, stepPath } from './layout';
+import { computeLayout, slotSize, stepPath } from './layout';
 import type { FamilyMember } from './types';
 
 const nodeSize = { x: 100, y: 50 };
@@ -50,5 +50,31 @@ describe('computeLayout', () => {
 describe('stepPath', () => {
   it('matches the exact right-angle formula', () => {
     expect(stepPath({ x: 0, y: 0 }, { x: 100, y: 50 })).toBe('M0,0 V25 H100 V50');
+  });
+});
+
+describe('horizontal orientation', () => {
+  const tree: FamilyMember = { id: 1, name: 'Tổ', children: [{ id: 2, name: 'An' }, { id: 3, name: 'Bình' }] };
+  const size = { x: 100, y: 300 }; // (lateral, depth)
+  const separation = { siblings: 1, nonSiblings: 1 };
+
+  it('puts generations in columns and siblings in rows', () => {
+    const { nodes } = computeLayout(tree, new Set(), size, separation, 'horizontal');
+    const byId = new Map(nodes.map((n) => [n.data.id, n]));
+    expect(byId.get(1)!.x).toBe(0);
+    expect(byId.get(2)!.x).toBe(300);
+    expect(byId.get(3)!.x).toBe(300);
+    expect(Math.abs(byId.get(2)!.y - byId.get(3)!.y)).toBe(100);
+  });
+  it('keeps the vertical layout as it was', () => {
+    const { nodes } = computeLayout(tree, new Set(), size, separation);
+    const byId = new Map(nodes.map((n) => [n.data.id, n]));
+    expect(byId.get(2)!.y).toBe(300);
+    expect(Math.abs(byId.get(2)!.x - byId.get(3)!.x)).toBe(100);
+  });
+  it('turns link paths and slot sizes with the tree', () => {
+    expect(stepPath({ x: 0, y: 0 }, { x: 300, y: 50 }, 'horizontal')).toBe('M0,0 H150 V50 H300');
+    expect(slotSize(size, 'horizontal')).toEqual({ x: 300, y: 100 });
+    expect(slotSize(size, 'vertical')).toEqual(size);
   });
 });

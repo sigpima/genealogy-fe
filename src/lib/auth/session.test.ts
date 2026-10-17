@@ -34,6 +34,9 @@ describe('canEdit / canManage', () => {
 });
 
 describe('loginErrorMessage', () => {
+  it('asks to wait after too many attempts', () => {
+    expect(loginErrorMessage(429, undefined)).toMatch(/quá nhiều lần/);
+  });
   it('explains a pending account', () => {
     expect(loginErrorMessage(403, 'account_pending')).toMatch(/chờ.*duyệt/i);
   });

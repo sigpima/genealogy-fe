@@ -5,7 +5,7 @@ import { select } from 'd3-selection';
 import 'd3-transition';
 import { zoom as d3zoom, zoomIdentity, type D3ZoomEvent, type ZoomBehavior } from 'd3-zoom';
 import React, { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
-import { computeLayout, stepPath, type TreeNodeSize, type TreeSeparation } from '@/lib/tree/layout';
+import { computeLayout, slotSize, stepPath, type Orientation, type TreeNodeSize, type TreeSeparation } from '@/lib/tree/layout';
 import { computeVelocity, isMomentumDone, nextMomentumStep, type Sample } from '@/lib/tree/momentum';
 import {
   VISIBLE_MARGIN,
@@ -42,8 +42,10 @@ export type VisibleChange = {
 export type TreeCanvasProps = {
   familyTree: FamilyMember;
   collapsedIds: Set<number>;
+  /** (lateral, depth) distances; see `slotSize`. */
   nodeSize: TreeNodeSize;
   separation: TreeSeparation;
+  orientation?: Orientation;
   /** `min` is the floor; the effective minimum zoom drops lower when needed to fit the whole tree. */
   scaleExtent: { min: number; max: number };
   initialZoom: number;
@@ -62,6 +64,11 @@ export type TreeCanvasHandle = {
 };
 
 const CENTER_MIN_ZOOM = 0.5;
+
+/** Where the root sits when the view is (re)set: top middle for rows of generations, left middle for columns. */
+function startOffset(size: { width: number; height: number }, orientation: Orientation): [number, number] {
+  return orientation === 'horizontal' ? [size.width / 6, size.height / 2] : [size.width / 2, size.height / 6];
+}
 // Keeps "Toàn cảnh" clear of the floating generation bar (top) and zoom bar / minimap (bottom).
 const FIT_PADDING = { top: 96, right: 48, bottom: 112, left: 48 };
 
@@ -70,7 +77,7 @@ function prefersReducedMotion(): boolean {
 }
 
 const TreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps>(function TreeCanvas(
-  { familyTree, collapsedIds, nodeSize, separation, scaleExtent, initialZoom, renderNode, onVisibleChange },
+  { familyTree, collapsedIds, nodeSize, separation, orientation = 'vertical', scaleExtent, initialZoom, renderNode, onVisibleChange },
   ref
 ) {
   const svgRef = useRef<SVGSVGElement | null>(null);
@@ -79,6 +86,9 @@ const TreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps>(function TreeCa
   const [dimensions, setDimensions] = useState<{ width: number; height: number } | null>(null);
   const dimensionsRef = useRef(dimensions);
   dimensionsRef.current = dimensions;
+  const orientationRef = useRef(orientation);
+  orientationRef.current = orientation;
+  const slot = useMemo(() => slotSize(nodeSize, orientation), [nodeSize, orientation]);
 
   // The live pan/zoom lives in a ref and is written straight to the DOM; React state (`committed`)
   // only changes when the set of visible nodes can change (see needsRecommit).
@@ -193,7 +203,7 @@ const TreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps>(function TreeCa
     zoomBehaviorRef.current = zoomBehavior;
     const selection = select(svgRef.current);
     selection.call(zoomBehavior);
-    const initial = zoomIdentity.translate(dimensions.width / 2, dimensions.height / 6).scale(initialZoom);
+    const initial = zoomIdentity.translate(...startOffset(dimensions, orientationRef.current)).scale(initialZoom);
     selection.call(zoomBehavior.transform, initial);
     // Runs once, when the container is first measured (later resizes are handled by the effects
     // below). scaleExtent is kept in sync by the layout-bounds effect.
@@ -213,14 +223,14 @@ const TreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps>(function TreeCa
   }, [dimensions]);
 
   const layout = useMemo(
-    () => computeLayout(familyTree, collapsedIds, nodeSize, separation),
-    [familyTree, collapsedIds, nodeSize, separation]
+    () => computeLayout(familyTree, collapsedIds, nodeSize, separation, orientation),
+    [familyTree, collapsedIds, nodeSize, separation, orientation]
   );
 
   const bounds: Bounds = useMemo(() => {
     const raw = boundsOf(layout.nodes);
-    return padBounds(raw ?? { minX: 0, minY: 0, maxX: 0, maxY: 0 }, nodeSize.x / 2, nodeSize.y / 2);
-  }, [layout, nodeSize]);
+    return padBounds(raw ?? { minX: 0, minY: 0, maxX: 0, maxY: 0 }, slot.x / 2, slot.y / 2);
+  }, [layout, slot]);
 
   // The zoom floor drops as far as needed for the whole expanded tree to fit on screen.
   useEffect(() => {
@@ -237,6 +247,17 @@ const TreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps>(function TreeCa
     notify();
   }, [bounds, dimensions, scaleExtent.min, scaleExtent.max, notify]);
 
+  // Turning the tree a quarter changes every position: show the whole thing again instead of an arbitrary patch.
+  const shownOrientation = useRef(orientation);
+  useEffect(() => {
+    if (shownOrientation.current === orientation) return;
+    shownOrientation.current = orientation;
+    const dims = dimensionsRef.current;
+    if (dims) applyTransform(fitTransform(bounds, dims.width, dims.height, FIT_PADDING), false);
+    // bounds is already the new orientation's (same render); applyTransform is stable
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [orientation]);
+
   const { visibleNodes, visibleLinks } = useMemo(() => {
     if (!committed) return { visibleNodes: [], visibleLinks: [] };
     return {
@@ -246,8 +267,8 @@ const TreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps>(function TreeCa
   }, [layout, committed]);
 
   const linkPath = useMemo(
-    () => visibleLinks.map((link) => stepPath(link.source, link.target)).join(' '),
-    [visibleLinks]
+    () => visibleLinks.map((link) => stepPath(link.source, link.target, orientation)).join(' '),
+    [visibleLinks, orientation]
   );
 
   const level: ZoomLevel = committed?.level ?? zoomLevelFor(initialZoom);
@@ -310,7 +331,8 @@ const TreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps>(function TreeCa
       resetView() {
         const dims = dimensionsRef.current;
         if (!dims) return;
-        applyTransform({ x: dims.width / 2, y: dims.height / 6, k: initialZoom }, true);
+        const [x, y] = startOffset(dims, orientationRef.current);
+        applyTransform({ x, y, k: initialZoom }, true);
       },
       fitToView() {
         const dims = dimensionsRef.current;
@@ -351,8 +373,8 @@ const TreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps>(function TreeCa
               node.children.length > 1 && (
                 <circle
                   key={`junction-${node.data.id}`}
-                  cx={node.x}
-                  cy={node.y + nodeSize.y / 2}
+                  cx={orientation === 'horizontal' ? node.x + slot.x / 2 : node.x}
+                  cy={orientation === 'horizontal' ? node.y : node.y + slot.y / 2}
                   r={3}
                   className="fill-connector"
                   style={cssRadius('calc(var(--inv-k, 1) * 3px)')}

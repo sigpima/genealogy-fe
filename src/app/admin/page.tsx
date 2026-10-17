@@ -2,13 +2,14 @@
 
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import { PrivacyPanel } from '@/components/admin/PrivacyPanel';
 import { SettingsPanel } from '@/components/admin/SettingsPanel';
 import { UsersPanel } from '@/components/admin/UsersPanel';
 import { useSession } from '@/components/auth/useSession';
 import { AppShell } from '@/components/layout/AppShell';
 import { canManage } from '@/lib/auth/session';
 
-type Tab = 'users' | 'settings';
+type Tab = 'users' | 'settings' | 'privacy';
 
 export default function AdminPage() {
   const router = useRouter();
@@ -43,6 +44,7 @@ export default function AdminPage() {
       label: pending > 0 ? `Người dùng (${pending} chờ duyệt)` : 'Người dùng',
     },
     { id: 'settings', label: 'Cài đặt' },
+    { id: 'privacy', label: 'Quyền riêng tư' },
   ];
 
   return (
@@ -86,6 +88,8 @@ export default function AdminPage() {
                 currentUserId={session.user.id}
                 onPendingCount={setPending}
               />
+            ) : tab === 'privacy' ? (
+              <PrivacyPanel />
             ) : (
               <SettingsPanel />
             )}

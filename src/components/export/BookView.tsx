@@ -88,6 +88,15 @@ export function BookView({ canManage }: { canManage: boolean }) {
           </p>
         )}
       </div>
+      <section aria-label="Xuất dữ liệu" className="rounded-xl border-default border bg-surface p-4">
+        <h2 className="text-sm font-semibold text-default">Tải toàn bộ dữ liệu (JSON)</h2>
+        <p className="mt-1 text-xs text-muted">
+          Mọi thông tin của họ ở dạng đọc được: người, hôn nhân, chi phái, địa điểm, bài viết (cả bản nháp), sự kiện, yêu cầu, tài khoản (không có mật khẩu). Ảnh và tài liệu không nằm trong file này — chúng có trong bản sao lưu (docs/SAO-LUU.md).
+        </p>
+        <a href="/api/export/data.json" download className="mt-2 inline-flex min-h-11 items-center rounded-lg border-default border px-4 text-sm font-medium text-default hover:bg-surface-muted focus-visible:outline-2 focus-visible:outline-[var(--color-primary)]">
+          Tải dữ liệu JSON
+        </a>
+      </section>
       <p className="text-xs text-muted">Mỗi lần xuất được ghi vào Nhật ký. Muốn ảnh của riêng cây, dùng nút “Xuất ảnh” ở trang Cây Gia Phả.</p>
     </div>
   );

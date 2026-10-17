@@ -102,6 +102,7 @@ export function answerPayload(form: { name: string; response: RsvpResponse | '';
 }
 
 export function invitationErrorMessage(status: number): string {
+  if (status === 429) return 'Bạn gửi quá nhiều lần. Vui lòng đợi vài phút rồi thử lại.';
   if (status === 404) return 'Không tìm thấy thiệp mời này. Có thể đường dẫn đã sai hoặc thiệp đã bị thu hồi.';
   if (status === 409) return 'Thiệp mời này đã đóng hoặc đã nhận đủ số trả lời.';
   if (status === 422) return 'Thông tin chưa hợp lệ. Hãy kiểm tra tên, số người và lời nhắn.';

@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import FormAction from '@/components/FormAction';
 import Input from '@/components/Input';
+import { TOO_MANY_ATTEMPTS } from '@/lib/auth/session';
 
 export default function ForgotPasswordForm() {
   const [email, setEmail] = useState('');
@@ -21,7 +22,7 @@ export default function ForgotPasswordForm() {
         body: JSON.stringify({ email }),
       });
       if (!response.ok) {
-        setError('Không thể gửi yêu cầu. Vui lòng thử lại.');
+        setError(response.status === 429 ? TOO_MANY_ATTEMPTS : 'Không thể gửi yêu cầu. Vui lòng thử lại.');
         return;
       }
       setSubmitted(true);

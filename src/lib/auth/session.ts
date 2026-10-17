@@ -39,10 +39,13 @@ export function roleLabel(role: Role): string {
   return ROLE_LABELS[role];
 }
 
+export const TOO_MANY_ATTEMPTS = 'Bạn thử quá nhiều lần. Vui lòng đợi vài phút rồi thử lại.';
+
 export function loginErrorMessage(
   status: number,
   detail: string | undefined,
 ): string {
+  if (status === 429) return TOO_MANY_ATTEMPTS;
   if (status === 401) return 'Email hoặc mật khẩu không đúng.';
   if (status === 403 && detail === 'account_pending') {
     return 'Tài khoản của bạn đang chờ quản trị viên duyệt. Vui lòng quay lại sau.';

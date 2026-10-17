@@ -485,3 +485,10 @@ running `npm run dev` and checking it in a browser, not automated.
 and the PDF is the JPEG wrapped by a minimal hand-written PDF (`buildPdf`, xref offsets tested). Years come from paging `/api/members/search` (signed-in only). Open to
 anyone who can see the tree. (2) **`/xuat-ban`** (`BookView`, sidebar "Xuất bản", admins) downloads `GET /api/book.pdf` with the option checkboxes; `next.config.ts` raises
 `experimental.proxyTimeout` to 300 s because a big family's book takes a while.
+
+**GĐ11: kinship, privacy, view options, operations** — `RelationshipDialog` (panel → "Xem quan hệ họ hàng…", `lib/tree/relationship.ts`) asks `/api/members/relationship`; "Xem riêng nhánh này" reuses the
+ancestor-view mechanism (`ancestorViewRootId`, now the person themself). **Horizontal tree**: `TreeCanvas` takes `orientation`; `computeLayout(..., orientation)` always receives `nodeSize` as
+(lateral, depth) and swaps x/y for horizontal, `stepPath`/junctions/start offset follow, `slotSize` gives the per-axis size; the choice is kept in `localStorage` (`genealogy.tree.orientation`).
+Admin → tab "Quyền riêng tư" (`PrivacyPanel`, `lib/privacy/privacy.ts`) edits `/api/admin/privacy`. 429 from login/register/forgot/RSVP shows `TOO_MANY_ATTEMPTS`.
+`next.config.ts` adds security headers and — **production only** — a CSP (`'unsafe-inline'` scripts stay: Next hydration + the theme init script; map tiles from tile.openstreetmap.org; `data:`/`blob:` images
+for the export). A new external image/script/connect origin must be added there or it fails silently in production (it works in `next dev`!); `/xuat-ban` also links the JSON export.

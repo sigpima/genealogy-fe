@@ -22,6 +22,7 @@ import type { TreeCanvasHandle, VisibleChange } from '@/components/tree/TreeCanv
 import { ExportDialog } from '@/components/tree/ExportDialog';
 import { ViewportControls } from '@/components/tree/ViewportControls';
 import { assignBranches, type Branch, type BranchRef } from '@/lib/branches/branches';
+import type { Orientation } from '@/lib/tree/layout';
 import { idsNeedingDetail } from '@/lib/tree/detail-cache';
 import { pickIdsToFetch } from '@/lib/tree/detail-queue';
 import { collapsedIdsForDepth, expandPathTo, expandedDepthOf } from '@/lib/tree/expansion';
@@ -87,7 +88,10 @@ function toPanelSpouses(spouses: Spouse[] | undefined): PanelSpouse[] {
 
 // Slot sized for the detailed card (240x110): siblings 272px apart = card + 32px gap,
 // generations 206px apart = card + 96px gap. Never changes with zoom level.
+// (lateral, depth). Turned a quarter (horizontal) the same cards need 240+96 px per generation and 110+26 px per sibling.
 const NODE_SIZE = { x: 272, y: 206 };
+const NODE_SIZE_HORIZONTAL = { x: 136, y: 336 };
+const ORIENTATION_KEY = 'genealogy.tree.orientation';
 const SEPARATION = { siblings: 1, nonSiblings: 1.25 };
 const INITIAL_ZOOM = 0.9;
 const SCALE_EXTENT = { min: 0.15, max: 2.5 };
@@ -136,6 +140,23 @@ export default function GenealogyTree({
   }, [familyTree, displayRoot]);
   const [highlightedId, setHighlightedId] = useState<number | null>(null);
   const [exporting, setExporting] = useState(false);
+  const [orientation, setOrientation] = useState<Orientation>('vertical');
+  useEffect(() => {
+    try {
+      if (window.localStorage.getItem(ORIENTATION_KEY) === 'horizontal') setOrientation('horizontal');
+    } catch {
+      // storage can be blocked: the default is fine
+    }
+  }, []);
+  function toggleOrientation() {
+    const next: Orientation = orientation === 'vertical' ? 'horizontal' : 'vertical';
+    setOrientation(next);
+    try {
+      window.localStorage.setItem(ORIENTATION_KEY, next);
+    } catch {
+      // not remembered, still works
+    }
+  }
   const [selectedMember, setSelectedMember] = useState<SelectedMember | null>(null);
   const [focalId, setFocalId] = useState<number | null>(null);
   const detailSet = useMemo(
@@ -291,6 +312,18 @@ export default function GenealogyTree({
     canvasRef.current?.centerOnNode(pendingCenter.id);
     setPendingCenter(null);
   }, [pendingCenter, collapsedIds, ancestorViewRootId]);
+
+  /** "Xem riêng nhánh này": show only the descendants of one person (the same view mechanism as the ancestor view). */
+  function handleViewBranch(memberId: number) {
+    const chain = findAncestorChainById(familyTree, memberId);
+    const node = chain?.[chain.length - 1];
+    if (!node) return;
+    setAncestorViewRootId(memberId);
+    setCollapsedIds((prev) => new Set([...prev, ...collapsedIdsForDepth(node, DEFAULT_EXPANDED_GENERATIONS)]));
+    setFocalId(memberId);
+    setSelectedMember(null);
+    setPendingCenter({ id: memberId });
+  }
 
   function handleViewAncestors(memberId: number) {
     const chain = findAncestorChainById(familyTree, memberId);
@@ -732,7 +765,8 @@ export default function GenealogyTree({
         ref={setCanvasRef}
         familyTree={displayRoot}
         collapsedIds={collapsedIds}
-        nodeSize={NODE_SIZE}
+        nodeSize={orientation === 'horizontal' ? NODE_SIZE_HORIZONTAL : NODE_SIZE}
+        orientation={orientation}
         separation={SEPARATION}
         scaleExtent={SCALE_EXTENT}
         initialZoom={INITIAL_ZOOM}
@@ -755,7 +789,12 @@ export default function GenealogyTree({
         </button>
       )}
       {!selectedMember && !synthetic && <UpcomingStrip />}
-      <ViewportControls handle={canvasHandle} onExport={synthetic ? undefined : () => setExporting(true)} />
+      <ViewportControls
+        handle={canvasHandle}
+        onExport={synthetic ? undefined : () => setExporting(true)}
+        orientation={orientation}
+        onToggleOrientation={toggleOrientation}
+      />
       {exporting && (
         <ExportDialog
           familyTree={familyTree}
@@ -793,6 +832,7 @@ export default function GenealogyTree({
           detailLoadError={selectedMember.detailLoadError}
           onRetryLoadDetail={handleRetryLoadDetail}
           onViewAncestors={() => handleViewAncestors(selectedMember.id)}
+          onViewBranch={() => handleViewBranch(selectedMember.id)}
           childMembers={selectedMember.childrenNames.map((childName) => ({
             name: childName,
             onSelect: () => handleSelectChild(childName),

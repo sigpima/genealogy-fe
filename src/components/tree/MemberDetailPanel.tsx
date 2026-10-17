@@ -14,6 +14,7 @@ import {
 } from '@/lib/tree/profile';
 import Link from 'next/link';
 import { ProposeDialog } from '@/components/requests/ProposeDialog';
+import { RelationshipDialog } from '@/components/tree/RelationshipDialog';
 import type { BranchRef } from '@/lib/branches/branches';
 import { formFromPanel } from '@/lib/requests/requests';
 import { MediaGallery } from '@/components/media/MediaGallery';
@@ -100,6 +101,8 @@ export type MemberDetailPanelProps = {
   detailLoadError: boolean;
   onRetryLoadDetail: () => void;
   onViewAncestors: () => void;
+  /** Show only this person's descendants on the tree. */
+  onViewBranch?: () => void;
   onClose: () => void;
   onUpdate: (input: MemberUpdateInput) => Promise<MutationResult>;
   onAddChild: (name: string) => Promise<MutationResult>;
@@ -307,6 +310,7 @@ export function MemberDetailPanel({
   detailLoadError,
   onRetryLoadDetail,
   onViewAncestors,
+  onViewBranch,
   onClose,
   onUpdate,
   onAddChild,
@@ -320,6 +324,7 @@ export function MemberDetailPanel({
   const ancestors = ancestorPath.slice(0, -1);
 
   const [tab, setTab] = useState<'bio' | 'family'>('bio');
+  const [showRelationship, setShowRelationship] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editedName, setEditedName] = useState(name);
   const [editedBirthYear, setEditedBirthYear] = useState(toInputValue(birthYear));
@@ -1178,6 +1183,20 @@ export function MemberDetailPanel({
                 </section>
               )}
 
+              <section className="mt-6" aria-label="Họ hàng và nhánh">
+                <h3 className="text-[11px] font-semibold uppercase tracking-wider text-muted">Họ hàng</h3>
+                <div className="mt-1 flex flex-wrap gap-x-2">
+                  <button type="button" onClick={() => setShowRelationship(true)} className={`${ghostButton} -ms-2`}>
+                    Xem quan hệ họ hàng…
+                  </button>
+                  {onViewBranch && childMembers.length > 0 && (
+                    <button type="button" onClick={onViewBranch} className={ghostButton}>
+                      Xem riêng nhánh này
+                    </button>
+                  )}
+                </div>
+              </section>
+
               {canEdit && (
                 <button type="button" onClick={handleDelete} disabled={isSubmitting} className={`${dangerButton} mt-6 -ms-2`}>
                   Xoá thành viên
@@ -1353,6 +1372,7 @@ export function MemberDetailPanel({
           )}
         </div>
       </aside>
+      {showRelationship && <RelationshipDialog memberId={memberId} memberName={name} onClose={() => setShowRelationship(false)} />}
       {isProposing && (
         <ProposeDialog
           memberId={memberId}

@@ -8,6 +8,7 @@ import Input from '@/components/Input';
 import {
   signupNotice,
   signupResultMessage,
+  TOO_MANY_ATTEMPTS,
   type AccountStatus,
   type SiteInfo,
 } from '@/lib/auth/session';
@@ -76,6 +77,10 @@ export default function Signup() {
           full_name: signupState['full-name'],
         }),
       });
+      if (response.status === 429) {
+        setError(TOO_MANY_ATTEMPTS);
+        return;
+      }
       if (response.status === 409) {
         setError('Email này đã được đăng ký.');
         return;

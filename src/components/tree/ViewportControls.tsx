@@ -2,18 +2,21 @@
 
 import { useEffect, useState } from 'react';
 import type { TreeCanvasHandle } from './TreeCanvas';
+import type { Orientation } from '@/lib/tree/layout';
 import type { ViewState } from '@/lib/tree/zoom';
 
 export type ViewportControlsProps = {
   handle: TreeCanvasHandle | null;
   /** Opens the export dialog ("Xuất ảnh"). */
   onExport?: () => void;
+  orientation?: Orientation;
+  onToggleOrientation?: () => void;
 };
 
 const buttonClass =
   'flex size-11 items-center justify-center rounded-lg text-default hover:bg-surface-muted focus-visible:outline-2 focus-visible:outline-[var(--color-primary)]';
 
-export function ViewportControls({ handle, onExport }: ViewportControlsProps) {
+export function ViewportControls({ handle, onExport, orientation = 'vertical', onToggleOrientation }: ViewportControlsProps) {
   const [view, setView] = useState<ViewState | null>(null);
 
   useEffect(() => {
@@ -62,6 +65,16 @@ export function ViewportControls({ handle, onExport }: ViewportControlsProps) {
       >
         Toàn cảnh
       </button>
+      {onToggleOrientation && (
+        <button
+          type="button"
+          onClick={onToggleOrientation}
+          aria-pressed={orientation === 'horizontal'}
+          className="min-h-11 whitespace-nowrap rounded-lg px-2 text-xs text-muted hover:text-default focus-visible:outline-2 focus-visible:outline-[var(--color-primary)]"
+        >
+          {orientation === 'horizontal' ? 'Cây dọc' : 'Cây ngang'}
+        </button>
+      )}
       {onExport && (
         <button
           type="button"
