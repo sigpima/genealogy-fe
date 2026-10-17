@@ -45,7 +45,7 @@ export default function Sidebar({
     { id: 'chronicles', href: '/su-ky', label: 'Sử ký', icon: <BookIcon />, show: true },
     { id: 'search', href: '/tim-kiem', label: 'Tìm kiếm', icon: <SearchNavIcon />, show: true },
     { id: 'branches', href: '/chi-phai', label: 'Chi phái', icon: <BranchesIcon />, show: true },
-    { id: 'stats', href: '/thong-ke', label: 'Thống kê', icon: <ChartIcon />, show: false }, // enabled with the statistics page (GĐ8)
+    { id: 'stats', href: '/thong-ke', label: 'Thống kê', icon: <ChartIcon />, show: true },
     { id: 'calendar', href: '/lich', label: 'Lịch giỗ', icon: <CalendarIcon />, show: true },
     { id: 'places', href: '/dia-diem', label: 'Địa điểm', icon: <PinIcon />, show: signedIn },
     { id: 'requests', href: '/yeu-cau', label: 'Yêu cầu', icon: <InboxIcon />, show: signedIn, badge: pending },

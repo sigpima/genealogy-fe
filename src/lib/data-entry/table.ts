@@ -1,4 +1,4 @@
-import type { Completeness, TableFilters } from './types';
+import type { Completeness, MissingField, TableFilters } from './types';
 
 export const PAGE_SIZE = 100;
 
@@ -18,6 +18,17 @@ export function buildTableQuery(filters: TableFilters, offset: number, limit: nu
 
 export function hasActiveFilters(filters: TableFilters): boolean {
   return Boolean(filters.q.trim()) || filters.generation !== null || filters.under !== null || filters.missing.length > 0;
+}
+
+/** `?missing=gender,avatar&generation=3` (from the statistics page's completeness board) -> initial grid filters. */
+export function filtersFromAddress(search: string, allowed: readonly MissingField[]): TableFilters {
+  const params = new URLSearchParams(search);
+  const missing = (params.get('missing') ?? '')
+    .split(',')
+    .map((s) => s.trim())
+    .filter((s): s is MissingField => (allowed as readonly string[]).includes(s));
+  const generation = /^\d{1,3}$/.test(params.get('generation') ?? '') ? Number(params.get('generation')) : null;
+  return { ...EMPTY_FILTERS, missing: [...new Set(missing)], generation };
 }
 
 export function toggleMissing<T extends string>(current: T[], field: T): T[] {

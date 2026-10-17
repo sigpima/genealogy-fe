@@ -4,6 +4,7 @@ import {
   EMPTY_FILTERS,
   filterProblem,
   focusHref,
+  filtersFromSearch,
   focusIdFor,
   hasCriteria,
   itemSubtitle,
@@ -85,5 +86,22 @@ describe('result presentation', () => {
   it('labels the page range', () => {
     expect(pageLabel(70, 30, 30)).toBe('31–60 / 70 kết quả');
     expect(pageLabel(0, 0, 0)).toBe('0 kết quả');
+  });
+});
+
+describe('filtersFromSearch', () => {
+  it('reads known filters from the address and ignores junk', () => {
+    expect(filtersFromSearch('?generation=3&gender=female&status=living&born_from=1950&born_to=1959&branch=4&hometown=Huế&q=hoa')).toEqual({
+      q: 'hoa',
+      generation: '3',
+      branch: '4',
+      bornFrom: '1950',
+      bornTo: '1959',
+      hometown: 'Huế',
+      gender: 'female',
+      status: 'living',
+    });
+    expect(filtersFromSearch('?gender=robot&status=zombie&generation=abc&branch=x&born_from=19500')).toEqual(EMPTY_FILTERS);
+    expect(filtersFromSearch('')).toEqual(EMPTY_FILTERS);
   });
 });

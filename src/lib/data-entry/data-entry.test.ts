@@ -79,3 +79,19 @@ describe('importErrorsFrom', () => {
     expect(summaryText({ created: 1, updated: 2, unchanged: 3 })).toBe('2 cập nhật · 1 thêm mới · 3 không đổi');
   });
 });
+
+import { filtersFromAddress } from './table';
+import { MISSING_FIELDS } from './types';
+
+describe('filtersFromAddress', () => {
+  it('reads the missing chips and the generation, ignoring unknown values', () => {
+    expect(filtersFromAddress('?missing=gender,avatar,shoe&generation=3', MISSING_FIELDS)).toEqual({
+      q: '',
+      generation: 3,
+      under: null,
+      missing: ['gender', 'avatar'],
+    });
+    expect(filtersFromAddress('?missing=avatar,avatar&generation=x', MISSING_FIELDS)).toMatchObject({ missing: ['avatar'], generation: null });
+    expect(filtersFromAddress('', MISSING_FIELDS)).toEqual({ q: '', generation: null, under: null, missing: [] });
+  });
+});

@@ -106,6 +106,28 @@ export function focusHref(id: number): string {
   return `/?focus=${id}`;
 }
 
+/**
+ * Filters carried in the address (`/tim-kiem?generation=3&gender=female`, from the statistics page's bars). Unknown values
+ * are ignored rather than trusted: a bad `gender` must never reach the API as a 422 surprise.
+ */
+export function filtersFromSearch(search: string): SearchFilters {
+  const params = new URLSearchParams(search);
+  const text = (key: string) => (params.get(key) ?? '').trim();
+  const digits = (key: string) => (/^\d{1,4}$/.test(text(key)) ? text(key) : '');
+  const gender = text('gender');
+  const status = text('status');
+  return {
+    q: text('q'),
+    generation: digits('generation'),
+    branch: /^\d+$/.test(text('branch')) ? text('branch') : '',
+    bornFrom: digits('born_from'),
+    bornTo: digits('born_to'),
+    hometown: text('hometown'),
+    gender: (['male', 'female', 'other', 'unknown'] as const).find((g) => g === gender) ?? '',
+    status: (['living', 'deceased', 'unknown'] as const).find((s) => s === status) ?? '',
+  };
+}
+
 /** `?focus=12` -> 12 (anything else -> null). */
 export function parseFocusParam(search: string): number | null {
   const raw = new URLSearchParams(search).get('focus');

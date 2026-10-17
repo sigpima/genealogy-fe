@@ -430,6 +430,14 @@ drawer opened from the header's "Mở menu" button (`AppShell` keeps `menuOpen`;
 `show` flag — as an `aside` at `md+` and a dialog below; Esc, the backdrop and choosing an item close it). Add a new page to that list, and flip
 `show` only once the page exists (no dead links).
 
+**GĐ8: statistics (backend design: `../genealogy-api/docs/superpowers/specs/2026-10-19-gd8-statistics-design.md`)** — **`/thong-ke`** (`StatsView`; sidebar "Thống kê")
+shows key-number cards, bars for people per generation and births per decade, gender, lifespan, children, the longest line, common names, branches and the
+**completeness board**. There is no chart library: a bar is a link (`widths()` scales it) whose `aria-label` carries its figures ("Đời 3: 3 người (nam 2, nữ 1)"), so
+meaning never depends on colour. **Every bar leads to work:** the search page reads its filters from the address (`filtersFromSearch`: `generation`, `gender`,
+`status`, `born_from`/`born_to`, `branch`, `hometown`, `q`; unknown values are ignored) and the data-entry grid reads `?missing=gender,avatar&generation=3`
+(`filtersFromAddress`) — the board's "Bổ sung" links (admins only) open the grid already filtered to the people lacking that field. Only fields the grid can
+filter on get a link (`completenessLink`). Playwright: the card labels are upper-cased by CSS, so match text case-insensitively.
+
 **`FormAction` (`src/components/FormAction.tsx`) must not receive a
 `handleSubmit` prop when used inside a `<form onSubmit={...}>`** — its
 button is `type="submit"`, so passing the same handler as `onClick` too

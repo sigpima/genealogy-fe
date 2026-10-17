@@ -9,6 +9,7 @@ import {
   basicPercent,
   buildTableQuery,
   EMPTY_FILTERS,
+  filtersFromAddress,
   hasActiveFilters,
   pageRange,
   PAGE_SIZE,
@@ -47,6 +48,12 @@ export function DataEntry({ onUnauthorized }: { onUnauthorized: () => void }) {
   const [showImport, setShowImport] = useState(false);
 
   const reload = useCallback(() => setReloadToken((n) => n + 1), []);
+
+  // /nhap-lieu?missing=avatar&generation=3 (a row of the statistics page's completeness board) starts pre-filtered.
+  useEffect(() => {
+    const initial = filtersFromAddress(window.location.search, MISSING_FIELDS);
+    if (hasActiveFilters(initial)) setFilters(initial);
+  }, []);
 
   // Typing in the search box filters 300 ms after the last keystroke, not on every key.
   useEffect(() => {

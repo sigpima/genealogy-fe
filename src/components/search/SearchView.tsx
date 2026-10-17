@@ -7,6 +7,7 @@ import {
   buildSearchQuery,
   EMPTY_FILTERS,
   filterProblem,
+  filtersFromSearch,
   focusHref,
   focusIdFor,
   hasCriteria,
@@ -74,9 +75,8 @@ export function SearchView({ onUnauthorized }: { onUnauthorized: () => void }) {
   useEffect(() => {
     if (started.current) return;
     started.current = true;
-    const q = new URLSearchParams(window.location.search).get('q') ?? '';
-    if (q.trim()) {
-      const initial = { ...EMPTY_FILTERS, q };
+    const initial = filtersFromSearch(window.location.search); // ?q=..., or filters from a statistics bar
+    if (hasCriteria(initial)) {
       setFilters(initial);
       void run(initial, 0);
     }
