@@ -34,7 +34,7 @@ Dockerfile directly without that arg silently falls back to
 ## Architecture
 
 Next.js 15 App Router / React 19 / Tailwind v4 app: an interactive family
-tree (`react-d3-tree`) plus login/signup pages, both wired to the sibling
+tree (custom `TreeCanvas`: d3-hierarchy layout + d3-zoom pan/zoom) plus login/signup pages, both wired to the sibling
 `genealogy-api` project. `Home` (`src/app/page.tsx`) fetches
 `/api/members/tree` on mount and passes the result to `GenealogyTree` as
 a prop — there is no bundled tree JSON anymore (`new_treeData.json` was
@@ -78,10 +78,9 @@ the backend's `ON DELETE CASCADE` removes the marriage link as a side
 effect. Spouses never appear on the tree itself — they exist only in
 this panel.
 
-**Avatars** — `renderNode` in `genealogy-tree/page.tsx` draws a small
-circular thumbnail (SVG `<clipPath>` + `<image>`) next to each node's
-name when `avatar_url` is present, or a plain circle with the member's
-first initial otherwise; `MemberDetailPanel`'s `AvatarOrInitial` helper
+**Avatars** — the detailed `MemberCard` (`src/components/tree/MemberCard.tsx`)
+draws a circular portrait (SVG `<clipPath>` + `<image>`) when `avatar_url`
+is present, or a circle with the member's first initial otherwise; `MemberDetailPanel`'s `AvatarOrInitial` helper
 does the same at a larger size for the display/edit views. The upload
 flow is bundled into the existing "Sửa" form rather than being its own
 sub-form: picking a file only sets local state
@@ -127,15 +126,25 @@ of hardcoding the backend's origin into the frontend.
 
 **Theming is a runtime-switchable, CSS-variable system, not Tailwind's
 `@theme` token registration.** `src/app/globals.css` defines one
-`:root[data-theme="warm|modern|elegant"]` block per theme (colors only:
-`--color-bg`, `--color-surface`, `--color-primary`, `--color-accent`,
-`--color-text`, `--color-text-muted`, `--color-border`, `--color-on-primary`,
-`--color-danger`), plus a `@layer components` block mapping them to
+`:root[data-theme="heritage|warm|modern|elegant"]` block per theme
+(`heritage` is the default and is also what plain `:root` resolves to; colors
+and shadows only: `--color-bg`, `--color-surface`, `--color-primary`,
+`--color-accent`, `--color-text`, `--color-text-muted`, `--color-border`,
+`--color-on-primary`, `--color-danger`, plus the heritage-era tokens
+`--color-secondary`/`--color-on-secondary`, `--color-tertiary`,
+`--color-connector`, `--color-grid`, `--color-surface-muted`,
+`--color-tier-ancestor|mid|descendant`, `--color-living`, `--color-deceased`,
+`--shadow-card`, `--shadow-float` — every theme must define all of them), plus a `@layer components` block mapping them to
 semantic utility classes (`bg-app`, `bg-surface`, `bg-primary`,
 `text-default`, `text-muted`, `text-on-primary`, `accent-text`,
 `text-danger`, `border-default`, and SVG-specific
 `fill-surface`/`fill-border`/`fill-primary`/`fill-on-primary`/`fill-text`/
-`stroke-border`/`stroke-accent`). **Every new component should use these
+`stroke-border`/`stroke-accent`, and the newer `bg-secondary`,
+`text-on-secondary`, `bg-surface-muted`, `fill-muted`, `fill-tertiary`,
+`fill-/stroke-secondary`, `fill-/stroke-connector`, `stroke-primary`,
+`font-display` (Noto Serif, names/headings), `font-ui` (Be Vietnam Pro),
+`shadow-card`, `shadow-float`). Design source: `../design/heritage_tree/DESIGN.md`
+and `docs/superpowers/specs/2026-10-17-heritage-redesign-design.md`. **Every new component should use these
 semantic classes, never a raw Tailwind color utility** — that was the
 whole point of introducing them (the pre-redesign codebase hardcoded
 `purple-600`/`gray-*` everywhere, which is what made a color-only reskin
@@ -144,7 +153,9 @@ impossible without touching every component).
 The theme choice is persisted in `localStorage["genealogy-web:theme"]`
 (`src/lib/theme/storage.ts`) and applied via a `data-theme` attribute on
 `<html>`. `src/app/layout.tsx` sets that attribute **twice**: once
-synchronously via an inline `<script>` before hydration (to avoid a flash
+synchronously via an inline `<script>` before hydration (it must list the
+same theme ids as `isThemeId` in `src/lib/theme/themes.ts`; a stored choice
+always wins over the heritage default) (to avoid a flash
 of the wrong theme), and once reactively from `ThemeProvider`
 (`src/components/theme/ThemeProvider.tsx`) after mount. `<html>` has
 `suppressHydrationWarning` — the inline script's DOM mutation genuinely
@@ -152,35 +163,55 @@ doesn't match the server-rendered HTML, and that particular mismatch is
 expected and safe to suppress (React's hydration warning about it is
 otherwise a false positive, not a real bug).
 
-**The tree page (`src/app/genealogy-tree/page.tsx`) leans on
-`react-d3-tree` internals beyond its documented prop API**, specifically
-so name search can recenter the view on an arbitrary (possibly deeply
-nested) match:
-- `Tree`'s `zoom`/`translate` props are kept in sync with the library's
-  live pan/zoom state via its `onUpdate` callback — this was necessary
-  because setting `zoom` alone (e.g. from the +/- buttons) without also
-  tracking the current `translate` would snap the view back to a stale
-  position (`bindZoomListener` resets both together whenever either prop
-  changes; read `node_modules/react-d3-tree/lib/esm/Tree/index.js`'s
-  `componentDidUpdate`/`bindZoomListener` before changing this).
-- Search-driven centering calls `generateTree()` and `centerNode()`
-  directly on the `Tree` class instance via a ref (`@ts-expect-error` on
-  the ref prop — react-d3-tree's exported types don't model passing a ref
-  through `next/dynamic`). These are real, non-private instance methods
-  (verified by reading the library source), not officially part of its
-  public API, so a `react-d3-tree` version bump should be re-verified
-  against source if centering breaks.
-- A `HierarchyPointNode` type is derived as
-  `CustomNodeElementProps['hierarchyPointNode']` rather than imported
-  directly from `d3-hierarchy` — react-d3-tree bundles its own nested
-  `@types/d3-hierarchy`, and the two versions are structurally
-  incompatible for TypeScript even though identical at runtime.
+**The tree canvas (`src/components/tree/TreeCanvas.tsx`) is built for large
+trees (verified smooth at 5,000 members; the real tree is ~700).** Rules that
+keep it fast — don't undo them casually:
+- **Pan/zoom never re-renders the cards.** The live transform lives in
+  `transformRef` and is written straight to the content `<g>`; React state
+  (`committed = {rect, level}`) only changes when `needsRecommit`
+  (`src/lib/tree/viewport.ts`) says the visible set can change (viewport left
+  the committed rect — `VISIBLE_MARGIN` 0.5 screens per side — or the zoom
+  level changed). Handle methods (`centerOnNode`, `fitToView`, ...) must read
+  `transformRef`, never the React state.
+- **Three zoom levels** (`zoomLevelFor`, `src/lib/tree/zoom.ts`): dot
+  `k<0.4`, compact `0.4..0.8`, detailed `>0.8`. `MemberCard` renders each.
+  Layout is **fixed** to the detailed card's slot (`NODE_SIZE` 272x206,
+  `SEPARATION` 1/1.25 in the tree page) and never changes with the level.
+  Dots/junctions keep a constant screen size and compact cards scale up (to
+  1.6x) while zoomed out through the `--inv-k` CSS variable set in the zoom
+  handler — CSS only, no React work per frame.
+- All links are one `<path>` (`vector-effect: non-scaling-stroke`); there is
+  no framer-motion or per-node animation. The minimap is one `<canvas>`.
+- The zoom floor is dynamic (`minZoomFor`): lower than 0.15 when needed so
+  "Toàn cảnh" (`fitToView`) can always fit the whole expanded tree.
+- The tree **opens collapsed to `DEFAULT_EXPANDED_GENERATIONS` (4)**; the
+  generation chips (`GenerationFilterBar`) set "expanded down to Đời N" via
+  `collapsedIdsForDepth`, and search/focus/ancestor-view first call
+  `expandPathTo` so the target exists in the layout, then centre through the
+  `pendingCenter` state + effect (not `requestAnimationFrame`, which can fire
+  before React re-renders). A silent refetch keeps the user's collapse state.
+- **Per-member detail** (years, spouses, avatar) is one request per member
+  (no batch endpoint). It is fetched for the 3-hop focal set (`lod.ts`) and
+  for members visible at the compact/detailed level, nearest the view centre
+  first, at most `DETAIL_FETCH_CONCURRENCY` (6) in flight
+  (`pickIdsToFetch`, `src/lib/tree/detail-queue.ts`). Failed fetches are
+  remembered (`failedDetailIds`) and never auto-retried (only the panel's
+  retry button does); cards then show unknown styling, not a skeleton.
+- `MemberCard` is `React.memo`; keep `onSelect`/`onToggle` stable
+  (`useCallback`) or memoisation is lost. Selection is by id
+  (`handleSelectMember` resolves the path from the *real* root, so it also
+  works in the ancestor view).
+- Member status: `memberStatus`/`lifespanLabel`
+  (`src/lib/tree/member-status.ts`) — "living" only with a birth year, no
+  death year and born within 100 years; otherwise unknown ("1850 – ?").
+- **Load-testing:** in development, `/?synthetic=2000` swaps the API for a
+  generated tree (`generateSyntheticTree`) and disables detail fetching.
 
 **Search/lookup logic is pure and tested independently of the tree UI**:
 `src/lib/tree/search.ts` (`findMembersByName`, `findPathToMember`,
 `generationOf`, `getMemberAtPath`) operates on the plain
 `{id?, name, children?}` shape (`FamilyMember`, `src/lib/tree/types.ts`)
-— the same shape `GET /api/members/tree` returns — with no react-d3-tree
+— the same shape `GET /api/members/tree` returns — with no rendering
 dependency. `id` is optional on the type (existing tests construct
 `FamilyMember` literals without one) but always present on real API data
 — the CRUD mutation handlers in `genealogy-tree/page.tsx` depend on it
