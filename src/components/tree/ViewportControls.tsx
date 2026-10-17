@@ -37,7 +37,7 @@ export function ViewportControls({ canvasRef }: ViewportControlsProps) {
   const percent = view ? Math.round(view.k * 100) : 100;
 
   return (
-    <div className="shadow-float absolute bottom-12 left-1/2 z-30 flex max-w-[calc(100%-2rem)] -translate-x-1/2 items-center gap-x-1 rounded-xl border-default border bg-surface/90 px-2 py-1 backdrop-blur-md">
+    <div className="shadow-float absolute bottom-12 left-1/2 z-30 flex max-w-[calc(100%-2rem)] -translate-x-1/2 items-center gap-x-1 rounded-xl border-default border bg-glass px-2 py-1 backdrop-blur-md">
       <button type="button" aria-label="Thu nhỏ" onClick={() => canvasRef.current?.zoomOut()} className={buttonClass}>
         −
       </button>

@@ -66,7 +66,7 @@ export function Minimap({ points, bounds, viewport, subscribe, onMoveTo }: Minim
 
   return (
     <div
-      className="shadow-float absolute bottom-12 left-4 z-30 hidden overflow-hidden rounded-xl border-default border bg-surface/90 backdrop-blur-md md:block"
+      className="shadow-float absolute bottom-12 left-4 z-30 hidden overflow-hidden rounded-xl border-default border bg-glass backdrop-blur-md md:block"
       style={{ width: WIDTH, height: HEIGHT, touchAction: 'none', cursor: 'crosshair' }}
       role="img"
       aria-label="Bản đồ thu nhỏ của cây gia phả"

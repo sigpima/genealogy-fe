@@ -22,13 +22,12 @@ export default function Home() {
   const loadTree = useCallback(
     async (options?: { silent?: boolean }) => {
       // Dev-only load test: /?synthetic=2000 swaps the API for a generated tree.
-      const syntheticCount =
-        process.env.NODE_ENV !== 'production'
-          ? Number(new URLSearchParams(window.location.search).get('synthetic'))
-          : 0;
+      // Add &details=1 to keep per-member detail fetching on (to load-test it against a mocked API).
+      const devParams = process.env.NODE_ENV !== 'production' ? new URLSearchParams(window.location.search) : null;
+      const syntheticCount = Number(devParams?.get('synthetic') ?? 0);
       if (syntheticCount > 0) {
         setFamilyTree(generateSyntheticTree(syntheticCount));
-        setIsSynthetic(true);
+        setIsSynthetic(devParams?.get('details') !== '1');
         setIsLoading(false);
         return;
       }

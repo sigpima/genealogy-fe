@@ -21,6 +21,10 @@
   --color-tier-mid: #8b2635;
   --color-tier-descendant: #264653;
   --color-living: #1b4d3e;
+  --color-on-tier-ancestor: #2b1d0c;
+  --color-on-tier-mid: #ffffff;
+  --color-on-tier-descendant: #ffffff;
+  --color-on-living: #ffffff;
   --color-deceased: #4a4643;
   --shadow-card: 0 4px 16px -2px rgba(60, 42, 33, 0.08), 0 1px 3px rgba(60, 42, 33, 0.05);
   --shadow-float: 0 12px 32px -4px rgba(45, 28, 20, 0.16);
@@ -46,6 +50,10 @@
   --color-tier-mid: #2563eb;
   --color-tier-descendant: #475569;
   --color-living: #047857;
+  --color-on-tier-ancestor: #ffffff;
+  --color-on-tier-mid: #ffffff;
+  --color-on-tier-descendant: #ffffff;
+  --color-on-living: #ffffff;
   --color-deceased: #64748b;
   --shadow-card: 0 4px 16px -2px rgba(15, 23, 42, 0.08), 0 1px 3px rgba(15, 23, 42, 0.05);
   --shadow-float: 0 12px 32px -4px rgba(15, 23, 42, 0.16);
@@ -71,6 +79,10 @@
   --color-tier-mid: #b85a34;
   --color-tier-descendant: #5b6b7a;
   --color-living: #3f6b4f;
+  --color-on-tier-ancestor: #2b211b;
+  --color-on-tier-mid: #ffffff;
+  --color-on-tier-descendant: #ffffff;
+  --color-on-living: #ffffff;
   --color-deceased: #7a6a5d;
   --shadow-card: 0 4px 16px -2px rgba(60, 42, 33, 0.08), 0 1px 3px rgba(60, 42, 33, 0.05);
   --shadow-float: 0 12px 32px -4px rgba(45, 28, 20, 0.16);
@@ -96,105 +108,121 @@
   --color-tier-mid: #e08a6d;
   --color-tier-descendant: #8fb3c9;
   --color-living: #7dd3a8;
+  --color-on-tier-ancestor: #14110f;
+  --color-on-tier-mid: #14110f;
+  --color-on-tier-descendant: #14110f;
+  --color-on-living: #14110f;
   --color-deceased: #9a8f82;
   --shadow-card: 0 4px 16px -2px rgba(0, 0, 0, 0.4), 0 1px 3px rgba(0, 0, 0, 0.3);
   --shadow-float: 0 12px 32px -4px rgba(0, 0, 0, 0.6);
 }
 
-@layer components {
-  .bg-app {
-    background-color: var(--color-bg);
-  }
-  .bg-surface {
-    background-color: var(--color-surface);
-  }
-  .bg-primary {
-    background-color: var(--color-primary);
-  }
-  .text-default {
-    color: var(--color-text);
-  }
-  .text-muted {
-    color: var(--color-text-muted);
-  }
-  .text-on-primary {
-    color: var(--color-on-primary);
-  }
-  .accent-text {
-    color: var(--color-accent);
-  }
-  .text-danger {
-    color: var(--color-danger);
-  }
-  .border-default {
-    border-color: var(--color-border);
-  }
-  .fill-surface {
-    fill: var(--color-surface);
-  }
-  .fill-border {
-    fill: var(--color-border);
-  }
-  .fill-primary {
-    fill: var(--color-primary);
-  }
-  .fill-on-primary {
-    fill: var(--color-on-primary);
-  }
-  .fill-text {
-    fill: var(--color-text);
-  }
-  .stroke-border {
-    stroke: var(--color-border);
-  }
-  .stroke-accent {
-    stroke: var(--color-accent);
-  }
-  .bg-secondary {
-    background-color: var(--color-secondary);
-  }
-  .text-on-secondary {
-    color: var(--color-on-secondary);
-  }
-  .bg-surface-muted {
-    background-color: var(--color-surface-muted);
-  }
-  .fill-surface-muted {
-    fill: var(--color-surface-muted);
-  }
-  .fill-muted {
-    fill: var(--color-text-muted);
-  }
-  .fill-tertiary {
-    fill: var(--color-tertiary);
-  }
-  .fill-secondary {
-    fill: var(--color-secondary);
-  }
-  .stroke-primary {
-    stroke: var(--color-primary);
-  }
-  .stroke-secondary {
-    stroke: var(--color-secondary);
-  }
-  .fill-connector {
-    fill: var(--color-connector);
-  }
-  .stroke-connector {
-    stroke: var(--color-connector);
-  }
-  .font-display {
-    font-family: var(--font-serif), 'Noto Serif', Georgia, serif;
-  }
-  .font-ui {
-    font-family: var(--font-ui), system-ui, sans-serif;
-  }
-  .shadow-card {
-    box-shadow: var(--shadow-card);
-  }
-  .shadow-float {
-    box-shadow: var(--shadow-float);
-  }
+@utility bg-app {
+  background-color: var(--color-bg);
+}
+@utility bg-surface {
+  background-color: var(--color-surface);
+}
+@utility bg-primary {
+  background-color: var(--color-primary);
+}
+@utility text-default {
+  color: var(--color-text);
+}
+@utility text-muted {
+  color: var(--color-text-muted);
+}
+@utility text-on-primary {
+  color: var(--color-on-primary);
+}
+@utility accent-text {
+  color: var(--color-accent);
+}
+@utility text-danger {
+  color: var(--color-danger);
+}
+@utility border-default {
+  border-color: var(--color-border);
+}
+@utility fill-surface {
+  fill: var(--color-surface);
+}
+@utility fill-border {
+  fill: var(--color-border);
+}
+@utility fill-primary {
+  fill: var(--color-primary);
+}
+@utility fill-on-primary {
+  fill: var(--color-on-primary);
+}
+@utility fill-text {
+  fill: var(--color-text);
+}
+@utility stroke-border {
+  stroke: var(--color-border);
+}
+@utility stroke-accent {
+  stroke: var(--color-accent);
+}
+@utility bg-secondary {
+  background-color: var(--color-secondary);
+}
+@utility text-on-secondary {
+  color: var(--color-on-secondary);
+}
+@utility bg-surface-muted {
+  background-color: var(--color-surface-muted);
+}
+@utility fill-surface-muted {
+  fill: var(--color-surface-muted);
+}
+@utility fill-muted {
+  fill: var(--color-text-muted);
+}
+@utility fill-tertiary {
+  fill: var(--color-tertiary);
+}
+@utility fill-secondary {
+  fill: var(--color-secondary);
+}
+@utility stroke-primary {
+  stroke: var(--color-primary);
+}
+@utility stroke-secondary {
+  stroke: var(--color-secondary);
+}
+@utility fill-connector {
+  fill: var(--color-connector);
+}
+@utility stroke-connector {
+  stroke: var(--color-connector);
+}
+@utility font-display {
+  font-family: var(--font-serif), 'Noto Serif', Georgia, serif;
+}
+@utility font-ui {
+  font-family: var(--font-ui), system-ui, sans-serif;
+}
+@utility shadow-card {
+  box-shadow: var(--shadow-card);
+}
+@utility shadow-float {
+  box-shadow: var(--shadow-float);
+}
+
+@utility text-primary {
+  color: var(--color-primary);
+}
+@utility bg-glass {
+  background-color: color-mix(in srgb, var(--color-surface) 90%, transparent);
+}
+
+
+/* Keyboard focus for MemberCard: re-stroke the card frame (SVG <g> outlines are not rendered reliably). */
+.tree-card:focus-visible .tree-card-frame {
+  stroke: var(--color-primary);
+  stroke-width: 3px;
 }
 
 body {

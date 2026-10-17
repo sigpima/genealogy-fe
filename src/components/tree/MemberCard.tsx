@@ -40,6 +40,11 @@ function tierColor(tier: GenerationTier): string {
   return `var(--color-tier-${tier})`;
 }
 
+// Text drawn on a tier-coloured surface; the on-colour is per theme so contrast holds in every theme.
+function onTierColor(tier: GenerationTier): string {
+  return `var(--color-on-tier-${tier})`;
+}
+
 function truncate(text: string, maxChars: number): string {
   return text.length > maxChars ? `${text.slice(0, maxChars - 1)}…` : text;
 }
@@ -66,6 +71,7 @@ export const MemberCard = React.memo(function MemberCard(props: MemberCardProps)
       role="button"
       tabIndex={0}
       aria-label={`${name}, đời ${generation}`}
+      className="tree-card"
       style={{ cursor: 'pointer', outline: 'none' }}
       onClick={() => onSelect(id)}
       onKeyDown={handleKeyDown}
@@ -90,7 +96,7 @@ function DotCard({ name, generation, tier, isHighlighted, isSelected }: MemberCa
       <circle fill="transparent" style={cssRadius('calc(var(--inv-k, 1) * 14px)')} />
       <circle
         fill={tierColor(tier)}
-        className={emphasized ? 'stroke-primary' : undefined}
+        className={`tree-card-frame ${emphasized ? 'stroke-primary' : ''}`}
         strokeWidth={emphasized ? 3 : 0}
         vectorEffect="non-scaling-stroke"
         style={cssRadius(`calc(var(--inv-k, 1) * ${emphasized ? 11 : 8}px)`)}
@@ -102,7 +108,7 @@ function DotCard({ name, generation, tier, isHighlighted, isSelected }: MemberCa
 function cardFrame(tier: GenerationTier, emphasized: boolean) {
   const ancestor = tier === 'ancestor';
   return {
-    className: `${ancestor ? 'fill-surface-muted' : 'fill-surface'} ${
+    className: `tree-card-frame ${ancestor ? 'fill-surface-muted' : 'fill-surface'} ${
       emphasized ? 'stroke-primary' : ancestor ? 'stroke-secondary' : 'stroke-border'
     }`,
     strokeWidth: emphasized ? 2.5 : ancestor ? 2 : 1,
@@ -189,7 +195,7 @@ function CompactCard(props: MemberCardProps & { tier: GenerationTier; emphasized
           dominantBaseline="central"
           fontSize={generation >= 10 ? 8 : 9}
           fontWeight={600}
-          fill="#ffffff"
+          fill={onTierColor(tier)}
           style={{ pointerEvents: 'none' }}
         >
           {toRoman(generation)}
@@ -293,7 +299,7 @@ function DetailedCard(props: MemberCardProps & { tier: GenerationTier; emphasize
           dominantBaseline="central"
           fontSize={10}
           fontWeight={600}
-          fill="#ffffff"
+          fill={onTierColor(tier)}
           style={{ pointerEvents: 'none' }}
         >
           {`Đời ${toRoman(generation)}`}

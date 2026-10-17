@@ -37,7 +37,7 @@ export function Header({ clanName, searchQuery, onSearchQueryChange, searchResul
                 <button
                   type="button"
                   onClick={result.onSelect}
-                  className="block min-h-11 w-full px-3 py-2 text-left text-sm text-default hover:bg-surface-muted focus-visible:bg-surface-muted focus-visible:outline-none"
+                  className="block min-h-11 w-full px-3 py-2 text-left text-sm text-default hover:bg-surface-muted focus-visible:bg-surface-muted focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-primary)]"
                 >
                   {result.label}
                 </button>

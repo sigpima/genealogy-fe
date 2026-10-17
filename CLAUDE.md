@@ -134,8 +134,11 @@ and shadows only: `--color-bg`, `--color-surface`, `--color-primary`,
 `--color-secondary`/`--color-on-secondary`, `--color-tertiary`,
 `--color-connector`, `--color-grid`, `--color-surface-muted`,
 `--color-tier-ancestor|mid|descendant`, `--color-living`, `--color-deceased`,
-`--shadow-card`, `--shadow-float` — every theme must define all of them), plus a `@layer components` block mapping them to
-semantic utility classes (`bg-app`, `bg-surface`, `bg-primary`,
+`--shadow-card`, `--shadow-float` — every theme must define all of them), plus a block of Tailwind v4 **`@utility`** definitions mapping them to
+semantic utility classes (they must be `@utility`, not plain classes in
+`@layer components`: only `@utility` classes get variants such as `hover:` /
+`focus-visible:` / `placeholder:`; opacity modifiers like `bg-surface/90` do
+not work on them at all — use `bg-glass` for the translucent surface) (`bg-app`, `bg-surface`, `bg-primary`,
 `text-default`, `text-muted`, `text-on-primary`, `accent-text`,
 `text-danger`, `border-default`, and SVG-specific
 `fill-surface`/`fill-border`/`fill-primary`/`fill-on-primary`/`fill-text`/
@@ -164,7 +167,10 @@ expected and safe to suppress (React's hydration warning about it is
 otherwise a false positive, not a real bug).
 
 **The tree canvas (`src/components/tree/TreeCanvas.tsx`) is built for large
-trees (verified smooth at 5,000 members; the real tree is ~700).** Rules that
+trees (the real tree is ~700 members; measured in headless Chromium with
+software rendering at 2,000 and 5,000 synthetic members, fully expanded, p95
+frame time ≈ 16.7ms at k=0.2/0.6/1.2, and with mocked per-member detail
+responses arriving during fast panning; not yet measured on a real laptop).** Rules that
 keep it fast — don't undo them casually:
 - **Pan/zoom never re-renders the cards.** The live transform lives in
   `transformRef` and is written straight to the content `<g>`; React state
@@ -238,18 +244,23 @@ worth re-reading before touching this flow again:**
   then surfaces as a *second*, confusing `DELETE` 409 if the user then
   tries to delete what they think is the child.
 
-**Member detail fields** — each tree node also carries `birth_year`,
-`death_year`, `gender` (`'male' | 'female' | 'other'`, see the `Gender`
-type in `src/lib/tree/types.ts`), and `notes`, all nullable. Display mode
-in `MemberDetailPanel` renders a lifespan string (`"1950 – 2020"` or
-`"1950 – nay"` if no death year), a gender label, and a notes paragraph,
-each only when present. Edit mode (`Sửa`) expands into a full form — name,
+**Member detail fields** — each member's `MemberDetail` (fetched per member
+from `GET /api/members/{id}`, not part of the tree skeleton) carries
+`birth_year`, `death_year`, `gender` (`'male' | 'female' | 'other'`, see the
+`Gender` type in `src/lib/tree/types.ts`), `notes`, `avatar_url` and
+`spouses`, all nullable/empty-able. Display mode in `MemberDetailPanel`
+renders `lifespanLabel` (`"1950 – 2020"`; `"1950 – nay"` only for someone
+born within the last 100 years with no death year; `"1850 – ?"` for an older
+birth year with no death year), a gender label, and a notes block, each only
+when present. Edit mode (`Sửa`) expands into a full form — name,
 birth year, death year, gender dropdown, notes textarea — submitted as a
 **single `PUT`** via one `MemberUpdateInput` (`onUpdate` prop), unlike the
-add-child form which stays name-only. `genealogy-tree/page.tsx` reads
-these fields off the raw tree node in `handleNodeClick`/`handleSelectChild`
-(`MemberNodeData`'s `birth_year`/`death_year`/`gender`/`notes`, snake_case
-to match the API) and converts them to the panel's camelCase props.
+add-child form which stays name-only. `genealogy-tree/page.tsx` opens a
+member by id (`handleSelectMember`/`handleSelectChild` → `openMemberDetail`),
+fills the panel from `ensureMemberDetail`'s cache (snake_case, as the API
+returns it) and converts it to the panel's camelCase props. The panel is
+rendered with `key={selectedMember.id}` so edit-form state can never leak from
+one member onto another — keep that key.
 
 **`FormAction` (`src/components/FormAction.tsx`) must not receive a
 `handleSubmit` prop when used inside a `<form onSubmit={...}>`** — its

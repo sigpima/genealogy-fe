@@ -20,7 +20,7 @@ export function GenerationFilterBar({ counts, activeDepth, onSelectDepth }: Gene
     <div
       role="toolbar"
       aria-label="Chọn số đời hiển thị"
-      className="shadow-float absolute left-4 right-4 top-4 z-20 flex max-w-full items-center gap-x-1.5 overflow-x-auto rounded-xl border-default border bg-surface/90 px-3 py-2 backdrop-blur-md sm:right-auto"
+      className="shadow-float absolute left-4 right-4 top-4 z-20 flex max-w-full items-center gap-x-1.5 overflow-x-auto rounded-xl border-default border bg-glass px-3 py-2 backdrop-blur-md sm:right-auto"
     >
       <span className="me-1 shrink-0 text-[11px] font-semibold uppercase tracking-wider text-muted">Đời:</span>
       {shown.map((count, index) => {

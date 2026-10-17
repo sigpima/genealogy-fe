@@ -646,6 +646,7 @@ export default function GenealogyTree({ familyTree, focusRequest, onDataChanged,
       <StatusStrip total={totalMembers(familyTree)} generations={counts.length} canvasRef={canvasRef} />
       {selectedMember && (
         <MemberDetailPanel
+          key={selectedMember.id}
           name={selectedMember.name}
           generation={selectedMember.generation}
           ancestorPath={selectedMember.ancestorPath}

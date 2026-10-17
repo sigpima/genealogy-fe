@@ -31,7 +31,7 @@ export function StatusStrip({ total, generations, canvasRef }: StatusStripProps)
   }, [canvasRef]);
 
   return (
-    <div className="absolute inset-x-0 bottom-0 z-20 flex items-center gap-x-6 border-default border-t bg-surface/90 px-4 py-2 text-xs text-muted backdrop-blur-md">
+    <div className="absolute inset-x-0 bottom-0 z-20 flex items-center gap-x-6 border-default border-t bg-glass px-4 py-2 text-xs text-muted backdrop-blur-md">
       <span>
         Nhân khẩu: <strong className="text-default">{total}</strong> người
       </span>

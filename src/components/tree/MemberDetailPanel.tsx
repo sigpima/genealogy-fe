@@ -195,11 +195,16 @@ export function MemberDetailPanel({
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onClose();
+      if (event.key !== 'Escape') return;
+      // Esc must never throw away typing: ignore it in form fields and while any edit is open.
+      const target = event.target as HTMLElement | null;
+      if (target?.closest('input, textarea, select')) return;
+      if (isEditing || editingSpouseId !== null) return;
+      onClose();
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [onClose]);
+  }, [onClose, isEditing, editingSpouseId]);
 
   function resetAvatarDraft() {
     if (avatarPreviewUrl) URL.revokeObjectURL(avatarPreviewUrl);
@@ -367,10 +372,8 @@ export function MemberDetailPanel({
       >
         <div className="flex items-center justify-between px-5 pt-4">
           <span
-            className={`rounded px-2.5 py-1 text-[11px] font-semibold tracking-wide ${
-              tier === 'ancestor' ? 'bg-secondary text-on-secondary' : 'text-white'
-            }`}
-            style={tier === 'ancestor' ? undefined : { backgroundColor: `var(--color-tier-${tier})` }}
+            className="rounded px-2.5 py-1 text-[11px] font-semibold tracking-wide"
+            style={{ backgroundColor: `var(--color-tier-${tier})`, color: `var(--color-on-tier-${tier})` }}
           >
             ĐỜI {toRoman(generation)}
           </span>
@@ -395,7 +398,10 @@ export function MemberDetailPanel({
             {detailReady && (
               <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted">
                 {status === 'living' && (
-                  <span className="rounded-full bg-[var(--color-living)] px-2 py-0.5 text-[11px] font-semibold text-white">
+                  <span
+                    className="rounded-full px-2 py-0.5 text-[11px] font-semibold"
+                    style={{ backgroundColor: 'var(--color-living)', color: 'var(--color-on-living)' }}
+                  >
                     Đang sống
                   </span>
                 )}
