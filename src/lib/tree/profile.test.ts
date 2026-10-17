@@ -1,5 +1,15 @@
 import { describe, expect, it } from 'vitest';
-import { coordinatesFromInputs, formatCoordinates, mapsUrl, toNullableText } from './profile';
+import {
+  contactError,
+  coordinatesFromInputs,
+  formatCoordinates,
+  mapsUrl,
+  parseBoundedInt,
+  profileToPayload,
+  toNullableText,
+  toPanelProfile,
+} from './profile';
+import { EMPTY_API_PROFILE } from './types';
 
 describe('toNullableText', () => {
   it('trims and turns blank into null', () => {
@@ -35,5 +45,56 @@ describe('mapsUrl / formatCoordinates', () => {
   it('builds a maps link and a readable label', () => {
     expect(mapsUrl(18.55, 105.72)).toBe('https://www.google.com/maps?q=18.55,105.72');
     expect(formatCoordinates(18.55, 105.72)).toBe('18.55, 105.72');
+  });
+});
+
+describe('toPanelProfile / profileToPayload', () => {
+  it('round-trips every field (PUT replaces the member, so none may be dropped)', () => {
+    const api = {
+      ...EMPTY_API_PROFILE,
+      courtesy_name: 'Tự',
+      hometown: 'Huế',
+      phone: '0912',
+      email: 'a@b.co',
+      birth_month: 3,
+      birth_day: 4,
+      death_month: 5,
+      death_day: 6,
+      birth_is_lunar: true,
+      birth_leap_month: true,
+      death_is_lunar: false,
+      death_leap_month: false,
+      birth_order: 2,
+      is_adopted: true,
+      mother_id: 9,
+      burial_latitude: 1.5,
+      burial_longitude: 2.5,
+    };
+    expect(profileToPayload(toPanelProfile(api))).toEqual(api);
+  });
+  it('covers every key of the API profile', () => {
+    expect(Object.keys(profileToPayload(toPanelProfile(EMPTY_API_PROFILE))).sort()).toEqual(
+      Object.keys(EMPTY_API_PROFILE).sort()
+    );
+  });
+});
+
+describe('parseBoundedInt', () => {
+  it('blank is null, in-range integers pass, anything else is undefined', () => {
+    expect(parseBoundedInt('  ', 1, 12)).toBeNull();
+    expect(parseBoundedInt('7', 1, 12)).toBe(7);
+    expect(parseBoundedInt('13', 1, 12)).toBeUndefined();
+    expect(parseBoundedInt('0', 1, 12)).toBeUndefined();
+    expect(parseBoundedInt('2.5', 1, 12)).toBeUndefined();
+    expect(parseBoundedInt('abc', 1, 12)).toBeUndefined();
+  });
+});
+
+describe('contactError', () => {
+  it('accepts blanks and well-formed values, flags the rest', () => {
+    expect(contactError('', '')).toBeNull();
+    expect(contactError('+84 (912) 345-678', 'a@b.vn')).toBeNull();
+    expect(contactError('call me', '')).toMatch(/điện thoại/);
+    expect(contactError('', 'not-an-email')).toMatch(/Email/);
   });
 });

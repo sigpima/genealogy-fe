@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { idsNeedingDetail } from './detail-cache';
-import type { MemberDetail } from './types';
+import { EMPTY_API_PROFILE, type MemberDetail } from './types';
 
 function detailFor(id: number): MemberDetail {
   return {
@@ -10,12 +10,7 @@ function detailFor(id: number): MemberDetail {
     gender: null,
     notes: null,
     avatar_url: null,
-    courtesy_name: null,
-    title: null,
-    residence: null,
-    burial_place: null,
-    burial_latitude: null,
-    burial_longitude: null,
+    ...EMPTY_API_PROFILE,
     sibling_rank: null,
     spouses: [],
   };

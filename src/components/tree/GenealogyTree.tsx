@@ -31,6 +31,8 @@ import { computeDetailSet } from '@/lib/tree/lod';
 import { lifespanLabel, memberStatus } from '@/lib/tree/member-status';
 import type { ZoomLevel } from '@/lib/tree/zoom';
 import { findAncestorChainById, getMemberAtPath, getReparentCandidates } from '@/lib/tree/search';
+import { profileToPayload, toPanelProfile } from '@/lib/tree/profile';
+import { EMPTY_API_PROFILE } from '@/lib/tree/types';
 import type { FamilyMember, Gender, MemberDetail, Spouse } from '@/lib/tree/types';
 
 const TreeCanvas = dynamic(() => import('@/components/tree/TreeCanvas'), { ssr: false });
@@ -55,30 +57,14 @@ type SelectedMember = {
   avatarUrl: string | null;
   profile: PanelProfile;
   siblingRank: string | null;
+  /** The father's recorded spouses: the choices for "Mẹ". */
+  motherOptions: { id: number; name: string }[];
   spouses: PanelSpouse[];
   isDetailLoading: boolean;
   detailLoadError: boolean;
 };
 
-const EMPTY_PROFILE: PanelProfile = {
-  courtesyName: null,
-  title: null,
-  residence: null,
-  burialPlace: null,
-  burialLatitude: null,
-  burialLongitude: null,
-};
-
-function toPanelProfile(detail: MemberDetail): PanelProfile {
-  return {
-    courtesyName: detail.courtesy_name,
-    title: detail.title,
-    residence: detail.residence,
-    burialPlace: detail.burial_place,
-    burialLatitude: detail.burial_latitude,
-    burialLongitude: detail.burial_longitude,
-  };
-}
+const EMPTY_PROFILE: PanelProfile = toPanelProfile(EMPTY_API_PROFILE);
 
 function toPanelSpouses(spouses: Spouse[] | undefined): PanelSpouse[] {
   return (spouses ?? []).map((spouse) => ({
@@ -187,12 +173,7 @@ export default function GenealogyTree({
         gender: null,
         notes: null,
         avatar_url: null,
-        courtesy_name: null,
-        title: null,
-        residence: null,
-        burial_place: null,
-        burial_latitude: null,
-        burial_longitude: null,
+        ...EMPTY_API_PROFILE,
         sibling_rank: null,
         spouses: [],
       };
@@ -313,6 +294,7 @@ export default function GenealogyTree({
       avatarUrl: null,
       profile: EMPTY_PROFILE,
       siblingRank: null,
+      motherOptions: [],
       spouses: [],
       isDetailLoading: true,
       detailLoadError: false,
@@ -335,6 +317,11 @@ export default function GenealogyTree({
         spouses: toPanelSpouses(detail.spouses),
       };
     });
+    if (detail && parentId !== null) {
+      const father = await ensureMemberDetail(parentId);
+      const options = (father?.spouses ?? []).map((spouse) => ({ id: spouse.id, name: spouse.full_name }));
+      setSelectedMember((prev) => (prev && prev.id === id ? { ...prev, motherOptions: options } : prev));
+    }
   }
 
   // Resolves the path from the real root (not the ancestor-view root) so the name-based
@@ -408,17 +395,15 @@ export default function GenealogyTree({
           death_year: input.deathYear,
           gender: input.gender,
           notes: input.notes,
-          courtesy_name: input.courtesyName,
-          title: input.title,
-          residence: input.residence,
-          burial_place: input.burialPlace,
-          burial_latitude: input.burialLatitude,
-          burial_longitude: input.burialLongitude,
+          ...profileToPayload(input),
         }),
       });
       if (!response.ok) {
         if (response.status === 400) {
-          return { ok: false, error: 'Không thể chuyển cha: sẽ tạo vòng lặp trong cây.' };
+          return { ok: false, error: 'Không thể lưu: cha/mẹ không hợp lệ (vòng lặp trong cây, hoặc mẹ không phải vợ của cha).' };
+        }
+        if (response.status === 422) {
+          return { ok: false, error: 'Dữ liệu chưa hợp lệ: kiểm tra ngày tháng, điện thoại, email.' };
         }
         return { ok: false, error: 'Không thể lưu. Vui lòng thử lại.' };
       }
@@ -428,12 +413,7 @@ export default function GenealogyTree({
         death_year: input.deathYear,
         gender: input.gender,
         notes: input.notes,
-        courtesy_name: input.courtesyName,
-        title: input.title,
-        residence: input.residence,
-        burial_place: input.burialPlace,
-        burial_latitude: input.burialLatitude,
-        burial_longitude: input.burialLongitude,
+        ...profileToPayload(input),
       });
 
       if (input.parentId !== selectedMember.parentId) {
@@ -460,14 +440,7 @@ export default function GenealogyTree({
               deathYear: input.deathYear,
               gender: input.gender,
               notes: input.notes,
-              profile: {
-                courtesyName: input.courtesyName,
-                title: input.title,
-                residence: input.residence,
-                burialPlace: input.burialPlace,
-                burialLatitude: input.burialLatitude,
-                burialLongitude: input.burialLongitude,
-              },
+              profile: toPanelProfile(profileToPayload(input)),
             }
           : prev
       );
@@ -760,6 +733,7 @@ export default function GenealogyTree({
           siblingRank={selectedMember.siblingRank}
           parentId={selectedMember.parentId}
           parentOptions={getReparentCandidates(familyTree, selectedMember.id)}
+          motherOptions={selectedMember.motherOptions}
           spouses={selectedMember.spouses}
           isDetailLoading={selectedMember.isDetailLoading}
           detailLoadError={selectedMember.detailLoadError}

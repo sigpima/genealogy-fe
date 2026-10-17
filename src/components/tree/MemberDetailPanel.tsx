@@ -2,9 +2,19 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { generationTier, toRoman } from '@/lib/tree/generations';
+import { formatPartialDate, hasDayOrMonth, maxDayFor } from '@/lib/tree/dates';
 import { lifespanLabel, memberStatus } from '@/lib/tree/member-status';
-import { coordinatesFromInputs, formatCoordinates, mapsUrl, toNullableText } from '@/lib/tree/profile';
-import type { Gender } from '@/lib/tree/types';
+import {
+  contactError,
+  coordinatesFromInputs,
+  formatCoordinates,
+  mapsUrl,
+  parseBoundedInt,
+  toNullableText,
+} from '@/lib/tree/profile';
+import type { Gender, PanelProfile } from '@/lib/tree/types';
+
+export type { PanelProfile };
 
 export type MemberDetailPanelChild = {
   name: string;
@@ -13,15 +23,6 @@ export type MemberDetailPanelChild = {
 
 export type MutationResult = { ok: boolean; error?: string };
 export type AvatarUploadResult = { ok: boolean; error?: string; avatarUrl?: string };
-
-export type PanelProfile = {
-  courtesyName: string | null;
-  title: string | null;
-  residence: string | null;
-  burialPlace: string | null;
-  burialLatitude: number | null;
-  burialLongitude: number | null;
-};
 
 export type MemberUpdateInput = PanelProfile & {
   name: string;
@@ -74,6 +75,8 @@ export type MemberDetailPanelProps = {
   siblingRank: string | null;
   parentId: number | null;
   parentOptions: ParentOption[];
+  /** The father's recorded spouses: the only valid choices for "Mẹ". */
+  motherOptions: ParentOption[];
   childMembers: MemberDetailPanelChild[];
   spouses: PanelSpouse[];
   isDetailLoading: boolean;
@@ -136,6 +139,101 @@ function draftFromSpouse(spouse: PanelSpouse): SpouseDraft {
   };
 }
 
+/** Text/boolean mirror of the profile fields that the edit form binds to. */
+type ProfileDraft = {
+  hometown: string;
+  phone: string;
+  email: string;
+  birthMonth: string;
+  birthDay: string;
+  birthIsLunar: boolean;
+  birthLeapMonth: boolean;
+  deathMonth: string;
+  deathDay: string;
+  deathIsLunar: boolean;
+  deathLeapMonth: boolean;
+  birthOrder: string;
+  isAdopted: boolean;
+  motherId: string;
+};
+
+function draftFromProfile(profile: PanelProfile): ProfileDraft {
+  return {
+    hometown: profile.hometown ?? '',
+    phone: profile.phone ?? '',
+    email: profile.email ?? '',
+    birthMonth: toInputValue(profile.birthMonth),
+    birthDay: toInputValue(profile.birthDay),
+    birthIsLunar: profile.birthIsLunar,
+    birthLeapMonth: profile.birthLeapMonth,
+    deathMonth: toInputValue(profile.deathMonth),
+    deathDay: toInputValue(profile.deathDay),
+    deathIsLunar: profile.deathIsLunar,
+    deathLeapMonth: profile.deathLeapMonth,
+    birthOrder: toInputValue(profile.birthOrder),
+    isAdopted: profile.isAdopted,
+    motherId: toInputValue(profile.motherId),
+  };
+}
+
+type DateFieldsProps = {
+  label: string;
+  year: string;
+  month: string;
+  day: string;
+  isLunar: boolean;
+  leapMonth: boolean;
+  onChange: (patch: { month?: string; day?: string; isLunar?: boolean; leapMonth?: boolean }) => void;
+};
+
+/** Month/day (the year is the field above) plus the calendar: a lunar date is what a giỗ is kept by. */
+function DateFields({ label, year, month, day, isLunar, leapMonth, onChange }: DateFieldsProps) {
+  const monthValue = parseBoundedInt(month, 1, 12);
+  const yearValue = parseBoundedInt(year, 1, 9999);
+  const maxDay = maxDayFor(monthValue ?? null, isLunar, yearValue ?? null);
+  return (
+    <fieldset className="rounded-lg border-default border p-3">
+      <legend className="px-1 text-xs text-muted">{label}</legend>
+      <div className="flex gap-x-2">
+        <label className="block flex-1">
+          <span className="text-xs text-muted">Tháng</span>
+          <input
+            type="number"
+            min={1}
+            max={12}
+            value={month}
+            onChange={(e) => onChange({ month: e.target.value })}
+            className={fieldClass}
+          />
+        </label>
+        <label className="block flex-1">
+          <span className="text-xs text-muted">Ngày</span>
+          <input
+            type="number"
+            min={1}
+            max={maxDay}
+            value={day}
+            onChange={(e) => onChange({ day: e.target.value })}
+            className={fieldClass}
+          />
+        </label>
+      </div>
+      <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-default">
+        <label className="flex min-h-11 items-center gap-x-2">
+          <input type="checkbox" checked={isLunar} onChange={(e) => onChange({ isLunar: e.target.checked })} />
+          Âm lịch
+        </label>
+        {isLunar && month.trim() !== '' && (
+          <label className="flex min-h-11 items-center gap-x-2">
+            <input type="checkbox" checked={leapMonth} onChange={(e) => onChange({ leapMonth: e.target.checked })} />
+            Tháng nhuận
+          </label>
+        )}
+      </div>
+    </fieldset>
+  );
+}
+
 function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div className="flex gap-x-3">
@@ -180,6 +278,7 @@ export function MemberDetailPanel({
   siblingRank,
   parentId,
   parentOptions,
+  motherOptions,
   childMembers,
   spouses,
   isDetailLoading,
@@ -212,6 +311,7 @@ export function MemberDetailPanel({
   const [editedLatitude, setEditedLatitude] = useState(profile.burialLatitude === null ? '' : String(profile.burialLatitude));
   const [editedLongitude, setEditedLongitude] = useState(profile.burialLongitude === null ? '' : String(profile.burialLongitude));
   const [editedParentId, setEditedParentId] = useState(toInputValue(parentId));
+  const [draft, setDraft] = useState<ProfileDraft>(() => draftFromProfile(profile));
   const [newChildName, setNewChildName] = useState('');
   const [actionError, setActionError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -290,6 +390,7 @@ export function MemberDetailPanel({
     setEditedLatitude(profile.burialLatitude === null ? '' : String(profile.burialLatitude));
     setEditedLongitude(profile.burialLongitude === null ? '' : String(profile.burialLongitude));
     setEditedParentId(toInputValue(parentId));
+    setDraft(draftFromProfile(profile));
     resetAvatarDraft();
     setIsEditing(true);
   }
@@ -316,6 +417,35 @@ export function MemberDetailPanel({
       setActionError(coordinates.error);
       return;
     }
+    const birthMonth = parseBoundedInt(draft.birthMonth, 1, 12);
+    const birthDay = parseBoundedInt(draft.birthDay, 1, 31);
+    const deathMonth = parseBoundedInt(draft.deathMonth, 1, 12);
+    const deathDay = parseBoundedInt(draft.deathDay, 1, 31);
+    const birthOrder = parseBoundedInt(draft.birthOrder, 1, 99);
+    if (birthMonth === undefined || deathMonth === undefined) {
+      setActionError('Tháng phải là số từ 1 đến 12.');
+      return;
+    }
+    if (birthDay === undefined || deathDay === undefined) {
+      setActionError('Ngày phải là số từ 1 đến 31.');
+      return;
+    }
+    if (birthOrder === undefined) {
+      setActionError('Thứ tự anh chị em phải là số nguyên từ 1 trở lên.');
+      return;
+    }
+    if ((birthDay !== null && birthMonth === null) || (deathDay !== null && deathMonth === null)) {
+      setActionError('Nhập tháng trước khi nhập ngày.');
+      return;
+    }
+    const contact = contactError(draft.phone, draft.email);
+    if (contact) {
+      setActionError(contact);
+      return;
+    }
+    const newParentId = parentOptions.length > 0 ? Number(editedParentId) : parentId;
+    // A mother is one of the father's spouses, so changing the father always clears her.
+    const motherId = newParentId === parentId && draft.motherId ? Number(draft.motherId) : null;
     setIsSubmitting(true);
     setActionError(null);
 
@@ -347,7 +477,21 @@ export function MemberDetailPanel({
       burialPlace: toNullableText(editedBurialPlace),
       burialLatitude: coordinates.latitude,
       burialLongitude: coordinates.longitude,
-      parentId: parentOptions.length > 0 ? Number(editedParentId) : parentId,
+      hometown: toNullableText(draft.hometown),
+      phone: toNullableText(draft.phone),
+      email: toNullableText(draft.email),
+      birthMonth,
+      birthDay: birthMonth === null ? null : birthDay,
+      birthIsLunar: draft.birthIsLunar,
+      birthLeapMonth: draft.birthIsLunar && birthMonth !== null && draft.birthLeapMonth,
+      deathMonth,
+      deathDay: deathMonth === null ? null : deathDay,
+      deathIsLunar: draft.deathIsLunar,
+      deathLeapMonth: draft.deathIsLunar && deathMonth !== null && draft.deathLeapMonth,
+      birthOrder,
+      isAdopted: draft.isAdopted,
+      motherId,
+      parentId: newParentId,
     });
     setIsSubmitting(false);
     if (result.ok) {
@@ -442,8 +586,37 @@ export function MemberDetailPanel({
   const editAvatarSrc = removeAvatar ? null : (avatarPreviewUrl ?? avatarUrl);
   const canRemoveAvatar = !removeAvatar && Boolean(avatarPreviewUrl || avatarUrl);
   const detailReady = !isDetailLoading && !detailLoadError;
+  const birthDate = formatPartialDate({
+    year: birthYear,
+    month: profile.birthMonth,
+    day: profile.birthDay,
+    isLunar: profile.birthIsLunar,
+    leapMonth: profile.birthLeapMonth,
+  });
+  const deathDate = formatPartialDate({
+    year: deathYear,
+    month: profile.deathMonth,
+    day: profile.deathDay,
+    isLunar: profile.deathIsLunar,
+    leapMonth: profile.deathLeapMonth,
+  });
+  const showBirthDate = hasDayOrMonth({ month: profile.birthMonth, day: profile.birthDay });
+  const showDeathDate = hasDayOrMonth({ month: profile.deathMonth, day: profile.deathDay });
+  const motherName = profile.motherId === null ? null : (motherOptions.find((o) => o.id === profile.motherId)?.name ?? null);
   const hasProfileInfo = Boolean(
-    profile.courtesyName || profile.title || profile.residence || profile.burialPlace || profile.burialLatitude !== null
+    profile.courtesyName ||
+      profile.title ||
+      profile.residence ||
+      profile.hometown ||
+      profile.phone ||
+      profile.email ||
+      profile.burialPlace ||
+      profile.burialLatitude !== null ||
+      showBirthDate ||
+      showDeathDate ||
+      profile.birthOrder !== null ||
+      profile.isAdopted ||
+      motherName
   );
 
   return (
@@ -593,6 +766,40 @@ export function MemberDetailPanel({
                       <input type="number" value={editedDeathYear} onChange={(e) => setEditedDeathYear(e.target.value)} className={fieldClass} />
                     </label>
                   </div>
+                  <DateFields
+                    label="Ngày sinh (ngoài năm)"
+                    year={editedBirthYear}
+                    month={draft.birthMonth}
+                    day={draft.birthDay}
+                    isLunar={draft.birthIsLunar}
+                    leapMonth={draft.birthLeapMonth}
+                    onChange={(patch) =>
+                      setDraft((d) => ({
+                        ...d,
+                        ...(patch.month !== undefined && { birthMonth: patch.month }),
+                        ...(patch.day !== undefined && { birthDay: patch.day }),
+                        ...(patch.isLunar !== undefined && { birthIsLunar: patch.isLunar }),
+                        ...(patch.leapMonth !== undefined && { birthLeapMonth: patch.leapMonth }),
+                      }))
+                    }
+                  />
+                  <DateFields
+                    label="Ngày mất / ngày giỗ (ngoài năm)"
+                    year={editedDeathYear}
+                    month={draft.deathMonth}
+                    day={draft.deathDay}
+                    isLunar={draft.deathIsLunar}
+                    leapMonth={draft.deathLeapMonth}
+                    onChange={(patch) =>
+                      setDraft((d) => ({
+                        ...d,
+                        ...(patch.month !== undefined && { deathMonth: patch.month }),
+                        ...(patch.day !== undefined && { deathDay: patch.day }),
+                        ...(patch.isLunar !== undefined && { deathIsLunar: patch.isLunar }),
+                        ...(patch.leapMonth !== undefined && { deathLeapMonth: patch.leapMonth }),
+                      }))
+                    }
+                  />
                   <label className="block">
                     <span className="text-xs text-muted">Giới tính</span>
                     <select value={editedGender} onChange={(e) => setEditedGender(e.target.value)} className={fieldClass}>
@@ -611,8 +818,65 @@ export function MemberDetailPanel({
                     <input value={editedTitle} onChange={(e) => setEditedTitle(e.target.value)} maxLength={150} className={fieldClass} />
                   </label>
                   <label className="block">
-                    <span className="text-xs text-muted">Nơi ở / quê quán</span>
+                    <span className="text-xs text-muted">Quê quán</span>
+                    <input value={draft.hometown} onChange={(e) => setDraft({ ...draft, hometown: e.target.value })} maxLength={255} className={fieldClass} />
+                  </label>
+                  <label className="block">
+                    <span className="text-xs text-muted">Nơi ở</span>
                     <input value={editedResidence} onChange={(e) => setEditedResidence(e.target.value)} maxLength={255} className={fieldClass} />
+                  </label>
+                  <div className="flex gap-x-2">
+                    <label className="block flex-1">
+                      <span className="text-xs text-muted">Điện thoại</span>
+                      <input
+                        type="tel"
+                        value={draft.phone}
+                        onChange={(e) => setDraft({ ...draft, phone: e.target.value })}
+                        maxLength={30}
+                        className={fieldClass}
+                      />
+                    </label>
+                    <label className="block flex-1">
+                      <span className="text-xs text-muted">Email</span>
+                      <input
+                        type="email"
+                        value={draft.email}
+                        onChange={(e) => setDraft({ ...draft, email: e.target.value })}
+                        maxLength={255}
+                        className={fieldClass}
+                      />
+                    </label>
+                  </div>
+                  <p className="-mt-1 text-xs text-muted">Điện thoại và email chỉ hiện với người đã đăng nhập.</p>
+                  <div className="flex gap-x-2">
+                    <label className="block flex-1">
+                      <span className="text-xs text-muted">Con thứ (trong anh chị em)</span>
+                      <input
+                        type="number"
+                        min={1}
+                        value={draft.birthOrder}
+                        onChange={(e) => setDraft({ ...draft, birthOrder: e.target.value })}
+                        placeholder="Tự theo năm sinh"
+                        className={fieldClass}
+                      />
+                    </label>
+                    {motherOptions.length > 0 && Number(editedParentId) === parentId && (
+                      <label className="block flex-1">
+                        <span className="text-xs text-muted">Mẹ</span>
+                        <select value={draft.motherId} onChange={(e) => setDraft({ ...draft, motherId: e.target.value })} className={fieldClass}>
+                          <option value="">Không rõ</option>
+                          {motherOptions.map((option) => (
+                            <option key={option.id} value={option.id}>
+                              {option.name}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                    )}
+                  </div>
+                  <label className="flex min-h-11 items-center gap-x-2 text-sm text-default">
+                    <input type="checkbox" checked={draft.isAdopted} onChange={(e) => setDraft({ ...draft, isAdopted: e.target.checked })} />
+                    Con nuôi
                   </label>
                   <label className="block">
                     <span className="text-xs text-muted">Mộ phần</span>
@@ -654,7 +918,39 @@ export function MemberDetailPanel({
                     <dl className="mb-5 space-y-2 text-sm">
                       {profile.courtesyName && <InfoRow label="Tên tự" value={profile.courtesyName} />}
                       {profile.title && <InfoRow label="Chức vị" value={profile.title} />}
+                      {showBirthDate && <InfoRow label="Ngày sinh" value={birthDate} />}
+                      {showDeathDate && <InfoRow label="Ngày mất" value={deathDate} />}
+                      {profile.hometown && <InfoRow label="Quê quán" value={profile.hometown} />}
                       {profile.residence && <InfoRow label="Nơi ở" value={profile.residence} />}
+                      {motherName && <InfoRow label="Mẹ" value={motherName} />}
+                      {(profile.birthOrder !== null || profile.isAdopted) && (
+                        <InfoRow
+                          label="Thứ bậc"
+                          value={[profile.birthOrder !== null ? `Con thứ ${profile.birthOrder}` : null, profile.isAdopted ? 'Con nuôi' : null]
+                            .filter(Boolean)
+                            .join(' · ')}
+                        />
+                      )}
+                      {profile.phone && (
+                        <InfoRow
+                          label="Điện thoại"
+                          value={
+                            <a href={`tel:${profile.phone.replace(/[^0-9+]/g, '')}`} className="accent-text underline">
+                              {profile.phone}
+                            </a>
+                          }
+                        />
+                      )}
+                      {profile.email && (
+                        <InfoRow
+                          label="Email"
+                          value={
+                            <a href={`mailto:${profile.email}`} className="accent-text underline">
+                              {profile.email}
+                            </a>
+                          }
+                        />
+                      )}
                       {(profile.burialPlace || profile.burialLatitude !== null) && (
                         <InfoRow
                           label="Mộ phần"
