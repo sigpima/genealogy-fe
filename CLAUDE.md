@@ -293,13 +293,19 @@ redirects to `/login` itself when the API answers 401. Pitfalls: Next injects an
 every user belongs to one family tree (`CurrentUser.tree_id`/`tree_name`; null for the platform
 `superadmin`, whose role label is "Quản trị tối cao"); `canManage`/`canEdit` are true for `admin` and
 `superadmin` (`src/lib/auth/session.ts`). The frontend never sends a tree id: a signed-in user's tree
-comes from their account (a superadmin sees the lowest-id tree until a tree switcher exists). Guests and
+comes from their account (a superadmin picks the family with the header's **`TreeSwitcher`** — shown only with two or more families —
+which sets the `acting_tree` cookie (`actingTreeCookie`, `src/lib/platform/trees.ts`) and reloads; the API reads
+that cookie only for a superadmin). Guests and
 signup need to know which family they mean: **`/t/<slug>`** (`src/app/t/[slug]/route.ts`) sets the
 `tree_slug` cookie (validated by `isValidTreeSlug`, `src/lib/auth/tree.ts`) and redirects to `/` with a
 *relative* `Location` (behind a proxy the request's own origin is not the public one). The signup page
 shows which family the visitor is joining, or asks for the family link when the API cannot tell
 (`/api/site/info` answers 404 with several families and no cookie, and the form is hidden). Trees and
-tree admins are created with `../genealogy-api/scripts/manage.py` (there is no superadmin page yet).
+their first admin are created on **`/he-thong`** (`src/app/he-thong/page.tsx`, `TreesPanel`; superadmin only, sidebar item
+"Các họ"): list with counts and admins, "Xem cây"/"Quản trị" (switch to that family, then open `/` or `/admin`), rename
+(slug included), and a create form that suggests the slug from the name (`slugify`) and shows the generated admin
+password **once**. `scripts/manage.py` remains for `set-role superadmin` and scripting. Avatars are fetched through
+the same `/uploads/*` proxy, but the API now checks access per file, so an `<img>` of another family's photo simply 404s.
 
 **Member detail fields** — each member's `MemberDetail` (fetched per member
 from `GET /api/members/{id}`, not part of the tree skeleton) carries

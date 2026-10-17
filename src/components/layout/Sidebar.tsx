@@ -1,11 +1,13 @@
 import Link from 'next/link';
 
 export type SidebarProps = {
-  active: 'tree' | 'data' | 'admin';
+  active: 'tree' | 'data' | 'admin' | 'platform';
   isAdmin: boolean;
+  /** The platform owner also gets the page that manages every family. */
+  isSuperadmin?: boolean;
 };
 
-export default function Sidebar({ active, isAdmin }: SidebarProps) {
+export default function Sidebar({ active, isAdmin, isSuperadmin = false }: SidebarProps) {
   return (
     <aside className="hidden w-16 shrink-0 flex-col border-default border-e bg-surface md:flex lg:w-60">
       <nav aria-label="Điều hướng chính" className="flex-1 px-2 pt-4">
@@ -30,6 +32,14 @@ export default function Sidebar({ active, isAdmin }: SidebarProps) {
               label="Quản trị"
               icon={<ShieldIcon />}
               current={active === 'admin'}
+            />
+          )}
+          {isSuperadmin && (
+            <NavItem
+              href="/he-thong"
+              label="Các họ"
+              icon={<FamiliesIcon />}
+              current={active === 'platform'}
             />
           )}
         </ul>
@@ -106,6 +116,14 @@ function TableIcon() {
     <svg {...iconProps}>
       <rect x="3" y="4" width="18" height="16" rx="2" />
       <path d="M3 10h18M3 15h18M9 4v16" />
+    </svg>
+  );
+}
+
+function FamiliesIcon() {
+  return (
+    <svg {...iconProps}>
+      <path d="M3 21V9l5-4 5 4v12M13 21V13l4-3 4 3v8M2 21h20" />
     </svg>
   );
 }
