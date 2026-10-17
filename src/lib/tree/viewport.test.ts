@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { filterVisibleLinks, filterVisibleNodes, visibleRect } from './viewport';
+import { VISIBLE_MARGIN, filterVisibleLinks, filterVisibleNodes, needsRecommit, visibleRect } from './viewport';
+import { zoomLevelFor } from './zoom';
 
 describe('visibleRect', () => {
   it('computes the buffered rect at identity scale', () => {
@@ -43,5 +44,31 @@ describe('filterVisibleLinks', () => {
   it('excludes a link with both endpoints outside the rect', () => {
     const links = [{ source: { x: 500, y: 500 }, target: { x: 600, y: 600 } }];
     expect(filterVisibleLinks(links, rect)).toHaveLength(0);
+  });
+});
+
+describe('needsRecommit', () => {
+  const w = 800;
+  const h = 600;
+  const commit = (t: { x: number; y: number; k: number }) => ({
+    rect: visibleRect(t, w, h, VISIBLE_MARGIN),
+    level: zoomLevelFor(t.k),
+  });
+  const start = { x: 0, y: 0, k: 1 };
+
+  it('requires a first commit', () => {
+    expect(needsRecommit(null, start, w, h)).toBe(true);
+  });
+  it('tolerates a small pan inside the committed margin', () => {
+    expect(needsRecommit(commit(start), { x: -200, y: 0, k: 1 }, w, h)).toBe(false);
+  });
+  it('recommits once the viewport escapes the margin', () => {
+    expect(needsRecommit(commit(start), { x: -480, y: 0, k: 1 }, w, h)).toBe(true);
+  });
+  it('recommits when the zoom level changes', () => {
+    expect(needsRecommit(commit({ x: 0, y: 0, k: 0.5 }), { x: 0, y: 0, k: 0.9 }, w, h)).toBe(true);
+  });
+  it('recommits when zooming out within a level exposes uncommitted area', () => {
+    expect(needsRecommit(commit({ x: 0, y: 0, k: 2.5 }), { x: 0, y: 0, k: 0.9 }, w, h)).toBe(true);
   });
 });
