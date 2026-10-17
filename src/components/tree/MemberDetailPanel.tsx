@@ -717,7 +717,11 @@ export function MemberDetailPanel({
           aria-labelledby={`panel-tab-${tab}`}
           className="flex-1 overflow-y-auto px-5 py-4"
         >
-          {actionError && <p className="mb-4 text-sm text-danger">{actionError}</p>}
+          {actionError && (
+            <p role="alert" className="mb-4 text-sm text-danger">
+              {actionError}
+            </p>
+          )}
 
           {tab === 'bio' && (
             <>

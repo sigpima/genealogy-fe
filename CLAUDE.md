@@ -49,7 +49,7 @@ deleted once its content was migrated into the database via
 `genealogy-api`'s seed script). A 401 from that fetch redirects to
 `/login`; other failures show an inline error with a retry button while
 the sidebar/header keep rendering normally. The API backing this is one
-shared tree for every logged-in user — no per-user data. The member
+tree of the signed-in user's family (see "Several families on one deployment" below). The member
 detail panel supports renaming, adding a child, deleting, reparenting,
 and managing spouses (the empty state supports creating the first
 member) — all these call `genealogy-api`'s Member/Marriage CRUD
@@ -336,6 +336,23 @@ members, after any edit that can change it (an edit, add child, delete,
 reparent) `refetchDetails()` clears the fetch memory and re-requests the
 visible/focal members; the old data stays on screen until the fresh
 response replaces it.
+
+**GĐ2: full profile data and the data-entry page (backend design: `../genealogy-api/docs/superpowers/specs/2026-10-17-gd2-profile-data-design.md`)** —
+`MemberProfile`/`PanelProfile` (`src/lib/tree/types.ts`) now also carry `hometown`, `phone`/`email` (null for guests), partial
+dates (`birth_month/day`, `death_month/day`, lunar and leap flags — a month or day can be known without a year; death defaults to
+lunar), `birth_order`, `is_adopted` and `mother_id`. **Add every new profile field to `toPanelProfile`/`profileToPayload`
+(`src/lib/tree/profile.ts`, covered by a round-trip test) — `PUT` is a full replacement, so a field missing from the payload is wiped.**
+Dates are shown by `formatPartialDate` (`src/lib/tree/dates.ts`: "15/08/1945", "12/03 âm lịch", a bare year without suffix); the panel's
+edit form has two `DateFields` (month, day, "Âm lịch", "Tháng nhuận") under the year inputs. "Mẹ" is a select of the **father's
+recorded spouses** (`motherOptions`, loaded from the father's detail in `GenealogyTree.openMemberDetail`); it is hidden and reset to
+"none" whenever the father changes, because the API rejects a mother who is not the father's spouse. The data-entry page
+**`/nhap-lieu`** (`src/app/nhap-lieu/page.tsx`, admins only — middleware needs a cookie and the page redirects non-admins to `/`;
+sidebar item "Nhập liệu") is `src/components/data-entry/DataEntry.tsx`: a paged grid over `GET /api/members/table` (filters: name,
+generation, "missing X" chips, one branch via `under`), a completeness bar from `/api/members/completeness`, **one `PATCH` per cell**
+(`EditableCell`: blur/Enter saves only when changed, Esc reverts, a refused value stays visible with `role=alert`), "Tách" (split
+"N vị", `SplitDialog`), CSV export (a plain link to `/api/members/export.csv`) and `ImportPanel` (dry run first, then "Áp dụng"; a
+rejected file lists every bad row and imports nothing). Pure logic (query string, cell parsing, split names, import errors) is in
+`src/lib/data-entry/` with tests; the grid renders names as `<input>`s, so Playwright rows must be located by `aria-label`, not text.
 
 **`FormAction` (`src/components/FormAction.tsx`) must not receive a
 `handleSubmit` prop when used inside a `<form onSubmit={...}>`** — its

@@ -7,7 +7,7 @@ import { canManage, type CurrentUser } from '@/lib/auth/session';
 export type AppShellProps = {
   clanName: string;
   user: CurrentUser | null;
-  active: 'tree' | 'admin';
+  active: 'tree' | 'data' | 'admin';
   search?: HeaderSearch;
   onLogout: () => void;
   children: React.ReactNode;

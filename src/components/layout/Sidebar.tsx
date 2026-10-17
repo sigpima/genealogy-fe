@@ -1,7 +1,7 @@
 import Link from 'next/link';
 
 export type SidebarProps = {
-  active: 'tree' | 'admin';
+  active: 'tree' | 'data' | 'admin';
   isAdmin: boolean;
 };
 
@@ -16,6 +16,14 @@ export default function Sidebar({ active, isAdmin }: SidebarProps) {
             icon={<TreeIcon />}
             current={active === 'tree'}
           />
+          {isAdmin && (
+            <NavItem
+              href="/nhap-lieu"
+              label="Nhập liệu"
+              icon={<TableIcon />}
+              current={active === 'data'}
+            />
+          )}
           {isAdmin && (
             <NavItem
               href="/admin"
@@ -89,6 +97,15 @@ function ShieldIcon() {
     <svg {...iconProps}>
       <path d="M12 3 4 6v6c0 4.5 3.2 8 8 9 4.8-1 8-4.5 8-9V6l-8-3Z" />
       <path d="m9 12 2 2 4-4" />
+    </svg>
+  );
+}
+
+function TableIcon() {
+  return (
+    <svg {...iconProps}>
+      <rect x="3" y="4" width="18" height="16" rx="2" />
+      <path d="M3 10h18M3 15h18M9 4v16" />
     </svg>
   );
 }
