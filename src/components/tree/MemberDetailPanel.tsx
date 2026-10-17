@@ -16,7 +16,10 @@ import Link from 'next/link';
 import { ProposeDialog } from '@/components/requests/ProposeDialog';
 import type { BranchRef } from '@/lib/branches/branches';
 import { formFromPanel } from '@/lib/requests/requests';
-import type { Gender, PanelProfile } from '@/lib/tree/types';
+import { MediaGallery } from '@/components/media/MediaGallery';
+import { directionsUrl } from '@/lib/places/places';
+import type { Place } from '@/lib/places/places';
+import type { Gender, PanelProfile, RestingPlace } from '@/lib/tree/types';
 
 export type { PanelProfile };
 
@@ -82,6 +85,10 @@ export type MemberDetailPanelProps = {
   siblingRank: string | null;
   /** The member's chi/phái, if any. */
   branch: BranchRef | null;
+  /** The place record where the person rests (signed-in users only). */
+  restingPlace?: RestingPlace | null;
+  /** Not a guest: the gallery is only for signed-in users. */
+  signedIn?: boolean;
   parentId: number | null;
   parentOptions: ParentOption[];
   /** The father's recorded spouses: the only valid choices for "Mẹ". */
@@ -288,6 +295,8 @@ export function MemberDetailPanel({
   profile,
   siblingRank,
   branch,
+  restingPlace = null,
+  signedIn = false,
   parentId,
   parentOptions,
   motherOptions,
@@ -328,6 +337,9 @@ export function MemberDetailPanel({
   const [actionError, setActionError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isProposing, setIsProposing] = useState(false);
+  const [placeId, setPlaceId] = useState(toInputValue(profile.burialPlaceId));
+  const [plot, setPlot] = useState(profile.burialPlot ?? '');
+  const [placeChoices, setPlaceChoices] = useState<Place[]>([]);
 
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreviewUrl, setAvatarPreviewUrl] = useState<string | null>(null);
@@ -344,6 +356,8 @@ export function MemberDetailPanel({
       // Esc must never throw away typing: ignore it in form fields and while any edit is open.
       const target = event.target as HTMLElement | null;
       if (target?.closest('input, textarea, select')) return;
+      // A dialog on top of the panel (photo viewer, propose-an-edit) owns Esc: it closes itself, the panel stays.
+      if (document.querySelector('[role="dialog"][aria-modal="true"]')) return;
       if (isEditing || editingSpouseId !== null) return;
       onClose();
     };
@@ -383,6 +397,21 @@ export function MemberDetailPanel({
     };
   }, []);
 
+  // The places to choose from are only needed while an admin edits.
+  useEffect(() => {
+    if (!isEditing || !canEdit) return;
+    let cancelled = false;
+    fetch('/api/places', { credentials: 'include' })
+      .then((r) => (r.ok ? (r.json() as Promise<Place[]>) : []))
+      .then((rows) => {
+        if (!cancelled) setPlaceChoices(rows);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [isEditing, canEdit]);
+
   function resetAvatarDraft() {
     if (avatarPreviewUrl) URL.revokeObjectURL(avatarPreviewUrl);
     setAvatarFile(null);
@@ -404,6 +433,8 @@ export function MemberDetailPanel({
     setEditedLongitude(profile.burialLongitude === null ? '' : String(profile.burialLongitude));
     setEditedParentId(toInputValue(parentId));
     setDraft(draftFromProfile(profile));
+    setPlaceId(toInputValue(profile.burialPlaceId));
+    setPlot(profile.burialPlot ?? '');
     resetAvatarDraft();
     setIsEditing(true);
   }
@@ -504,6 +535,8 @@ export function MemberDetailPanel({
       birthOrder,
       isAdopted: draft.isAdopted,
       motherId,
+      burialPlaceId: placeId ? Number(placeId) : null,
+      burialPlot: toNullableText(plot),
       parentId: newParentId,
     });
     setIsSubmitting(false);
@@ -628,6 +661,8 @@ export function MemberDetailPanel({
       showBirthDate ||
       showDeathDate ||
       branch !== null ||
+      restingPlace !== null ||
+      Boolean(profile.burialPlot) ||
       profile.birthOrder !== null ||
       profile.isAdopted ||
       motherName
@@ -911,6 +946,22 @@ export function MemberDetailPanel({
                     </label>
                   </div>
                   <label className="block">
+                    <span className="text-xs text-muted">Nơi an nghỉ (địa điểm đã tạo ở mục Địa điểm)</span>
+                    <select value={placeId} onChange={(e) => setPlaceId(e.target.value)} aria-label="Nơi an nghỉ" className={fieldClass}>
+                      <option value="">Chưa chọn</option>
+                      {placeChoices.map((choice) => (
+                        <option key={choice.id} value={choice.id}>
+                          {choice.name}
+                        </option>
+                      ))}
+                      {placeId && !placeChoices.some((c) => String(c.id) === placeId) && <option value={placeId}>{restingPlace?.name ?? `#${placeId}`}</option>}
+                    </select>
+                  </label>
+                  <label className="block">
+                    <span className="text-xs text-muted">Vị trí mộ (khu, hàng, số)</span>
+                    <input value={plot} onChange={(e) => setPlot(e.target.value)} maxLength={100} aria-label="Vị trí mộ" className={fieldClass} />
+                  </label>
+                  <label className="block">
                     <span className="text-xs text-muted">Ghi chú</span>
                     <textarea value={editedNotes} onChange={(e) => setEditedNotes(e.target.value)} rows={4} className={fieldClass} />
                   </label>
@@ -946,6 +997,35 @@ export function MemberDetailPanel({
                               <span aria-hidden="true" className="inline-block size-3 rounded-full" style={{ backgroundColor: branch.color }} />
                               {branch.name}
                             </span>
+                          }
+                        />
+                      )}
+                      {(restingPlace || profile.burialPlot) && (
+                        <InfoRow
+                          label="An nghỉ"
+                          value={
+                            <>
+                              {restingPlace && (
+                                <Link href={`/dia-diem?place=${restingPlace.id}`} className="accent-text underline">
+                                  {restingPlace.name}
+                                </Link>
+                              )}
+                              {restingPlace && profile.burialPlot && ' · '}
+                              {profile.burialPlot}
+                              {restingPlace && restingPlace.latitude !== null && restingPlace.longitude !== null && (
+                                <>
+                                  <br />
+                                  <a
+                                    href={directionsUrl(restingPlace.latitude, restingPlace.longitude)}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="accent-text underline"
+                                  >
+                                    Chỉ đường
+                                  </a>
+                                </>
+                              )}
+                            </>
                           }
                         />
                       )}
@@ -1030,6 +1110,13 @@ export function MemberDetailPanel({
                       <p className="text-muted">{detailReady ? 'Chưa có ghi chú.' : 'Đang chờ dữ liệu...'}</p>
                     )}
                   </div>
+                </section>
+              )}
+
+              {signedIn && detailReady && (
+                <section className="mt-6" aria-label="Tư liệu và bút tích">
+                  <h3 className="text-[11px] font-semibold uppercase tracking-wider text-muted">Tư liệu &amp; bút tích</h3>
+                  <MediaGallery ownerKind="members" ownerId={memberId} canEdit={canEdit} />
                 </section>
               )}
 

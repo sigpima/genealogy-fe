@@ -234,9 +234,17 @@ export function CalendarView({ isAdmin, signedIn, onUnauthorized }: { isAdmin: b
                     )}
                   </p>
                   <p className="text-xs text-muted">
-                    {[item.subtitle, item.event_kind ? EVENT_KIND_LABELS[item.event_kind] : null, item.time_text && `lúc ${item.time_text}`, item.location]
+                    {[item.subtitle, item.event_kind ? EVENT_KIND_LABELS[item.event_kind] : null, item.time_text && `lúc ${item.time_text}`, item.place_id ? null : item.location]
                       .filter(Boolean)
                       .join(' · ')}
+                    {item.place_id ? (
+                      <>
+                        {' · '}
+                        <Link href={`/dia-diem?place=${item.place_id}`} className="text-primary underline">
+                          {item.location}
+                        </Link>
+                      </>
+                    ) : null}
                   </p>
                   {item.description && <p className="mt-1 whitespace-pre-wrap text-xs text-default">{item.description}</p>}
                   {isAdmin && item.event_id !== null && eventById.get(item.event_id) && (

@@ -69,6 +69,8 @@ describe('toPanelProfile / profileToPayload', () => {
       mother_id: 9,
       burial_latitude: 1.5,
       burial_longitude: 2.5,
+      burial_place_id: 4,
+      burial_plot: 'Khu B, mộ 12',
     };
     expect(profileToPayload(toPanelProfile(api))).toEqual(api);
   });

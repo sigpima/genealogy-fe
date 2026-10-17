@@ -95,6 +95,7 @@ describe('eventPayload', () => {
         repeats_yearly: true,
         time_text: null,
         location: 'Nhà thờ',
+        place_id: null,
         description: null,
       },
     });
@@ -113,7 +114,7 @@ describe('eventPayload', () => {
     expect(eventPayload({ ...ok, year: '1800' })).toMatchObject({ ok: false });
   });
   it('round-trips an event through the form', () => {
-    const event = { id: 1, title: 'Họp', kind: 'wedding' as const, calendar: 'solar' as const, year: 2030, month: 6, day: 15, repeats_yearly: false, time_text: '08:30', location: 'Nhà', description: null };
+    const event = { id: 1, title: 'Họp', kind: 'wedding' as const, calendar: 'solar' as const, year: 2030, month: 6, day: 15, repeats_yearly: false, time_text: '08:30', location: 'Nhà', place_id: 3, description: null };
     const result = eventPayload(eventToForm(event));
     expect(result).toEqual({ ok: true, payload: Object.fromEntries(Object.entries(event).filter(([key]) => key !== 'id')) });
   });

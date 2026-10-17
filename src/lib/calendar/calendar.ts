@@ -14,6 +14,7 @@ export type CalendarItem = {
   location: string | null;
   event_kind: EventKind | null;
   description: string | null;
+  place_id?: number | null;
 };
 
 export type CalendarDay = {
@@ -40,6 +41,7 @@ export type FamilyEvent = {
   repeats_yearly: boolean;
   time_text: string | null;
   location: string | null;
+  place_id: number | null;
   description: string | null;
 };
 
@@ -158,6 +160,7 @@ export type EventForm = {
   repeats_yearly: boolean;
   time_text: string;
   location: string;
+  place_id: string;
   description: string;
 };
 
@@ -171,6 +174,7 @@ export const EMPTY_EVENT_FORM: EventForm = {
   repeats_yearly: true,
   time_text: '',
   location: '',
+  place_id: '',
   description: '',
 };
 
@@ -185,6 +189,7 @@ export function eventToForm(event: FamilyEvent): EventForm {
     repeats_yearly: event.repeats_yearly,
     time_text: event.time_text ?? '',
     location: event.location ?? '',
+    place_id: event.place_id === null ? '' : String(event.place_id),
     description: event.description ?? '',
   };
 }
@@ -225,6 +230,7 @@ export function eventPayload(form: EventForm): EventPayloadResult {
       repeats_yearly: form.repeats_yearly,
       time_text: time || null,
       location: form.location.trim() || null,
+      place_id: form.place_id ? Number(form.place_id) : null,
       description: form.description.trim() || null,
     },
   };

@@ -401,6 +401,21 @@ panel is open or in synthetic mode). The worker that creates the notifications i
 stays empty. Playwright: day cells have an `aria-label` "dd/mm/yyyy, âm lịch N, K mục"; the converter's section label contains "Ngày âm",
 so label selectors need `{ exact: true }`.
 
+**GĐ6: media gallery and places (backend design: `../genealogy-api/docs/superpowers/specs/2026-10-18-gd6-media-places-design.md`)** —
+the panel's **"Tư liệu & bút tích"** is `MediaGallery` (`src/components/media/`, also used on a place): thumbnail grid, PDFs as tiles that open in a
+tab, a lightbox viewer (arrow keys, "Mở ảnh gốc"), and for admins a multi-file upload (`uploadProblem` pre-checks type/size; the API checks the
+content again), caption (`prompt`) and delete. It is rendered only for signed-in users (`signedIn` prop) because the API never serves media to
+guests. **"An nghỉ"** in the profile shows the place (link to `/dia-diem?place=ID`), the plot and a "Chỉ đường" link (`directionsUrl`); the
+admin's edit form has a place select (fetched from `/api/places` only while editing) and a plot field; `profileToPayload` carries
+`burial_place_id`/`burial_plot` (PUT replaces everything). `GenealogyTree` keeps `restingPlace` fresh when the detail is refetched. **A modal
+dialog owns Esc**: the panel's Esc handler returns when any `[role=dialog][aria-modal=true]` is open, otherwise closing the photo viewer
+would also close the panel. **`/dia-diem`** (`PlacesView`, signed-in only, sidebar "Địa điểm"): list + kind filter + search, a Leaflet map
+(`PlaceMap`, **loaded with `dynamic(..., { ssr: false })`**, OpenStreetMap tiles, no API key, `divIcon` markers because Leaflet's default icon
+images break under bundlers), a place card with caretaker, visit notes, residents (links to `/?focus=`), photos and directions; admins add/edit/delete
+places — "Chọn toạ độ trên bản đồ" turns the next map click into latitude/longitude — and run the migration of the old "mộ phần" text
+(preview, then apply). **Leaflet zoom/fade animations are turned off on purpose**: its zoom-animation timer fires after `map.remove()` and throws when
+the user leaves the page mid-animation. The event dialog can pick a place; the calendar then links it.
+
 **`FormAction` (`src/components/FormAction.tsx`) must not receive a
 `handleSubmit` prop when used inside a `<form onSubmit={...}>`** — its
 button is `type="submit"`, so passing the same handler as `onClick` too

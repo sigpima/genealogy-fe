@@ -150,6 +150,7 @@ export default function Home() {
               synthetic={isSynthetic}
               canEdit={userCanEdit}
               canPropose={session.user !== null && !userCanEdit}
+              signedIn={session.user !== null}
             />
           )}
       </div>

@@ -10,6 +10,7 @@ import {
   type EventKind,
   type FamilyEvent,
 } from '@/lib/calendar/calendar';
+import type { Place } from '@/lib/places/places';
 
 const field =
   'mt-1 w-full min-h-11 rounded-lg border-default border bg-app px-3 text-sm text-default placeholder:text-muted focus:border-[var(--color-primary)] focus:outline-none';
@@ -42,6 +43,14 @@ export function EventDialog({
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const ref = useRef<HTMLFormElement>(null);
+  const [places, setPlaces] = useState<Place[]>([]);
+
+  useEffect(() => {
+    fetch('/api/places', { credentials: 'include' })
+      .then((r) => (r.ok ? (r.json() as Promise<Place[]>) : []))
+      .then(setPlaces)
+      .catch(() => undefined);
+  }, []);
 
   useEffect(() => {
     ref.current?.focus();
@@ -139,10 +148,23 @@ export function EventDialog({
             <input value={form.time_text} onChange={(e) => set('time_text', e.target.value)} aria-label="Giờ" className={field} />
           </label>
           <label className="block text-sm">
-            <span className="text-xs text-muted">Địa điểm</span>
+            <span className="text-xs text-muted">Địa điểm (ghi chú)</span>
             <input value={form.location} onChange={(e) => set('location', e.target.value)} maxLength={255} aria-label="Địa điểm" className={field} />
           </label>
         </div>
+        {places.length > 0 && (
+          <label className="block text-sm">
+            <span className="text-xs text-muted">Hoặc chọn một địa điểm của họ</span>
+            <select value={form.place_id} onChange={(e) => set('place_id', e.target.value)} aria-label="Chọn địa điểm" className={field}>
+              <option value="">Không chọn</option>
+              {places.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
         <label className="block text-sm">
           <span className="text-xs text-muted">Ghi chú</span>
           <textarea value={form.description} onChange={(e) => set('description', e.target.value)} rows={3} aria-label="Ghi chú sự kiện" className={`${field} py-2`} />

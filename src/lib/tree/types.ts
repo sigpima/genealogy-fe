@@ -25,6 +25,9 @@ export type MemberProfile = {
   burial_place: string | null;
   burial_latitude: number | null;
   burial_longitude: number | null;
+  /** GĐ6: the place (record) where the person rests, and the spot in it. Admin-only fields; hidden from guests. */
+  burial_place_id: number | null;
+  burial_plot: string | null;
   hometown: string | null;
   /** Hidden from guests by the API. */
   phone: string | null;
@@ -51,6 +54,8 @@ export const EMPTY_API_PROFILE: MemberProfile = {
   burial_place: null,
   burial_latitude: null,
   burial_longitude: null,
+  burial_place_id: null,
+  burial_plot: null,
   hometown: null,
   phone: null,
   email: null,
@@ -75,6 +80,8 @@ export type PanelProfile = {
   burialPlace: string | null;
   burialLatitude: number | null;
   burialLongitude: number | null;
+  burialPlaceId: number | null;
+  burialPlot: string | null;
   hometown: string | null;
   phone: string | null;
   email: string | null;
@@ -93,6 +100,8 @@ export type PanelProfile = {
 
 import type { BranchRef } from '@/lib/branches/branches';
 
+export type RestingPlace = { id: number; name: string; kind: string; latitude: number | null; longitude: number | null };
+
 export type MemberDetail = MemberProfile & {
   id: number;
   birth_year: number | null;
@@ -104,5 +113,7 @@ export type MemberDetail = MemberProfile & {
   sibling_rank: string | null;
   /** The deepest branch (chi/phái) the member belongs to, if any. */
   branch?: BranchRef | null;
+  /** The place record behind `burial_place_id` (name, kind, GPS), for signed-in users. */
+  resting_place?: RestingPlace | null;
   spouses: Spouse[];
 };

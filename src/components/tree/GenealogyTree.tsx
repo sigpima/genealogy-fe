@@ -36,7 +36,7 @@ import type { ZoomLevel } from '@/lib/tree/zoom';
 import { findAncestorChainById, getMemberAtPath, getReparentCandidates } from '@/lib/tree/search';
 import { profileToPayload, toPanelProfile } from '@/lib/tree/profile';
 import { EMPTY_API_PROFILE } from '@/lib/tree/types';
-import type { FamilyMember, Gender, MemberDetail, Spouse } from '@/lib/tree/types';
+import type { FamilyMember, Gender, MemberDetail, RestingPlace, Spouse } from '@/lib/tree/types';
 
 const TreeCanvas = dynamic(() => import('@/components/tree/TreeCanvas'), { ssr: false });
 
@@ -61,6 +61,7 @@ type SelectedMember = {
   profile: PanelProfile;
   siblingRank: string | null;
   branch: BranchRef | null;
+  restingPlace: RestingPlace | null;
   /** The father's recorded spouses: the choices for "Mẹ". */
   motherOptions: { id: number; name: string }[];
   spouses: PanelSpouse[];
@@ -103,6 +104,8 @@ export type GenealogyTreeProps = {
   canEdit: boolean;
   /** Signed in but not an admin: the panel offers "Đề xuất chỉnh sửa". */
   canPropose?: boolean;
+  /** Signed in at all: media and places are not shown to guests. */
+  signedIn?: boolean;
 };
 
 export default function GenealogyTree({
@@ -113,6 +116,7 @@ export default function GenealogyTree({
   synthetic = false,
   canEdit,
   canPropose,
+  signedIn,
 }: GenealogyTreeProps) {
   // Opens collapsed to the first few generations; later refetches keep the user's own state.
   const [collapsedIds, setCollapsedIds] = useState<Set<number>>(() =>
@@ -237,9 +241,13 @@ export default function GenealogyTree({
   useEffect(() => {
     if (!selectedMember) return;
     const fresh = detailsById.get(selectedMember.id);
-    if (fresh && fresh.sibling_rank !== selectedMember.siblingRank) {
+    // A rank depends on other members and a resting place on the places list: both can change under an open panel.
+    const place = fresh?.resting_place ?? null;
+    if (fresh && (fresh.sibling_rank !== selectedMember.siblingRank || place?.id !== selectedMember.restingPlace?.id)) {
       const memberId = selectedMember.id;
-      setSelectedMember((prev) => (prev && prev.id === memberId ? { ...prev, siblingRank: fresh.sibling_rank } : prev));
+      setSelectedMember((prev) =>
+        prev && prev.id === memberId ? { ...prev, siblingRank: fresh.sibling_rank, restingPlace: place } : prev
+      );
     }
   }, [detailsById, selectedMember]);
 
@@ -316,6 +324,7 @@ export default function GenealogyTree({
       profile: EMPTY_PROFILE,
       siblingRank: null,
       branch: null,
+      restingPlace: null,
       motherOptions: [],
       spouses: [],
       isDetailLoading: true,
@@ -337,6 +346,7 @@ export default function GenealogyTree({
         profile: toPanelProfile(detail),
         siblingRank: detail.sibling_rank,
         branch: detail.branch ?? null,
+        restingPlace: detail.resting_place ?? null,
         spouses: toPanelSpouses(detail.spouses),
       };
     });
@@ -762,6 +772,8 @@ export default function GenealogyTree({
           profile={selectedMember.profile}
           siblingRank={selectedMember.siblingRank}
           branch={selectedMember.branch}
+          restingPlace={selectedMember.restingPlace}
+          signedIn={signedIn}
           parentId={selectedMember.parentId}
           parentOptions={getReparentCandidates(familyTree, selectedMember.id)}
           motherOptions={selectedMember.motherOptions}
