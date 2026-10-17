@@ -46,3 +46,5 @@ export function fitTransform(bounds: Bounds, width: number, height: number, padd
 export function minZoomFor(fitK: number, floor = 0.15): number {
   return Math.max(0.001, Math.min(floor, fitK));
 }
+
+export type ViewState = Transform & { minZoom: number; maxZoom: number };
