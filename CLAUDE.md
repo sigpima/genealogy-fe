@@ -477,3 +477,11 @@ component/E2E test setup (no React Testing Library, no Playwright
 config) — UI and interaction behavior (theme switching, zoom/pan,
 expand/collapse, search-and-center, the detail panel) is verified by
 running `npm run dev` and checking it in a browser, not automated.
+
+**GĐ10: export (backend: `../genealogy-api/docs/superpowers/specs/2026-10-19-gd10-export-design.md`)** — two things. (1) **"Xuất ảnh"** button in `ViewportControls` →
+`ExportDialog` (scope: whole tree / a chi / descendants of the person whose panel is open; generation cap; years toggle; PNG or one-page PDF). All client-side:
+`src/lib/export/tree-export.ts` prunes the tree, lays it out with `computeLayout` and draws **its own standalone SVG with explicit colours read from the active theme**
+(never the on-screen DOM), then the dialog rasterises it through a canvas (`planRaster` caps the size: ≤12000 px a side, ≤60 Mpx, and warns when it had to shrink)
+and the PDF is the JPEG wrapped by a minimal hand-written PDF (`buildPdf`, xref offsets tested). Years come from paging `/api/members/search` (signed-in only). Open to
+anyone who can see the tree. (2) **`/xuat-ban`** (`BookView`, sidebar "Xuất bản", admins) downloads `GET /api/book.pdf` with the option checkboxes; `next.config.ts` raises
+`experimental.proxyTimeout` to 300 s because a big family's book takes a while.

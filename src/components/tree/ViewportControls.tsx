@@ -6,12 +6,14 @@ import type { ViewState } from '@/lib/tree/zoom';
 
 export type ViewportControlsProps = {
   handle: TreeCanvasHandle | null;
+  /** Opens the export dialog ("Xuất ảnh"). */
+  onExport?: () => void;
 };
 
 const buttonClass =
   'flex size-11 items-center justify-center rounded-lg text-default hover:bg-surface-muted focus-visible:outline-2 focus-visible:outline-[var(--color-primary)]';
 
-export function ViewportControls({ handle }: ViewportControlsProps) {
+export function ViewportControls({ handle, onExport }: ViewportControlsProps) {
   const [view, setView] = useState<ViewState | null>(null);
 
   useEffect(() => {
@@ -60,6 +62,15 @@ export function ViewportControls({ handle }: ViewportControlsProps) {
       >
         Toàn cảnh
       </button>
+      {onExport && (
+        <button
+          type="button"
+          onClick={onExport}
+          className="min-h-11 whitespace-nowrap rounded-lg px-2 text-xs text-muted hover:text-default focus-visible:outline-2 focus-visible:outline-[var(--color-primary)]"
+        >
+          Xuất ảnh
+        </button>
+      )}
     </div>
   );
 }

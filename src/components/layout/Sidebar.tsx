@@ -14,6 +14,7 @@ export type NavId =
   | 'requests'
   | 'audit'
   | 'data'
+  | 'export'
   | 'admin'
   | 'platform';
 
@@ -51,6 +52,7 @@ export default function Sidebar({
     { id: 'requests', href: '/yeu-cau', label: 'Yêu cầu', icon: <InboxIcon />, show: signedIn, badge: pending },
     { id: 'audit', href: '/nhat-ky', label: 'Nhật ký', icon: <HistoryIcon />, show: isAdmin },
     { id: 'data', href: '/nhap-lieu', label: 'Nhập liệu', icon: <TableIcon />, show: isAdmin },
+    { id: 'export', href: '/xuat-ban', label: 'Xuất bản', icon: <PrintIcon />, show: isAdmin },
     { id: 'admin', href: '/admin', label: 'Quản trị', icon: <ShieldIcon />, show: isAdmin },
     { id: 'platform', href: '/he-thong', label: 'Các họ', icon: <FamiliesIcon />, show: isSuperadmin },
   ];
@@ -248,6 +250,15 @@ function HistoryIcon() {
     <svg {...iconProps}>
       <path d="M3 12a9 9 0 1 0 3-6.7L3 8" />
       <path d="M3 3v5h5M12 7v5l3 2" />
+    </svg>
+  );
+}
+
+function PrintIcon() {
+  return (
+    <svg {...iconProps}>
+      <path d="M6 9V3h12v6M6 18H4a1 1 0 0 1-1-1v-6a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v6a1 1 0 0 1-1 1h-2" />
+      <rect x="6" y="14" width="12" height="7" rx="1" />
     </svg>
   );
 }

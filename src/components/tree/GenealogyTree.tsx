@@ -19,6 +19,7 @@ import { MemberCard } from '@/components/tree/MemberCard';
 import { StatusStrip } from '@/components/tree/StatusStrip';
 import { UpcomingStrip } from '@/components/tree/UpcomingStrip';
 import type { TreeCanvasHandle, VisibleChange } from '@/components/tree/TreeCanvas';
+import { ExportDialog } from '@/components/tree/ExportDialog';
 import { ViewportControls } from '@/components/tree/ViewportControls';
 import { assignBranches, type Branch, type BranchRef } from '@/lib/branches/branches';
 import { idsNeedingDetail } from '@/lib/tree/detail-cache';
@@ -134,6 +135,7 @@ export default function GenealogyTree({
     return findAncestorChainById(familyTree, displayRoot.id)?.length ?? 1;
   }, [familyTree, displayRoot]);
   const [highlightedId, setHighlightedId] = useState<number | null>(null);
+  const [exporting, setExporting] = useState(false);
   const [selectedMember, setSelectedMember] = useState<SelectedMember | null>(null);
   const [focalId, setFocalId] = useState<number | null>(null);
   const detailSet = useMemo(
@@ -753,7 +755,16 @@ export default function GenealogyTree({
         </button>
       )}
       {!selectedMember && !synthetic && <UpcomingStrip />}
-      <ViewportControls handle={canvasHandle} />
+      <ViewportControls handle={canvasHandle} onExport={synthetic ? undefined : () => setExporting(true)} />
+      {exporting && (
+        <ExportDialog
+          familyTree={familyTree}
+          branches={branches ?? []}
+          selected={selectedMember ? { id: selectedMember.id, name: selectedMember.name } : null}
+          signedIn={signedIn ?? false}
+          onClose={() => setExporting(false)}
+        />
+      )}
       <StatusStrip total={totalMembers(familyTree)} generations={counts.length} handle={canvasHandle} />
       {selectedMember && (
         <MemberDetailPanel
