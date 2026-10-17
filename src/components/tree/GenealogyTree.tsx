@@ -17,6 +17,7 @@ import { BranchChips } from '@/components/tree/BranchChips';
 import { GenerationFilterBar } from '@/components/tree/GenerationFilterBar';
 import { MemberCard } from '@/components/tree/MemberCard';
 import { StatusStrip } from '@/components/tree/StatusStrip';
+import { UpcomingStrip } from '@/components/tree/UpcomingStrip';
 import type { TreeCanvasHandle, VisibleChange } from '@/components/tree/TreeCanvas';
 import { ViewportControls } from '@/components/tree/ViewportControls';
 import { assignBranches, type Branch, type BranchRef } from '@/lib/branches/branches';
@@ -741,6 +742,7 @@ export default function GenealogyTree({
           Xem toàn bộ cây gia phả
         </button>
       )}
+      {!selectedMember && !synthetic && <UpcomingStrip />}
       <ViewportControls handle={canvasHandle} />
       <StatusStrip total={totalMembers(familyTree)} generations={counts.length} handle={canvasHandle} />
       {selectedMember && (

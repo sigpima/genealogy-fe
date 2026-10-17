@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 
 export type SidebarProps = {
-  active: 'tree' | 'search' | 'branches' | 'requests' | 'audit' | 'data' | 'admin' | 'platform';
+  active: 'tree' | 'search' | 'branches' | 'calendar' | 'requests' | 'audit' | 'data' | 'admin' | 'platform';
   isAdmin: boolean;
   /** The platform owner also gets the page that manages every family. */
   isSuperadmin?: boolean;
@@ -35,6 +35,12 @@ export default function Sidebar({ active, isAdmin, isSuperadmin = false, signedI
             label="Chi phái"
             icon={<BranchesIcon />}
             current={active === 'branches'}
+          />
+          <NavItem
+            href="/lich"
+            label="Lịch giỗ"
+            icon={<CalendarIcon />}
+            current={active === 'calendar'}
           />
           {signedIn && (
             <NavItem
@@ -223,6 +229,15 @@ function HistoryIcon() {
     <svg {...iconProps}>
       <path d="M3 12a9 9 0 1 0 3-6.7L3 8" />
       <path d="M3 3v5h5M12 7v5l3 2" />
+    </svg>
+  );
+}
+
+function CalendarIcon() {
+  return (
+    <svg {...iconProps}>
+      <rect x="3" y="4" width="18" height="18" rx="2" />
+      <path d="M16 2v4M8 2v4M3 10h18" />
     </svg>
   );
 }

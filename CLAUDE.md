@@ -388,6 +388,19 @@ badge (`usePendingRequests`; failure just hides it). **`/nhat-ky`** (`AuditView`
 its Vietnamese label to `FIELD_LABELS` and the form lists in `requests.ts`, or it shows up under its raw key. In Playwright `ol li` also
 matches the nested change lines — use `ol > li`.
 
+**GĐ5: calendar, giỗ, reminders (backend design: `../genealogy-api/docs/superpowers/specs/2026-10-18-gd5-calendar-design.md`)** —
+**`/lich`** (`CalendarView`, readable wherever the tree is; sidebar "Lịch giỗ") shows a Monday-first month grid (`monthGrid`) with the
+**lunar day under every solar day** (`lunarLabel`: "1/9" on a lunar month's first day), coloured chips for giỗ (filled) and events, a day
+detail, a 60-day "Sắp tới" list, and cards: `ConverterCard` (solar↔lunar, a nonexistent leap month is explained), `SubscribeCard` (the
+secret `.ics` link: everyone signed in can copy it, admins enable / replace / switch off; the URL is `${origin}/api${path}`) and
+`ReminderCard` (days before + email; saved on every change). Admins add/edit/delete events in `EventDialog` (`eventPayload` mirrors
+the API's rules; opened from a day it pre-fills that solar date). `/lich?ngay=YYYY-MM-DD` (the link of a notification) opens that month
+with the day selected (`parseDayParam`). The header has `NotificationsBell` (polls `/api/notifications` every 5 minutes; opening the
+list marks all read and the count drops at once) and the tree page `UpcomingStrip` (next 3 within 30 days, md+ only, hidden while a
+panel is open or in synthetic mode). The worker that creates the notifications is a separate compose service — without it the bell
+stays empty. Playwright: day cells have an `aria-label` "dd/mm/yyyy, âm lịch N, K mục"; the converter's section label contains "Ngày âm",
+so label selectors need `{ exact: true }`.
+
 **`FormAction` (`src/components/FormAction.tsx`) must not receive a
 `handleSubmit` prop when used inside a `<form onSubmit={...}>`** — its
 button is `type="submit"`, so passing the same handler as `onClick` too

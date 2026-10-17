@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { NotificationsBell } from '@/components/layout/NotificationsBell';
 import { TreeSwitcher } from '@/components/layout/TreeSwitcher';
 import { ThemeSettingsPopover } from '@/components/theme/ThemeSettingsPopover';
 import { roleLabel, type CurrentUser } from '@/lib/auth/session';
@@ -71,6 +72,7 @@ export function Header({ clanName, user, search, onLogout }: HeaderProps) {
       )}
       <div className="ml-auto flex items-center gap-x-3">
         <TreeSwitcher user={user} />
+        <NotificationsBell user={user} />
         {user ? (
           <>
             <div className="hidden text-right leading-tight md:block">
