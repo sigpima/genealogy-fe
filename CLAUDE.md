@@ -416,6 +416,20 @@ places — "Chọn toạ độ trên bản đồ" turns the next map click into 
 (preview, then apply). **Leaflet zoom/fade animations are turned off on purpose**: its zoom-animation timer fires after `map.remove()` and throws when
 the user leaves the page mid-animation. The event dialog can pick a place; the calendar then links it.
 
+**GĐ7: chronicles and the phone menu (backend design: `../genealogy-api/docs/superpowers/specs/2026-10-19-gd7-chronicles-design.md`)** —
+**`/su-ky`** (`ChroniclesView`; sidebar "Sử ký"; guests of a public site can read it) has three tabs: articles (kind filter chips; pinned/draft badges), the
+timeline (century headings, `formatTimelineDate`) and the bài đệm (a rows editor, `wordsPayload`). Admins write with `ArticleEditor`: a Markdown textarea with
+a live preview, photo upload (a new article is saved as a draft first so photos have somewhere to live), "Chèn" inserts `![caption](media:ID)` at the cursor,
+"Làm ảnh bìa", and a `PersonPicker` (`components/common/`, search-as-you-type) for the people mentioned; `/su-ky?sua=ID` / `?moi=1` open the editor from the
+reader / empty state. **`/su-ky/[slug]`** (`ArticleReader`) is the reading page. **Markdown is rendered by our own parser** (`src/lib/markdown/markdown.ts` →
+`MarkdownView`): headings, emphasis, `code`, lists, quotes, rules, links and `media:` images, built as React elements, so raw HTML is never interpreted — a
+`<script>` stays text and a link target must be http(s), mailto or a site path (`safeHref`); a remote image URL is never embedded. Guests get `media = null`,
+so a `media:` image degrades to its caption (the API would refuse the file anyway). The panel shows "Được nhắc trong…" (published articles mentioning the
+person; drafts marked for admins) and, for admins adding a child, the bài đệm hint "Chữ đệm đời N: …". **Phones:** below `md` the sidebar is replaced by a
+drawer opened from the header's "Mở menu" button (`AppShell` keeps `menuOpen`; `Sidebar` renders the same entries — a data-driven `entries` list with a
+`show` flag — as an `aside` at `md+` and a dialog below; Esc, the backdrop and choosing an item close it). Add a new page to that list, and flip
+`show` only once the page exists (no dead links).
+
 **`FormAction` (`src/components/FormAction.tsx`) must not receive a
 `handleSubmit` prop when used inside a `<form onSubmit={...}>`** — its
 button is `type="submit"`, so passing the same handler as `onClick` too

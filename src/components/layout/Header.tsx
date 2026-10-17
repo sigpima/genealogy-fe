@@ -25,11 +25,25 @@ export type HeaderProps = {
   /** Omit on pages that have nothing to search (e.g. the admin page). */
   search?: HeaderSearch;
   onLogout: () => void;
+  /** Opens the navigation drawer; only shown below the md breakpoint, where there is no sidebar. */
+  onMenu?: () => void;
 };
 
-export function Header({ clanName, user, search, onLogout }: HeaderProps) {
+export function Header({ clanName, user, search, onLogout, onMenu }: HeaderProps) {
   return (
     <header className="relative z-30 flex flex-wrap items-center gap-x-3 gap-y-2 border-default border-b bg-surface px-4 py-3 sm:flex-nowrap sm:gap-x-6 sm:px-6">
+      {onMenu && (
+        <button
+          type="button"
+          onClick={onMenu}
+          aria-label="Mở menu"
+          className="-ms-2 flex size-11 shrink-0 items-center justify-center rounded-lg text-default hover:bg-surface-muted focus-visible:outline-2 focus-visible:outline-[var(--color-primary)] md:hidden"
+        >
+          <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+            <path d="M4 6h16M4 12h16M4 18h16" />
+          </svg>
+        </button>
+      )}
       <h1 className="font-display shrink-0 truncate text-lg font-bold text-primary sm:text-xl">
         {clanName}
       </h1>

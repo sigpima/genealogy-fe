@@ -3,97 +3,100 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 
+export type NavId =
+  | 'tree'
+  | 'chronicles'
+  | 'search'
+  | 'branches'
+  | 'stats'
+  | 'calendar'
+  | 'places'
+  | 'requests'
+  | 'audit'
+  | 'data'
+  | 'admin'
+  | 'platform';
+
 export type SidebarProps = {
-  active: 'tree' | 'search' | 'branches' | 'calendar' | 'places' | 'requests' | 'audit' | 'data' | 'admin' | 'platform';
+  active: NavId;
   isAdmin: boolean;
   /** The platform owner also gets the page that manages every family. */
   isSuperadmin?: boolean;
   /** Signed-in users get the "Yêu cầu" item (their proposals; admins: the ones to review). */
   signedIn?: boolean;
+  /** Phones have no sidebar: the same list opens as a drawer from the header's menu button. */
+  mobileOpen?: boolean;
+  onMobileClose?: () => void;
 };
 
-export default function Sidebar({ active, isAdmin, isSuperadmin = false, signedIn = false }: SidebarProps) {
+type Entry = { id: NavId; href: string; label: string; icon: React.ReactNode; show: boolean; badge?: number };
+
+export default function Sidebar({
+  active,
+  isAdmin,
+  isSuperadmin = false,
+  signedIn = false,
+  mobileOpen = false,
+  onMobileClose,
+}: SidebarProps) {
   const pending = usePendingRequests(signedIn);
+  const entries: Entry[] = [
+    { id: 'tree', href: '/', label: 'Cây Gia Phả', icon: <TreeIcon />, show: true },
+    { id: 'chronicles', href: '/su-ky', label: 'Sử ký', icon: <BookIcon />, show: true },
+    { id: 'search', href: '/tim-kiem', label: 'Tìm kiếm', icon: <SearchNavIcon />, show: true },
+    { id: 'branches', href: '/chi-phai', label: 'Chi phái', icon: <BranchesIcon />, show: true },
+    { id: 'stats', href: '/thong-ke', label: 'Thống kê', icon: <ChartIcon />, show: false }, // enabled with the statistics page (GĐ8)
+    { id: 'calendar', href: '/lich', label: 'Lịch giỗ', icon: <CalendarIcon />, show: true },
+    { id: 'places', href: '/dia-diem', label: 'Địa điểm', icon: <PinIcon />, show: signedIn },
+    { id: 'requests', href: '/yeu-cau', label: 'Yêu cầu', icon: <InboxIcon />, show: signedIn, badge: pending },
+    { id: 'audit', href: '/nhat-ky', label: 'Nhật ký', icon: <HistoryIcon />, show: isAdmin },
+    { id: 'data', href: '/nhap-lieu', label: 'Nhập liệu', icon: <TableIcon />, show: isAdmin },
+    { id: 'admin', href: '/admin', label: 'Quản trị', icon: <ShieldIcon />, show: isAdmin },
+    { id: 'platform', href: '/he-thong', label: 'Các họ', icon: <FamiliesIcon />, show: isSuperadmin },
+  ];
+  const list = (always: boolean) => (
+    <ul className="space-y-1">
+      {entries
+        .filter((e) => e.show)
+        .map((e) => (
+          <NavItem key={e.id} href={e.href} label={e.label} icon={e.icon} current={active === e.id} badge={e.badge} alwaysLabel={always} onNavigate={onMobileClose} />
+        ))}
+    </ul>
+  );
+
+  useEffect(() => {
+    if (!mobileOpen) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onMobileClose?.();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [mobileOpen, onMobileClose]);
+
   return (
-    <aside className="hidden w-16 shrink-0 flex-col border-default border-e bg-surface md:flex lg:w-60">
-      <nav aria-label="Điều hướng chính" className="flex-1 px-2 pt-4">
-        <ul className="space-y-1">
-          <NavItem
-            href="/"
-            label="Cây Gia Phả"
-            icon={<TreeIcon />}
-            current={active === 'tree'}
-          />
-          <NavItem
-            href="/tim-kiem"
-            label="Tìm kiếm"
-            icon={<SearchNavIcon />}
-            current={active === 'search'}
-          />
-          <NavItem
-            href="/chi-phai"
-            label="Chi phái"
-            icon={<BranchesIcon />}
-            current={active === 'branches'}
-          />
-          <NavItem
-            href="/lich"
-            label="Lịch giỗ"
-            icon={<CalendarIcon />}
-            current={active === 'calendar'}
-          />
-          {signedIn && (
-            <NavItem
-              href="/dia-diem"
-              label="Địa điểm"
-              icon={<PinIcon />}
-              current={active === 'places'}
-            />
-          )}
-          {signedIn && (
-            <NavItem
-              href="/yeu-cau"
-              label="Yêu cầu"
-              icon={<InboxIcon />}
-              current={active === 'requests'}
-              badge={pending}
-            />
-          )}
-          {isAdmin && (
-            <NavItem
-              href="/nhat-ky"
-              label="Nhật ký"
-              icon={<HistoryIcon />}
-              current={active === 'audit'}
-            />
-          )}
-          {isAdmin && (
-            <NavItem
-              href="/nhap-lieu"
-              label="Nhập liệu"
-              icon={<TableIcon />}
-              current={active === 'data'}
-            />
-          )}
-          {isAdmin && (
-            <NavItem
-              href="/admin"
-              label="Quản trị"
-              icon={<ShieldIcon />}
-              current={active === 'admin'}
-            />
-          )}
-          {isSuperadmin && (
-            <NavItem
-              href="/he-thong"
-              label="Các họ"
-              icon={<FamiliesIcon />}
-              current={active === 'platform'}
-            />
-          )}
-        </ul>
-      </nav>
-    </aside>
+    <>
+      <aside className="hidden w-16 shrink-0 flex-col border-default border-e bg-surface md:flex lg:w-60">
+        <nav aria-label="Điều hướng chính" className="flex-1 overflow-y-auto px-2 pt-4">
+          {list(false)}
+        </nav>
+      </aside>
+      {mobileOpen && (
+        <div className="fixed inset-0 z-50 md:hidden">
+          <button type="button" aria-label="Đóng menu" onClick={onMobileClose} className="absolute inset-0 bg-black/40" />
+          <div role="dialog" aria-modal="true" aria-label="Menu" className="shadow-float absolute inset-y-0 start-0 flex w-72 max-w-[85vw] flex-col bg-surface">
+            <div className="flex items-center justify-between border-default border-b px-4 py-3">
+              <span className="font-display text-lg font-bold text-primary">Gia phả</span>
+              <button type="button" onClick={onMobileClose} className="min-h-11 rounded-lg px-3 text-sm text-muted hover:text-default">
+                Đóng ✕
+              </button>
+            </div>
+            <nav aria-label="Điều hướng chính (điện thoại)" className="flex-1 overflow-y-auto px-2 pt-3">
+              {list(true)}
+            </nav>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
 
@@ -103,29 +106,37 @@ function NavItem({
   icon,
   current,
   badge = 0,
+  alwaysLabel = false,
+  onNavigate,
 }: {
   href: string;
   label: string;
   icon: React.ReactNode;
   current: boolean;
   badge?: number;
+  alwaysLabel?: boolean;
+  onNavigate?: () => void;
 }) {
+  const wide = alwaysLabel ? '' : 'justify-center lg:justify-start';
   return (
     <li>
       <Link
         href={href}
+        onClick={onNavigate}
         aria-current={current ? 'page' : undefined}
         aria-label={badge > 0 ? `${label} (${badge} đang chờ)` : label}
-        className={`relative flex min-h-11 items-center justify-center gap-x-3 rounded-lg px-3 py-2 text-sm focus-visible:outline-2 focus-visible:outline-[var(--color-primary)] lg:justify-start ${
-          current
-            ? 'bg-surface-muted font-medium text-primary'
-            : 'text-default hover:bg-surface-muted'
+        className={`relative flex min-h-11 items-center gap-x-3 rounded-lg px-3 py-2 text-sm focus-visible:outline-2 focus-visible:outline-[var(--color-primary)] ${wide} ${
+          current ? 'bg-surface-muted font-medium text-primary' : 'text-default hover:bg-surface-muted'
         }`}
       >
         {icon}
-        <span className="hidden lg:inline">{label}</span>
+        <span className={alwaysLabel ? '' : 'hidden lg:inline'}>{label}</span>
         {badge > 0 && (
-          <span className="absolute end-1.5 top-1 min-w-5 rounded-full bg-primary px-1.5 text-center text-[11px] font-semibold leading-5 text-on-primary lg:static lg:ms-auto">
+          <span
+            className={`min-w-5 rounded-full bg-primary px-1.5 text-center text-[11px] font-semibold leading-5 text-on-primary ${
+              alwaysLabel ? 'ms-auto' : 'absolute end-1.5 top-1 lg:static lg:ms-auto'
+            }`}
+          >
             {badge}
           </span>
         )}
@@ -255,6 +266,24 @@ function PinIcon() {
     <svg {...iconProps}>
       <path d="M20 10c0 6-8 12-8 12S4 16 4 10a8 8 0 0 1 16 0Z" />
       <circle cx="12" cy="10" r="3" />
+    </svg>
+  );
+}
+
+function BookIcon() {
+  return (
+    <svg {...iconProps}>
+      <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V3H6.5A2.5 2.5 0 0 0 4 5.5v14Z" />
+      <path d="M6.5 17A2.5 2.5 0 0 0 4 19.5V21h16" />
+    </svg>
+  );
+}
+
+function ChartIcon() {
+  return (
+    <svg {...iconProps}>
+      <path d="M3 3v18h18" />
+      <path d="M8 17v-6M13 17V7M18 17v-3" />
     </svg>
   );
 }

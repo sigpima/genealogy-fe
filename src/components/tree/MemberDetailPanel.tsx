@@ -17,6 +17,7 @@ import { ProposeDialog } from '@/components/requests/ProposeDialog';
 import type { BranchRef } from '@/lib/branches/branches';
 import { formFromPanel } from '@/lib/requests/requests';
 import { MediaGallery } from '@/components/media/MediaGallery';
+import { wordHint, type ArticleSummary, type GenerationWord } from '@/lib/chronicles/chronicles';
 import { directionsUrl } from '@/lib/places/places';
 import type { Place } from '@/lib/places/places';
 import type { Gender, PanelProfile, RestingPlace } from '@/lib/tree/types';
@@ -340,6 +341,8 @@ export function MemberDetailPanel({
   const [placeId, setPlaceId] = useState(toInputValue(profile.burialPlaceId));
   const [plot, setPlot] = useState(profile.burialPlot ?? '');
   const [placeChoices, setPlaceChoices] = useState<Place[]>([]);
+  const [mentions, setMentions] = useState<ArticleSummary[]>([]);
+  const [poem, setPoem] = useState<GenerationWord[]>([]);
 
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreviewUrl, setAvatarPreviewUrl] = useState<string | null>(null);
@@ -396,6 +399,35 @@ export function MemberDetailPanel({
       if (opener && document.contains(opener)) opener.focus();
     };
   }, []);
+
+  // "Được nhắc trong…": published articles that mention this person (a failure just shows nothing).
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`/api/members/${memberId}/articles`, { credentials: 'include' })
+      .then((r) => (r.ok ? (r.json() as Promise<ArticleSummary[]>) : []))
+      .then((rows) => {
+        if (!cancelled) setMentions(rows);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [memberId]);
+
+  // The bài đệm is only used to hint a new child's middle name, which only admins add.
+  useEffect(() => {
+    if (!canEdit) return;
+    let cancelled = false;
+    fetch('/api/generation-poem', { credentials: 'include' })
+      .then((r) => (r.ok ? (r.json() as Promise<GenerationWord[]>) : []))
+      .then((rows) => {
+        if (!cancelled) setPoem(rows);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [canEdit]);
 
   // The places to choose from are only needed while an admin edits.
   useEffect(() => {
@@ -1120,6 +1152,22 @@ export function MemberDetailPanel({
                 </section>
               )}
 
+              {mentions.length > 0 && (
+                <section className="mt-6" aria-label="Được nhắc trong">
+                  <h3 className="text-[11px] font-semibold uppercase tracking-wider text-muted">Được nhắc trong</h3>
+                  <ul className="mt-2 space-y-1">
+                    {mentions.map((a) => (
+                      <li key={a.id}>
+                        <Link href={`/su-ky/${a.slug}`} className="text-sm text-primary underline">
+                          {a.title}
+                        </Link>
+                        {a.status === 'draft' && <span className="ms-2 text-xs text-muted">(bản nháp)</span>}
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              )}
+
               {ancestors.length > 0 && (
                 <section className="mt-6">
                   <h3 className="text-[11px] font-semibold uppercase tracking-wider text-muted">Dòng tổ tiên</h3>
@@ -1296,6 +1344,9 @@ export function MemberDetailPanel({
                       Thêm con
                     </button>
                   </div>
+                )}
+                {canEdit && wordHint(poem, generation + 1) && (
+                  <p className="mt-1 text-xs text-muted">{wordHint(poem, generation + 1)}</p>
                 )}
               </section>
             </>
