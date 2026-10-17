@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { loginFields } from '@/constants/formFields';
 import FormAction from '@/components/FormAction';
+import { loginErrorMessage } from '@/lib/auth/session';
 import FormExtra from '@/components/FormExtra';
 import Input from '@/components/Input';
 
@@ -36,7 +37,8 @@ export default function Login() {
         }),
       });
       if (!response.ok) {
-        setError('Email hoặc mật khẩu không đúng.');
+        const body = (await response.json().catch(() => null)) as { detail?: string } | null;
+        setError(loginErrorMessage(response.status, body?.detail));
         return;
       }
       router.push('/');
@@ -65,7 +67,11 @@ export default function Login() {
           />
         ))}
       </div>
-      {error && <p className="text-sm text-danger">{error}</p>}
+      {error && (
+        <p role="alert" className="text-sm text-danger">
+          {error}
+        </p>
+      )}
       <FormExtra />
       <FormAction text={isSubmitting ? 'Đang đăng nhập...' : 'Login'} />
     </form>

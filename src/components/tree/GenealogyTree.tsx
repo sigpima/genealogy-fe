@@ -107,9 +107,17 @@ export type GenealogyTreeProps = {
   onDataChanged: () => void;
   /** Dev-only load-test mode: no per-member detail requests are made. */
   synthetic?: boolean;
+  /** Only admins edit; members and guests get a read-only panel (the API enforces it too). */
+  canEdit: boolean;
 };
 
-export default function GenealogyTree({ familyTree, focusRequest, onDataChanged, synthetic = false }: GenealogyTreeProps) {
+export default function GenealogyTree({
+  familyTree,
+  focusRequest,
+  onDataChanged,
+  synthetic = false,
+  canEdit,
+}: GenealogyTreeProps) {
   // Opens collapsed to the first few generations; later refetches keep the user's own state.
   const [collapsedIds, setCollapsedIds] = useState<Set<number>>(() =>
     collapsedIdsForDepth(familyTree, DEFAULT_EXPANDED_GENERATIONS)
@@ -739,6 +747,7 @@ export default function GenealogyTree({ familyTree, focusRequest, onDataChanged,
       {selectedMember && (
         <MemberDetailPanel
           key={selectedMember.id}
+          canEdit={canEdit}
           name={selectedMember.name}
           generation={selectedMember.generation}
           ancestorPath={selectedMember.ancestorPath}

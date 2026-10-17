@@ -60,6 +60,8 @@ export type SpouseUpdateInput = {
 };
 
 export type MemberDetailPanelProps = {
+  /** False = read-only: every edit/add/delete control is hidden. */
+  canEdit: boolean;
   name: string;
   generation: number;
   ancestorPath: string[];
@@ -165,6 +167,7 @@ function AvatarOrInitial({ src, initial, size }: { src: string | null; initial: 
 }
 
 export function MemberDetailPanel({
+  canEdit,
   name,
   generation,
   ancestorPath,
@@ -679,7 +682,7 @@ export function MemberDetailPanel({
                   )}
                   <div className="flex items-center justify-between">
                     <h3 className="text-[11px] font-semibold uppercase tracking-wider text-muted">Hành trạng &amp; công đức</h3>
-                    {detailReady && (
+                    {detailReady && canEdit && (
                       <button type="button" onClick={startEditing} className={ghostButton}>
                         Sửa
                       </button>
@@ -705,9 +708,11 @@ export function MemberDetailPanel({
                 </section>
               )}
 
-              <button type="button" onClick={handleDelete} disabled={isSubmitting} className={`${dangerButton} mt-6 -ms-2`}>
-                Xoá thành viên
-              </button>
+              {canEdit && (
+                <button type="button" onClick={handleDelete} disabled={isSubmitting} className={`${dangerButton} mt-6 -ms-2`}>
+                  Xoá thành viên
+                </button>
+              )}
             </>
           )}
 
@@ -793,14 +798,16 @@ export function MemberDetailPanel({
                         <li key={spouse.marriageId} className="rounded-lg bg-surface-muted p-3 text-sm text-default">
                           <div className="flex items-center justify-between gap-x-2">
                             <span className="font-display font-semibold">{spouse.name}</span>
-                            <div className="flex items-center">
-                              <button type="button" onClick={() => startEditingSpouse(spouse)} className={ghostButton}>
-                                Sửa
-                              </button>
-                              <button type="button" onClick={() => handleDeleteSpouse(spouse)} className={dangerButton}>
-                                Xoá
-                              </button>
-                            </div>
+                            {canEdit && (
+                              <div className="flex items-center">
+                                <button type="button" onClick={() => startEditingSpouse(spouse)} className={ghostButton}>
+                                  Sửa
+                                </button>
+                                <button type="button" onClick={() => handleDeleteSpouse(spouse)} className={dangerButton}>
+                                  Xoá
+                                </button>
+                              </div>
+                            )}
                           </div>
                           {(lifespanLabel(spouse.birthYear, spouse.deathYear) || spouse.marriageYear !== null) && (
                             <p className="text-xs text-muted">
@@ -813,7 +820,7 @@ export function MemberDetailPanel({
                     )}
                   </ul>
                 )}
-                {detailReady && (
+                {detailReady && canEdit && (
                   <div className="mt-3 flex flex-wrap items-center gap-2">
                     <input
                       value={newSpouseName}
@@ -854,18 +861,20 @@ export function MemberDetailPanel({
                     ))}
                   </ul>
                 )}
-                <div className="mt-3 flex items-center gap-x-2">
-                  <input
-                    value={newChildName}
-                    onChange={(e) => setNewChildName(e.target.value)}
-                    placeholder="Tên con mới..."
-                    aria-label="Tên con mới"
-                    className={`${fieldClass} min-w-0 flex-1`}
-                  />
-                  <button type="button" onClick={handleAddChild} disabled={isSubmitting || !newChildName.trim()} className={primaryButton}>
-                    Thêm con
-                  </button>
-                </div>
+                {canEdit && (
+                  <div className="mt-3 flex items-center gap-x-2">
+                    <input
+                      value={newChildName}
+                      onChange={(e) => setNewChildName(e.target.value)}
+                      placeholder="Tên con mới..."
+                      aria-label="Tên con mới"
+                      className={`${fieldClass} min-w-0 flex-1`}
+                    />
+                    <button type="button" onClick={handleAddChild} disabled={isSubmitting || !newChildName.trim()} className={primaryButton}>
+                      Thêm con
+                    </button>
+                  </div>
+                )}
               </section>
             </>
           )}

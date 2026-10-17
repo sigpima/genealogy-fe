@@ -272,6 +272,23 @@ worth re-reading before touching this flow again:**
   then surfaces as a *second*, confusing `DELETE` 409 if the user then
   tries to delete what they think is the child.
 
+**Roles and access (backend design: `../genealogy-api/docs/superpowers/specs/2026-10-17-roles-and-admin-design.md`)** —
+the API has roles (`admin` | `member`) and account statuses; the frontend mirrors them in
+`src/lib/auth/session.ts` (`canEdit` = admin only, Vietnamese error/notice texts) and
+`src/components/auth/useSession.ts` (fetches `/api/auth/me`; `user === null` means a guest or
+logged out; `isBlocked` = the account was disabled/not approved while a cookie was still around, so
+the page signs out). `Home` passes `canEdit` to `GenealogyTree` → `MemberDetailPanel`, which hides
+every edit/add/delete control when it is false (the API refuses the writes anyway — never rely on
+the hidden buttons for security). `src/components/layout/AppShell.tsx` (sidebar + header) is shared
+by the tree page and `/admin`; `Header` shows the signed-in user and role, or "Đăng nhập" for guests,
+and `Sidebar` shows "Quản trị" only to admins. `/admin` (`src/app/admin/page.tsx`, panels in
+`src/components/admin/`) has Users (approve, role, disable, create) and Settings (visibility,
+registration mode); it sends non-admins back to `/`. **`src/middleware.ts` only protects `/admin`** —
+`/` must stay reachable without a cookie so guests can browse a public site; on a private site `Home`
+redirects to `/login` itself when the API answers 401. Pitfalls: Next injects an empty
+`next-route-announcer` with `role="alert"`, so tests/selectors for error messages must be scoped
+(`form [role=alert]`); and in `UsersPanel` an error must be set *after* `load()` (which clears it).
+
 **Member detail fields** — each member's `MemberDetail` (fetched per member
 from `GET /api/members/{id}`, not part of the tree skeleton) carries
 `birth_year`, `death_year`, `gender` (`'male' | 'female' | 'other'`, see the

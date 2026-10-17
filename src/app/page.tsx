@@ -2,9 +2,10 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Header } from '@/components/layout/Header';
+import { useSession } from '@/components/auth/useSession';
+import { AppShell } from '@/components/layout/AppShell';
 import GenealogyTree, { type FocusRequest } from '@/components/tree/GenealogyTree';
-import Sidebar from './sidebar';
+import { canEdit } from '@/lib/auth/session';
 import { clanName } from '@/lib/tree/generations';
 import { generateSyntheticTree } from '@/lib/tree/synthetic';
 import { findMembersByName } from '@/lib/tree/search';
@@ -12,6 +13,8 @@ import type { FamilyMember } from '@/lib/tree/types';
 
 export default function Home() {
   const router = useRouter();
+  const session = useSession();
+  const userCanEdit = canEdit(session.user);
   const [searchQuery, setSearchQuery] = useState('');
   const [focusRequest, setFocusRequest] = useState<FocusRequest | null>(null);
   const [familyTree, setFamilyTree] = useState<FamilyMember | null>(null);
@@ -65,31 +68,39 @@ export default function Home() {
     router.push('/login');
   }
 
+  // An account that was disabled (or never approved) while its cookie was still around: drop the cookie.
+  useEffect(() => {
+    if (session.isBlocked) void handleLogout();
+    // handleLogout only uses router, which is stable
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session.isBlocked]);
+
   return (
-    <div className="flex h-screen">
-      <Sidebar />
-      <div className="flex flex-1 flex-col overflow-hidden">
-        <Header
-          clanName={clanName(familyTree?.name ?? '')}
-          searchQuery={searchQuery}
-          onSearchQueryChange={setSearchQuery}
-          searchResults={matches.map((match) => ({
-            key: match.path.join(' > '),
-            label: match.path.join(' → '),
-            onSelect: () => {
-              setFocusRequest({ id: match.member.id ?? -1, name: match.member.name, token: Date.now() });
-              setSearchQuery('');
-            },
-          }))}
-          onLogout={handleLogout}
-        />
-        <div className="flex-1 overflow-hidden">
-          {isLoading && (
+    <AppShell
+      clanName={clanName(familyTree?.name ?? '')}
+      user={session.user}
+      active="tree"
+      onLogout={handleLogout}
+      search={{
+        query: searchQuery,
+        onQueryChange: setSearchQuery,
+        results: matches.map((match) => ({
+          key: match.path.join(' > '),
+          label: match.path.join(' → '),
+          onSelect: () => {
+            setFocusRequest({ id: match.member.id ?? -1, name: match.member.name, token: Date.now() });
+            setSearchQuery('');
+          },
+        })),
+      }}
+    >
+      <div className="h-full overflow-hidden">
+          {(isLoading || session.isLoading) && (
             <div className="flex h-full items-center justify-center bg-app">
               <div className="size-8 animate-spin rounded-full border-2 border-default border-t-transparent" />
             </div>
           )}
-          {!isLoading && error && (
+          {!isLoading && !session.isLoading && error && (
             <div className="flex h-full flex-col items-center justify-center gap-y-4 bg-app text-center">
               <p className="text-sm text-danger">{error}</p>
               <button
@@ -101,22 +112,26 @@ export default function Home() {
               </button>
             </div>
           )}
-          {!isLoading && !error && !familyTree && (
+          {!isLoading && !session.isLoading && !error && !familyTree && (
             <div className="flex h-full items-center justify-center bg-app">
-              <EmptyTreeState onCreated={() => loadTree({ silent: true })} />
+              {userCanEdit ? (
+                <EmptyTreeState onCreated={() => loadTree({ silent: true })} />
+              ) : (
+                <p className="text-sm text-muted">Chưa có dữ liệu gia phả.</p>
+              )}
             </div>
           )}
-          {!isLoading && !error && familyTree && (
+          {!isLoading && !session.isLoading && !error && familyTree && (
             <GenealogyTree
               familyTree={familyTree}
               focusRequest={focusRequest}
               onDataChanged={() => loadTree({ silent: true })}
               synthetic={isSynthetic}
+              canEdit={userCanEdit}
             />
           )}
-        </div>
       </div>
-    </div>
+    </AppShell>
   );
 }
 
