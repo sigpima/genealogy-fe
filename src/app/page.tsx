@@ -149,6 +149,7 @@ export default function Home() {
               onDataChanged={() => loadTree({ silent: true })}
               synthetic={isSynthetic}
               canEdit={userCanEdit}
+              canPropose={session.user !== null && !userCanEdit}
             />
           )}
       </div>

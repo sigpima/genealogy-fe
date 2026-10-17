@@ -375,6 +375,19 @@ branch head through `focusOn`; the panel shows "Thuộc chi" from `MemberDetail.
 everyone who can read the tree) shows overall figures from `/api/stats` and one card per branch from `/api/stats?branch=ID`; admins
 add/edit/delete branches (`BranchForm` picks the head by searching, spouses excluded). Sidebar items "Tìm kiếm" and "Chi phái".
 
+**GĐ4: change requests and the audit log (backend design: `../genealogy-api/docs/superpowers/specs/2026-10-18-gd4-change-requests-design.md`)** —
+a signed-in non-admin gets **"Đề xuất chỉnh sửa"** in the panel instead of "Sửa" (`canPropose` = signed in and not `canEdit`,
+passed `Home` → `GenealogyTree` → `MemberDetailPanel`, which now also takes `memberId`). `ProposeDialog` has three tabs (edit / add
+child / report); the edit form is pre-filled from the panel's own data (`formFromPanel`, `src/lib/requests/requests.ts` — a test keeps it
+equal to `formFromDetail`) and **only changed fields are sent** (`changesFromForm`: blank → `null`, numbers range-checked like the API).
+**`/yeu-cau`** (`RequestsView`) is one page with two faces: admins get "Chờ duyệt / Đã xử lý", an old→new table per request, a
+"đã đổi từ lúc gửi" warning (`diff[].stale`) and Duyệt / Từ chối (a reason is required to reject); everyone else sees their own requests,
+the decision and the reviewer's note, and can withdraw pending ones. The sidebar item "Yêu cầu" polls `/api/requests/summary` once and shows a
+badge (`usePendingRequests`; failure just hides it). **`/nhat-ky`** (`AuditView`, admins; `?member=<id>` filters, linked from the panel's
+"Lịch sử") renders `GET /api/audit` with `changeLines` ("Năm sinh: 1930 → 1931") and `actionLabel`. When you add a profile field, add
+its Vietnamese label to `FIELD_LABELS` and the form lists in `requests.ts`, or it shows up under its raw key. In Playwright `ol li` also
+matches the nested change lines — use `ol > li`.
+
 **`FormAction` (`src/components/FormAction.tsx`) must not receive a
 `handleSubmit` prop when used inside a `<form onSubmit={...}>`** — its
 button is `type="submit"`, so passing the same handler as `onClick` too

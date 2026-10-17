@@ -1,13 +1,19 @@
+'use client';
+
 import Link from 'next/link';
+import { useEffect, useState } from 'react';
 
 export type SidebarProps = {
-  active: 'tree' | 'search' | 'branches' | 'data' | 'admin' | 'platform';
+  active: 'tree' | 'search' | 'branches' | 'requests' | 'audit' | 'data' | 'admin' | 'platform';
   isAdmin: boolean;
   /** The platform owner also gets the page that manages every family. */
   isSuperadmin?: boolean;
+  /** Signed-in users get the "Yêu cầu" item (their proposals; admins: the ones to review). */
+  signedIn?: boolean;
 };
 
-export default function Sidebar({ active, isAdmin, isSuperadmin = false }: SidebarProps) {
+export default function Sidebar({ active, isAdmin, isSuperadmin = false, signedIn = false }: SidebarProps) {
+  const pending = usePendingRequests(signedIn);
   return (
     <aside className="hidden w-16 shrink-0 flex-col border-default border-e bg-surface md:flex lg:w-60">
       <nav aria-label="Điều hướng chính" className="flex-1 px-2 pt-4">
@@ -30,6 +36,23 @@ export default function Sidebar({ active, isAdmin, isSuperadmin = false }: Sideb
             icon={<BranchesIcon />}
             current={active === 'branches'}
           />
+          {signedIn && (
+            <NavItem
+              href="/yeu-cau"
+              label="Yêu cầu"
+              icon={<InboxIcon />}
+              current={active === 'requests'}
+              badge={pending}
+            />
+          )}
+          {isAdmin && (
+            <NavItem
+              href="/nhat-ky"
+              label="Nhật ký"
+              icon={<HistoryIcon />}
+              current={active === 'audit'}
+            />
+          )}
           {isAdmin && (
             <NavItem
               href="/nhap-lieu"
@@ -65,19 +88,21 @@ function NavItem({
   label,
   icon,
   current,
+  badge = 0,
 }: {
   href: string;
   label: string;
   icon: React.ReactNode;
   current: boolean;
+  badge?: number;
 }) {
   return (
     <li>
       <Link
         href={href}
         aria-current={current ? 'page' : undefined}
-        aria-label={label}
-        className={`flex min-h-11 items-center justify-center gap-x-3 rounded-lg px-3 py-2 text-sm focus-visible:outline-2 focus-visible:outline-[var(--color-primary)] lg:justify-start ${
+        aria-label={badge > 0 ? `${label} (${badge} đang chờ)` : label}
+        className={`relative flex min-h-11 items-center justify-center gap-x-3 rounded-lg px-3 py-2 text-sm focus-visible:outline-2 focus-visible:outline-[var(--color-primary)] lg:justify-start ${
           current
             ? 'bg-surface-muted font-medium text-primary'
             : 'text-default hover:bg-surface-muted'
@@ -85,6 +110,11 @@ function NavItem({
       >
         {icon}
         <span className="hidden lg:inline">{label}</span>
+        {badge > 0 && (
+          <span className="absolute end-1.5 top-1 min-w-5 rounded-full bg-primary px-1.5 text-center text-[11px] font-semibold leading-5 text-on-primary lg:static lg:ms-auto">
+            {badge}
+          </span>
+        )}
       </Link>
     </li>
   );
@@ -156,6 +186,43 @@ function BranchesIcon() {
       <circle cx="18" cy="12" r="2" />
       <circle cx="6" cy="19" r="2" />
       <path d="M6 7v10M6 12h10" />
+    </svg>
+  );
+}
+
+/** How many requests wait (admins: all of them; others: their own). A failure just hides the badge. */
+function usePendingRequests(signedIn: boolean): number {
+  const [pending, setPending] = useState(0);
+  useEffect(() => {
+    if (!signedIn) return;
+    let cancelled = false;
+    fetch('/api/requests/summary', { credentials: 'include' })
+      .then((response) => (response.ok ? (response.json() as Promise<{ pending: number }>) : { pending: 0 }))
+      .then((body) => {
+        if (!cancelled) setPending(body.pending);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [signedIn]);
+  return signedIn ? pending : 0;
+}
+
+function InboxIcon() {
+  return (
+    <svg {...iconProps}>
+      <path d="M22 12h-6l-2 3h-4l-2-3H2" />
+      <path d="M5.5 5h13l3.5 7v6a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-6l3.5-7Z" />
+    </svg>
+  );
+}
+
+function HistoryIcon() {
+  return (
+    <svg {...iconProps}>
+      <path d="M3 12a9 9 0 1 0 3-6.7L3 8" />
+      <path d="M3 3v5h5M12 7v5l3 2" />
     </svg>
   );
 }

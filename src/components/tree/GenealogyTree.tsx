@@ -100,6 +100,8 @@ export type GenealogyTreeProps = {
   synthetic?: boolean;
   /** Only admins edit; members and guests get a read-only panel (the API enforces it too). */
   canEdit: boolean;
+  /** Signed in but not an admin: the panel offers "Đề xuất chỉnh sửa". */
+  canPropose?: boolean;
 };
 
 export default function GenealogyTree({
@@ -109,6 +111,7 @@ export default function GenealogyTree({
   onDataChanged,
   synthetic = false,
   canEdit,
+  canPropose,
 }: GenealogyTreeProps) {
   // Opens collapsed to the first few generations; later refetches keep the user's own state.
   const [collapsedIds, setCollapsedIds] = useState<Set<number>>(() =>
@@ -743,7 +746,9 @@ export default function GenealogyTree({
       {selectedMember && (
         <MemberDetailPanel
           key={selectedMember.id}
+          memberId={selectedMember.id}
           canEdit={canEdit}
+          canPropose={canPropose}
           name={selectedMember.name}
           generation={selectedMember.generation}
           ancestorPath={selectedMember.ancestorPath}

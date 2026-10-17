@@ -7,7 +7,7 @@ import { canManage, type CurrentUser } from '@/lib/auth/session';
 export type AppShellProps = {
   clanName: string;
   user: CurrentUser | null;
-  active: 'tree' | 'search' | 'branches' | 'data' | 'admin' | 'platform';
+  active: 'tree' | 'search' | 'branches' | 'requests' | 'audit' | 'data' | 'admin' | 'platform';
   search?: HeaderSearch;
   onLogout: () => void;
   children: React.ReactNode;
@@ -24,7 +24,7 @@ export function AppShell({
 }: AppShellProps) {
   return (
     <div className="flex h-screen">
-      <Sidebar active={active} isAdmin={canManage(user)} isSuperadmin={user?.role === 'superadmin'} />
+      <Sidebar active={active} isAdmin={canManage(user)} isSuperadmin={user?.role === 'superadmin'} signedIn={user !== null} />
       <div className="flex flex-1 flex-col overflow-hidden">
         <Header
           clanName={clanName}

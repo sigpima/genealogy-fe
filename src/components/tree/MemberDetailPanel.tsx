@@ -12,7 +12,10 @@ import {
   parseBoundedInt,
   toNullableText,
 } from '@/lib/tree/profile';
+import Link from 'next/link';
+import { ProposeDialog } from '@/components/requests/ProposeDialog';
 import type { BranchRef } from '@/lib/branches/branches';
+import { formFromPanel } from '@/lib/requests/requests';
 import type { Gender, PanelProfile } from '@/lib/tree/types';
 
 export type { PanelProfile };
@@ -62,8 +65,11 @@ export type SpouseUpdateInput = {
 };
 
 export type MemberDetailPanelProps = {
+  memberId: number;
   /** False = read-only: every edit/add/delete control is hidden. */
   canEdit: boolean;
+  /** A signed-in non-admin may propose a change instead (an admin reviews it). */
+  canPropose?: boolean;
   name: string;
   generation: number;
   ancestorPath: string[];
@@ -268,7 +274,9 @@ function AvatarOrInitial({ src, initial, size }: { src: string | null; initial: 
 }
 
 export function MemberDetailPanel({
+  memberId,
   canEdit,
+  canPropose = false,
   name,
   generation,
   ancestorPath,
@@ -319,6 +327,7 @@ export function MemberDetailPanel({
   const [newChildName, setNewChildName] = useState('');
   const [actionError, setActionError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isProposing, setIsProposing] = useState(false);
 
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreviewUrl, setAvatarPreviewUrl] = useState<string | null>(null);
@@ -999,8 +1008,18 @@ export function MemberDetailPanel({
                   <div className="flex items-center justify-between">
                     <h3 className="text-[11px] font-semibold uppercase tracking-wider text-muted">Hành trạng &amp; công đức</h3>
                     {detailReady && canEdit && (
-                      <button type="button" onClick={startEditing} className={ghostButton}>
-                        Sửa
+                      <div className="flex items-center">
+                        <Link href={`/nhat-ky?member=${memberId}`} className={`${ghostButton} flex items-center`}>
+                          Lịch sử
+                        </Link>
+                        <button type="button" onClick={startEditing} className={ghostButton}>
+                          Sửa
+                        </button>
+                      </div>
+                    )}
+                    {detailReady && !canEdit && canPropose && (
+                      <button type="button" onClick={() => setIsProposing(true)} className={ghostButton}>
+                        Đề xuất chỉnh sửa
                       </button>
                     )}
                   </div>
@@ -1196,6 +1215,14 @@ export function MemberDetailPanel({
           )}
         </div>
       </aside>
+      {isProposing && (
+        <ProposeDialog
+          memberId={memberId}
+          memberName={name}
+          initial={formFromPanel(name, { birthYear, deathYear, gender, notes, profile })}
+          onClose={() => setIsProposing(false)}
+        />
+      )}
     </>
   );
 }
