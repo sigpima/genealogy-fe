@@ -45,6 +45,16 @@ describe('filterVisibleLinks', () => {
     const links = [{ source: { x: 500, y: 500 }, target: { x: 600, y: 600 } }];
     expect(filterVisibleLinks(links, rect)).toHaveLength(0);
   });
+
+  it('includes a long link that crosses the rect with both endpoints outside it', () => {
+    const links = [{ source: { x: -500, y: 50 }, target: { x: 600, y: 50 } }];
+    expect(filterVisibleLinks(links, rect)).toHaveLength(1);
+  });
+
+  it('excludes a long link whose span passes beside the rect', () => {
+    const links = [{ source: { x: -500, y: 300 }, target: { x: 600, y: 300 } }];
+    expect(filterVisibleLinks(links, rect)).toHaveLength(0);
+  });
 });
 
 describe('needsRecommit', () => {

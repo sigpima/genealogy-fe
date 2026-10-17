@@ -22,8 +22,15 @@ export function filterVisibleLinks<T extends { source: { x: number; y: number };
   links: T[],
   rect: Rect
 ): T[] {
-  const inRect = (p: { x: number; y: number }) => p.x >= rect.x0 && p.x <= rect.x1 && p.y >= rect.y0 && p.y <= rect.y1;
-  return links.filter((l) => inRect(l.source) || inRect(l.target));
+  // Test the link's bounding box, not just its endpoints: a long connector can cross the view
+  // with both ends off-screen.
+  return links.filter((l) => {
+    const minX = Math.min(l.source.x, l.target.x);
+    const maxX = Math.max(l.source.x, l.target.x);
+    const minY = Math.min(l.source.y, l.target.y);
+    const maxY = Math.max(l.source.y, l.target.y);
+    return maxX >= rect.x0 && minX <= rect.x1 && maxY >= rect.y0 && minY <= rect.y1;
+  });
 }
 
 export const VISIBLE_MARGIN = 0.5;

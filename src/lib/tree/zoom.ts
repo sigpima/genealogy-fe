@@ -34,13 +34,27 @@ export function padBounds(bounds: Bounds, padX: number, padY: number): Bounds {
   };
 }
 
-export function fitTransform(bounds: Bounds, width: number, height: number, padding = 48): Transform {
+export type FitPadding = number | { top: number; right: number; bottom: number; left: number };
+
+export function fitTransform(bounds: Bounds, width: number, height: number, padding: FitPadding = 48): Transform {
+  const pad = typeof padding === 'number' ? { top: padding, right: padding, bottom: padding, left: padding } : padding;
+  // Never let the usable box collapse to nothing (tiny containers), or k would go negative.
+  const availWidth = Math.max(width - pad.left - pad.right, 1);
+  const availHeight = Math.max(height - pad.top - pad.bottom, 1);
   const boundsWidth = Math.max(bounds.maxX - bounds.minX, 1);
   const boundsHeight = Math.max(bounds.maxY - bounds.minY, 1);
-  const k = Math.min(1, (width - 2 * padding) / boundsWidth, (height - 2 * padding) / boundsHeight);
+  const k = Math.min(1, availWidth / boundsWidth, availHeight / boundsHeight);
   const centerX = (bounds.minX + bounds.maxX) / 2;
   const centerY = (bounds.minY + bounds.maxY) / 2;
-  return { k, x: width / 2 - centerX * k, y: height / 2 - centerY * k };
+  return {
+    k,
+    x: pad.left + availWidth / 2 - centerX * k,
+    y: pad.top + availHeight / 2 - centerY * k,
+  };
+}
+
+export function clampZoom(k: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, k));
 }
 
 export function minZoomFor(fitK: number, floor = 0.15): number {

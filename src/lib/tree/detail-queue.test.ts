@@ -25,6 +25,12 @@ describe('pickIdsToFetch', () => {
   it('never returns a negative-sized batch when over budget', () => {
     expect(pickIdsToFetch(candidates, center, new Set(), 99)).toEqual([]);
   });
+  it('never returns the same id twice when it is a candidate more than once', () => {
+    const duplicated = [...candidates, { id: 2, x: 0, y: 0 }];
+    const picked = pickIdsToFetch(duplicated, center, new Set(), 0);
+    expect(new Set(picked).size).toBe(picked.length);
+    expect(picked).toEqual([2, 3, 4, 1]);
+  });
   it('handles no candidates', () => {
     expect(pickIdsToFetch([], center, new Set(), 0)).toEqual([]);
   });

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { boundsOf, fitTransform, minZoomFor, padBounds, zoomLevelFor } from './zoom';
+import { boundsOf, clampZoom, fitTransform, minZoomFor, padBounds, zoomLevelFor } from './zoom';
 
 describe('zoomLevelFor', () => {
   it('uses the design thresholds', () => {
@@ -46,6 +46,34 @@ describe('fitTransform', () => {
   });
   it('never exceeds k = 1 for tiny bounds', () => {
     expect(fitTransform({ minX: 0, minY: 0, maxX: 10, maxY: 10 }, 800, 600).k).toBe(1);
+  });
+});
+
+describe('fitTransform padding and tiny containers', () => {
+  it('keeps content clear of overlays when given per-side padding', () => {
+    const bounds = { minX: 0, minY: 0, maxX: 1000, maxY: 1000 };
+    const t = fitTransform(bounds, 800, 700, { top: 100, right: 20, bottom: 200, left: 20 });
+    // content must fit in the box x 20..780, y 100..500
+    expect(t.k).toBeCloseTo(0.4);
+    expect(0 * t.k + t.y).toBeGreaterThanOrEqual(100 - 1e-6);
+    expect(1000 * t.k + t.y).toBeLessThanOrEqual(500 + 1e-6);
+    expect(0 * t.k + t.x).toBeGreaterThanOrEqual(20 - 1e-6);
+    expect(1000 * t.k + t.x).toBeLessThanOrEqual(780 + 1e-6);
+  });
+  it('stays positive when the container is smaller than the padding', () => {
+    const t = fitTransform({ minX: 0, minY: 0, maxX: 1000, maxY: 1000 }, 60, 40);
+    expect(t.k).toBeGreaterThan(0);
+    expect(Number.isFinite(t.x) && Number.isFinite(t.y)).toBe(true);
+  });
+});
+
+describe('clampZoom', () => {
+  it('raises a zoom below the floor and lowers one above the ceiling', () => {
+    expect(clampZoom(0.05, 0.15, 2.5)).toBe(0.15);
+    expect(clampZoom(3, 0.15, 2.5)).toBe(2.5);
+  });
+  it('leaves an in-range zoom untouched', () => {
+    expect(clampZoom(0.9, 0.15, 2.5)).toBe(0.9);
   });
 });
 

@@ -9,8 +9,13 @@ export function pickIdsToFetch(
 ): number[] {
   const budget = limit - inflight;
   if (budget <= 0) return [];
+  const seen = new Set<number>();
   return candidates
-    .filter((candidate) => !known.has(candidate.id))
+    .filter((candidate) => {
+      if (known.has(candidate.id) || seen.has(candidate.id)) return false;
+      seen.add(candidate.id);
+      return true;
+    })
     .map((candidate) => ({
       id: candidate.id,
       distance: (candidate.x - center.x) ** 2 + (candidate.y - center.y) ** 2,
