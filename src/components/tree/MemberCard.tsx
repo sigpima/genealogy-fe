@@ -328,7 +328,7 @@ function DetailedCard(props: MemberCardProps & { tier: GenerationTier; emphasize
       {hasChildren && (
         <ToggleControl
           id={id}
-          y={height / 2}
+          y={height / 2 + 4}
           isCollapsed={props.isCollapsed}
           hiddenDescendants={props.hiddenDescendants}
           onToggle={props.onToggle}

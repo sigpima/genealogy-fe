@@ -59,14 +59,14 @@ export function ViewportControls({ canvasRef }: ViewportControlsProps) {
       <button
         type="button"
         onClick={() => canvasRef.current?.resetView()}
-        className="min-h-11 rounded-lg px-2 text-xs text-muted hover:text-default focus-visible:outline-2 focus-visible:outline-[var(--color-primary)]"
+        className="min-h-11 whitespace-nowrap rounded-lg px-2 text-xs text-muted hover:text-default focus-visible:outline-2 focus-visible:outline-[var(--color-primary)]"
       >
         Reset
       </button>
       <button
         type="button"
         onClick={() => canvasRef.current?.fitToView()}
-        className="min-h-11 rounded-lg bg-surface-muted px-3 text-xs font-medium text-default hover:opacity-80 focus-visible:outline-2 focus-visible:outline-[var(--color-primary)]"
+        className="min-h-11 whitespace-nowrap rounded-lg bg-surface-muted px-3 text-xs font-medium text-default hover:opacity-80 focus-visible:outline-2 focus-visible:outline-[var(--color-primary)]"
       >
         Toàn cảnh
       </button>

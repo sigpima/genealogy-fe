@@ -1,6 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { generationTier, toRoman } from '@/lib/tree/generations';
+import { lifespanLabel, memberStatus } from '@/lib/tree/member-status';
 import type { Gender } from '@/lib/tree/types';
 
 export type MemberDetailPanelChild = {
@@ -81,6 +83,15 @@ const GENDER_LABELS: Record<Gender, string> = {
   other: 'Khác',
 };
 
+const fieldClass =
+  'mt-1 w-full rounded-lg border-default border bg-app px-3 py-2 text-sm text-default placeholder:text-muted focus:border-[var(--color-primary)] focus:outline-none focus:ring-4 focus:ring-[rgba(197,155,39,0.2)]';
+const primaryButton =
+  'min-h-11 shrink-0 whitespace-nowrap rounded-lg bg-primary px-4 text-sm font-medium text-on-primary hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)] disabled:opacity-50';
+const ghostButton =
+  'min-h-11 whitespace-nowrap rounded-lg px-3 text-sm text-muted hover:text-default focus-visible:outline-2 focus-visible:outline-[var(--color-primary)] disabled:opacity-50';
+const dangerButton =
+  'min-h-11 whitespace-nowrap rounded-lg px-3 text-sm text-danger hover:underline focus-visible:outline-2 focus-visible:outline-[var(--color-primary)] disabled:opacity-50';
+
 function toInputValue(value: number | null): string {
   return value === null ? '' : String(value);
 }
@@ -89,11 +100,6 @@ function parseYear(value: string): number | null {
   if (!value.trim()) return null;
   const parsed = Number(value);
   return Number.isNaN(parsed) ? null : parsed;
-}
-
-function lifespanOf(birthYear: number | null, deathYear: number | null): string | null {
-  if (birthYear === null && deathYear === null) return null;
-  return `${birthYear ?? '?'} – ${deathYear ?? 'nay'}`;
 }
 
 type SpouseDraft = {
@@ -130,7 +136,7 @@ function AvatarOrInitial({ src, initial, size }: { src: string | null; initial: 
   return (
     <div
       style={{ width: size, height: size }}
-      className="flex items-center justify-center rounded-full bg-primary text-on-primary"
+      className="font-display flex items-center justify-center rounded-full bg-primary text-on-primary"
     >
       {initial.toUpperCase() || '?'}
     </div>
@@ -166,6 +172,7 @@ export function MemberDetailPanel({
 }: MemberDetailPanelProps) {
   const ancestors = ancestorPath.slice(0, -1);
 
+  const [tab, setTab] = useState<'bio' | 'family'>('bio');
   const [isEditing, setIsEditing] = useState(false);
   const [editedName, setEditedName] = useState(name);
   const [editedBirthYear, setEditedBirthYear] = useState(toInputValue(birthYear));
@@ -185,6 +192,14 @@ export function MemberDetailPanel({
   const [spouseDraft, setSpouseDraft] = useState<SpouseDraft | null>(null);
   const [newSpouseName, setNewSpouseName] = useState('');
   const [newSpouseMarriageYear, setNewSpouseMarriageYear] = useState('');
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [onClose]);
 
   function resetAvatarDraft() {
     if (avatarPreviewUrl) URL.revokeObjectURL(avatarPreviewUrl);
@@ -335,302 +350,366 @@ export function MemberDetailPanel({
     }
   }
 
-  const lifespan = lifespanOf(birthYear, deathYear);
+  const lifespan = lifespanLabel(birthYear, deathYear);
+  const status = memberStatus(birthYear, deathYear);
+  const tier = generationTier(generation);
   const editAvatarSrc = removeAvatar ? null : (avatarPreviewUrl ?? avatarUrl);
   const canRemoveAvatar = !removeAvatar && Boolean(avatarPreviewUrl || avatarUrl);
+  const detailReady = !isDetailLoading && !detailLoadError;
 
   return (
-    <aside className="fixed inset-y-0 right-0 z-40 w-80 overflow-y-auto border-default border-l bg-surface p-4 shadow-lg">
-      <button type="button" onClick={onClose} className="mb-4 text-sm text-muted hover:text-default">
-        Đóng ✕
-      </button>
-
-      {isEditing ? (
-        <div className="space-y-3">
-          <div className="flex items-center gap-x-3">
-            <AvatarOrInitial src={editAvatarSrc} initial={editedName.charAt(0)} size={64} />
-            <div className="flex flex-col gap-y-1">
-              <input type="file" accept="image/*" onChange={handleAvatarFileChange} className="text-xs text-muted" />
-              {canRemoveAvatar && (
-                <button
-                  type="button"
-                  onClick={handleRemoveAvatarClick}
-                  className="whitespace-nowrap text-left text-xs text-danger hover:underline"
-                >
-                  Xoá ảnh
-                </button>
-              )}
-            </div>
-          </div>
-          <div>
-            <label className="text-xs text-muted">Họ tên</label>
-            <input
-              value={editedName}
-              onChange={(e) => setEditedName(e.target.value)}
-              className="mt-1 w-full rounded-lg border-default border bg-app px-2 py-1 text-sm text-default focus:outline-none"
-            />
-          </div>
-          {parentOptions.length > 0 && (
-            <div>
-              <label className="text-xs text-muted">Cha/Mẹ</label>
-              <select
-                value={editedParentId}
-                onChange={(e) => setEditedParentId(e.target.value)}
-                className="mt-1 w-full rounded-lg border-default border bg-app px-2 py-1 text-sm text-default focus:outline-none"
-              >
-                {parentOptions.map((option) => (
-                  <option key={option.id} value={option.id}>
-                    {option.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
-          <div className="flex gap-x-2">
-            <div className="flex-1">
-              <label className="text-xs text-muted">Năm sinh</label>
-              <input
-                type="number"
-                value={editedBirthYear}
-                onChange={(e) => setEditedBirthYear(e.target.value)}
-                className="mt-1 w-full rounded-lg border-default border bg-app px-2 py-1 text-sm text-default focus:outline-none"
-              />
-            </div>
-            <div className="flex-1">
-              <label className="text-xs text-muted">Năm mất</label>
-              <input
-                type="number"
-                value={editedDeathYear}
-                onChange={(e) => setEditedDeathYear(e.target.value)}
-                className="mt-1 w-full rounded-lg border-default border bg-app px-2 py-1 text-sm text-default focus:outline-none"
-              />
-            </div>
-          </div>
-          <div>
-            <label className="text-xs text-muted">Giới tính</label>
-            <select
-              value={editedGender}
-              onChange={(e) => setEditedGender(e.target.value)}
-              className="mt-1 w-full rounded-lg border-default border bg-app px-2 py-1 text-sm text-default focus:outline-none"
-            >
-              <option value="">Không rõ</option>
-              <option value="male">Nam</option>
-              <option value="female">Nữ</option>
-              <option value="other">Khác</option>
-            </select>
-          </div>
-          <div>
-            <label className="text-xs text-muted">Ghi chú</label>
-            <textarea
-              value={editedNotes}
-              onChange={(e) => setEditedNotes(e.target.value)}
-              rows={3}
-              className="mt-1 w-full rounded-lg border-default border bg-app px-2 py-1 text-sm text-default focus:outline-none"
-            />
-          </div>
-          <div className="flex items-center gap-x-2">
-            <button type="button" onClick={handleSave} disabled={isSubmitting} className="whitespace-nowrap text-sm accent-text hover:underline disabled:opacity-50">
-              Lưu
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                resetAvatarDraft();
-                setIsEditing(false);
-              }}
-              className="whitespace-nowrap text-sm text-muted hover:text-default"
-            >
-              Huỷ
-            </button>
-          </div>
-        </div>
-      ) : (
-        <div>
-          <div className="flex items-center gap-x-3">
-            <AvatarOrInitial src={avatarUrl} initial={name.charAt(0)} size={64} />
-            <div className="flex-1">
-              <div className="flex items-center justify-between gap-x-2">
-                <h2 className="text-lg font-semibold text-default">{name}</h2>
-                {!isDetailLoading && !detailLoadError && (
-                  <button type="button" onClick={startEditing} className="whitespace-nowrap text-sm text-muted hover:text-default">
-                    Sửa
-                  </button>
-                )}
-              </div>
-              {isDetailLoading && <p className="mt-1 text-sm text-muted">Đang tải chi tiết...</p>}
-              {detailLoadError && (
-                <p className="mt-1 text-sm text-danger">
-                  Không thể tải chi tiết.{' '}
-                  <button type="button" onClick={onRetryLoadDetail} className="underline">
-                    Thử lại
-                  </button>
-                </p>
-              )}
-              {!isDetailLoading && !detailLoadError && lifespan && <p className="mt-1 text-sm text-muted">{lifespan}</p>}
-              {!isDetailLoading && !detailLoadError && gender && <p className="mt-1 text-sm text-muted">{GENDER_LABELS[gender]}</p>}
-            </div>
-          </div>
-          {!isDetailLoading && !detailLoadError && notes && <p className="mt-2 whitespace-pre-wrap text-sm text-default">{notes}</p>}
-        </div>
-      )}
-
-      <p className="mt-1 text-sm text-muted">Đời thứ {generation}</p>
-
-      {ancestors.length > 0 && (
-        <div className="mt-4">
-          <p className="text-xs text-muted">{ancestors.join(' → ')}</p>
-          <button
-            type="button"
-            onClick={onViewAncestors}
-            className="mt-1 text-xs accent-text hover:underline"
+    <>
+      <div className="fixed inset-0 z-30 bg-black/30 xl:hidden" onClick={onClose} aria-hidden="true" />
+      <aside
+        role="complementary"
+        aria-label={`Hồ sơ ${name}`}
+        className="shadow-float fixed inset-x-0 bottom-0 z-40 flex max-h-[90vh] flex-col overflow-hidden rounded-t-2xl border-default border-t bg-surface md:inset-y-0 md:left-auto md:right-0 md:max-h-none md:w-[400px] md:rounded-none md:border-l md:border-t-0"
+      >
+        <div className="flex items-center justify-between px-5 pt-4">
+          <span
+            className={`rounded px-2.5 py-1 text-[11px] font-semibold tracking-wide ${
+              tier === 'ancestor' ? 'bg-secondary text-on-secondary' : 'text-white'
+            }`}
+            style={tier === 'ancestor' ? undefined : { backgroundColor: `var(--color-tier-${tier})` }}
           >
-            Xem tổ tiên 4 đời
+            ĐỜI {toRoman(generation)}
+          </span>
+          <button type="button" onClick={onClose} aria-label="Đóng hồ sơ" className={`${ghostButton} -me-2`}>
+            Đóng ✕
           </button>
         </div>
-      )}
 
-      {actionError && <p className="mt-4 text-sm text-danger">{actionError}</p>}
+        <div className="flex items-center gap-x-4 px-5 pb-4 pt-3">
+          <AvatarOrInitial src={avatarUrl} initial={name.charAt(0)} size={72} />
+          <div className="min-w-0 flex-1">
+            <h2 className="font-display text-xl font-bold text-default">{name}</h2>
+            {isDetailLoading && <p className="mt-1 text-sm text-muted">Đang tải chi tiết...</p>}
+            {detailLoadError && (
+              <p className="mt-1 text-sm text-danger">
+                Không thể tải chi tiết.{' '}
+                <button type="button" onClick={onRetryLoadDetail} className="underline">
+                  Thử lại
+                </button>
+              </p>
+            )}
+            {detailReady && (
+              <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted">
+                {status === 'living' && (
+                  <span className="rounded-full bg-[var(--color-living)] px-2 py-0.5 text-[11px] font-semibold text-white">
+                    Đang sống
+                  </span>
+                )}
+                {lifespan && <span>{lifespan}</span>}
+                {gender && <span>· {GENDER_LABELS[gender]}</span>}
+              </div>
+            )}
+          </div>
+        </div>
 
-      <div className="mt-6">
-        <h3 className="text-sm font-medium text-default">Vợ/chồng ({spouses.length})</h3>
-        {isDetailLoading && <p className="mt-2 text-sm text-muted">Đang tải...</p>}
-        {detailLoadError && <p className="mt-2 text-sm text-muted">Không thể tải.</p>}
-        {!isDetailLoading && !detailLoadError && spouses.length > 0 && (
-          <ul className="mt-2 space-y-3">
-            {spouses.map((spouse) =>
-              editingSpouseId === spouse.marriageId && spouseDraft ? (
-                <li key={spouse.marriageId} className="space-y-2 rounded-lg border-default border p-2">
-                  <input
-                    value={spouseDraft.name}
-                    onChange={(e) => setSpouseDraft({ ...spouseDraft, name: e.target.value })}
-                    className="w-full rounded-lg border-default border bg-app px-2 py-1 text-sm text-default focus:outline-none"
-                  />
-                  <div className="flex gap-x-2">
-                    <input
-                      type="number"
-                      value={spouseDraft.birthYear}
-                      onChange={(e) => setSpouseDraft({ ...spouseDraft, birthYear: e.target.value })}
-                      placeholder="Năm sinh"
-                      className="w-full rounded-lg border-default border bg-app px-2 py-1 text-sm text-default placeholder:text-muted focus:outline-none"
-                    />
-                    <input
-                      type="number"
-                      value={spouseDraft.deathYear}
-                      onChange={(e) => setSpouseDraft({ ...spouseDraft, deathYear: e.target.value })}
-                      placeholder="Năm mất"
-                      className="w-full rounded-lg border-default border bg-app px-2 py-1 text-sm text-default placeholder:text-muted focus:outline-none"
-                    />
+        <div role="tablist" aria-label="Nội dung hồ sơ" className="flex border-default border-b px-5">
+          {(
+            [
+              ['bio', 'Tiểu sử'],
+              ['family', 'Hôn phối & con'],
+            ] as const
+          ).map(([id, label]) => (
+            <button
+              key={id}
+              type="button"
+              role="tab"
+              id={`panel-tab-${id}`}
+              aria-selected={tab === id}
+              aria-controls={`panel-tabpanel-${id}`}
+              onClick={() => setTab(id)}
+              className={`min-h-11 border-b-2 px-3 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-[var(--color-primary)] ${
+                tab === id ? 'border-[var(--color-primary)] text-primary' : 'border-transparent text-muted hover:text-default'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+
+        <div
+          role="tabpanel"
+          id={`panel-tabpanel-${tab}`}
+          aria-labelledby={`panel-tab-${tab}`}
+          className="flex-1 overflow-y-auto px-5 py-4"
+        >
+          {actionError && <p className="mb-4 text-sm text-danger">{actionError}</p>}
+
+          {tab === 'bio' && (
+            <>
+              {isEditing ? (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-x-3">
+                    <AvatarOrInitial src={editAvatarSrc} initial={editedName.charAt(0)} size={64} />
+                    <div className="flex flex-col gap-y-1">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        aria-label="Chọn ảnh chân dung"
+                        onChange={handleAvatarFileChange}
+                        className="text-xs text-muted"
+                      />
+                      {canRemoveAvatar && (
+                        <button type="button" onClick={handleRemoveAvatarClick} className={`${dangerButton} text-left`}>
+                          Xoá ảnh
+                        </button>
+                      )}
+                    </div>
                   </div>
-                  <select
-                    value={spouseDraft.gender}
-                    onChange={(e) => setSpouseDraft({ ...spouseDraft, gender: e.target.value })}
-                    className="w-full rounded-lg border-default border bg-app px-2 py-1 text-sm text-default focus:outline-none"
-                  >
-                    <option value="">Không rõ</option>
-                    <option value="male">Nam</option>
-                    <option value="female">Nữ</option>
-                    <option value="other">Khác</option>
-                  </select>
-                  <input
-                    type="number"
-                    value={spouseDraft.marriageYear}
-                    onChange={(e) => setSpouseDraft({ ...spouseDraft, marriageYear: e.target.value })}
-                    placeholder="Năm cưới"
-                    className="w-full rounded-lg border-default border bg-app px-2 py-1 text-sm text-default placeholder:text-muted focus:outline-none"
-                  />
-                  <textarea
-                    value={spouseDraft.notes}
-                    onChange={(e) => setSpouseDraft({ ...spouseDraft, notes: e.target.value })}
-                    rows={2}
-                    placeholder="Ghi chú"
-                    className="w-full rounded-lg border-default border bg-app px-2 py-1 text-sm text-default placeholder:text-muted focus:outline-none"
-                  />
+                  <label className="block">
+                    <span className="text-xs text-muted">Họ tên</span>
+                    <input value={editedName} onChange={(e) => setEditedName(e.target.value)} className={fieldClass} />
+                  </label>
+                  {parentOptions.length > 0 && (
+                    <label className="block">
+                      <span className="text-xs text-muted">Cha/Mẹ</span>
+                      <select value={editedParentId} onChange={(e) => setEditedParentId(e.target.value)} className={fieldClass}>
+                        {parentOptions.map((option) => (
+                          <option key={option.id} value={option.id}>
+                            {option.name}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  )}
+                  <div className="flex gap-x-2">
+                    <label className="block flex-1">
+                      <span className="text-xs text-muted">Năm sinh</span>
+                      <input type="number" value={editedBirthYear} onChange={(e) => setEditedBirthYear(e.target.value)} className={fieldClass} />
+                    </label>
+                    <label className="block flex-1">
+                      <span className="text-xs text-muted">Năm mất</span>
+                      <input type="number" value={editedDeathYear} onChange={(e) => setEditedDeathYear(e.target.value)} className={fieldClass} />
+                    </label>
+                  </div>
+                  <label className="block">
+                    <span className="text-xs text-muted">Giới tính</span>
+                    <select value={editedGender} onChange={(e) => setEditedGender(e.target.value)} className={fieldClass}>
+                      <option value="">Không rõ</option>
+                      <option value="male">Nam</option>
+                      <option value="female">Nữ</option>
+                      <option value="other">Khác</option>
+                    </select>
+                  </label>
+                  <label className="block">
+                    <span className="text-xs text-muted">Ghi chú</span>
+                    <textarea value={editedNotes} onChange={(e) => setEditedNotes(e.target.value)} rows={4} className={fieldClass} />
+                  </label>
                   <div className="flex items-center gap-x-2">
-                    <button type="button" onClick={() => handleSaveSpouse(spouse.marriageId)} disabled={isSubmitting} className="whitespace-nowrap text-sm accent-text hover:underline disabled:opacity-50">
+                    <button type="button" onClick={handleSave} disabled={isSubmitting} className={primaryButton}>
                       Lưu
                     </button>
                     <button
                       type="button"
                       onClick={() => {
-                        setEditingSpouseId(null);
-                        setSpouseDraft(null);
+                        resetAvatarDraft();
+                        setIsEditing(false);
                       }}
-                      className="whitespace-nowrap text-sm text-muted hover:text-default"
+                      className={ghostButton}
                     >
                       Huỷ
                     </button>
                   </div>
-                </li>
+                </div>
               ) : (
-                <li key={spouse.marriageId} className="text-sm text-default">
-                  <div className="flex items-center justify-between gap-x-2">
-                    <span>{spouse.name}</span>
-                    <div className="flex items-center gap-x-2">
-                      <button type="button" onClick={() => startEditingSpouse(spouse)} className="whitespace-nowrap text-xs text-muted hover:text-default">
+                <section>
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-[11px] font-semibold uppercase tracking-wider text-muted">Hành trạng &amp; công đức</h3>
+                    {detailReady && (
+                      <button type="button" onClick={startEditing} className={ghostButton}>
                         Sửa
                       </button>
-                      <button type="button" onClick={() => handleDeleteSpouse(spouse)} className="whitespace-nowrap text-xs text-danger hover:underline">
-                        Xoá
-                      </button>
-                    </div>
+                    )}
                   </div>
-                  {(lifespanOf(spouse.birthYear, spouse.deathYear) || spouse.marriageYear !== null) && (
-                    <p className="text-xs text-muted">
-                      {lifespanOf(spouse.birthYear, spouse.deathYear)}
-                      {spouse.marriageYear !== null && ` · Cưới năm ${spouse.marriageYear}`}
-                    </p>
-                  )}
-                </li>
-              )
-            )}
-          </ul>
-        )}
-        {!isDetailLoading && !detailLoadError && (
-          <div className="mt-3 flex items-center gap-x-2">
-            <input
-              value={newSpouseName}
-              onChange={(e) => setNewSpouseName(e.target.value)}
-              placeholder="Tên vợ/chồng..."
-              className="w-full rounded-lg border-default border bg-app px-2 py-1 text-sm text-default placeholder:text-muted focus:outline-none"
-            />
-            <input
-              type="number"
-              value={newSpouseMarriageYear}
-              onChange={(e) => setNewSpouseMarriageYear(e.target.value)}
-              placeholder="Năm cưới"
-              className="w-24 shrink-0 rounded-lg border-default border bg-app px-2 py-1 text-sm text-default placeholder:text-muted focus:outline-none"
-            />
-            <button type="button" onClick={handleAddSpouse} disabled={isSubmitting || !newSpouseName.trim()} className="whitespace-nowrap text-sm accent-text hover:underline disabled:opacity-50">
-              Thêm
-            </button>
-          </div>
-        )}
-      </div>
+                  <div className="mt-2 rounded-lg bg-surface-muted p-4 text-sm leading-6 text-default">
+                    {detailReady && notes ? (
+                      <p className="whitespace-pre-wrap">{notes}</p>
+                    ) : (
+                      <p className="text-muted">{detailReady ? 'Chưa có ghi chú.' : 'Đang chờ dữ liệu...'}</p>
+                    )}
+                  </div>
+                </section>
+              )}
 
-      <div className="mt-6">
-        <h3 className="text-sm font-medium text-default">Con ({childMembers.length})</h3>
-        {childMembers.length > 0 && (
-          <ul className="mt-2 space-y-1">
-            {childMembers.map((child) => (
-              <li key={child.name}>
-                <button type="button" onClick={child.onSelect} className="text-sm text-default hover:accent-text">
-                  {child.name}
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-        <div className="mt-3 flex items-center gap-x-2">
-          <input value={newChildName} onChange={(e) => setNewChildName(e.target.value)} placeholder="Tên con mới..." className="w-full rounded-lg border-default border bg-app px-2 py-1 text-sm text-default placeholder:text-muted focus:outline-none" />
-          <button type="button" onClick={handleAddChild} disabled={isSubmitting || !newChildName.trim()} className="whitespace-nowrap text-sm accent-text hover:underline disabled:opacity-50">
-            Thêm con
-          </button>
+              {ancestors.length > 0 && (
+                <section className="mt-6">
+                  <h3 className="text-[11px] font-semibold uppercase tracking-wider text-muted">Dòng tổ tiên</h3>
+                  <p className="mt-2 text-xs leading-5 text-muted">{ancestors.join(' → ')}</p>
+                  <button type="button" onClick={onViewAncestors} className={`${ghostButton} mt-1 -ms-2`}>
+                    Xem tổ tiên 4 đời
+                  </button>
+                </section>
+              )}
+
+              <button type="button" onClick={handleDelete} disabled={isSubmitting} className={`${dangerButton} mt-6 -ms-2`}>
+                Xoá thành viên
+              </button>
+            </>
+          )}
+
+          {tab === 'family' && (
+            <>
+              <section>
+                <h3 className="text-[11px] font-semibold uppercase tracking-wider text-muted">Vợ/chồng ({spouses.length})</h3>
+                {isDetailLoading && <p className="mt-2 text-sm text-muted">Đang tải...</p>}
+                {detailLoadError && <p className="mt-2 text-sm text-muted">Không thể tải.</p>}
+                {detailReady && spouses.length > 0 && (
+                  <ul className="mt-2 space-y-3">
+                    {spouses.map((spouse) =>
+                      editingSpouseId === spouse.marriageId && spouseDraft ? (
+                        <li key={spouse.marriageId} className="space-y-2 rounded-lg border-default border p-3">
+                          <input
+                            aria-label="Tên vợ/chồng"
+                            value={spouseDraft.name}
+                            onChange={(e) => setSpouseDraft({ ...spouseDraft, name: e.target.value })}
+                            className={fieldClass}
+                          />
+                          <div className="flex gap-x-2">
+                            <input
+                              type="number"
+                              value={spouseDraft.birthYear}
+                              onChange={(e) => setSpouseDraft({ ...spouseDraft, birthYear: e.target.value })}
+                              placeholder="Năm sinh"
+                              aria-label="Năm sinh"
+                              className={fieldClass}
+                            />
+                            <input
+                              type="number"
+                              value={spouseDraft.deathYear}
+                              onChange={(e) => setSpouseDraft({ ...spouseDraft, deathYear: e.target.value })}
+                              placeholder="Năm mất"
+                              aria-label="Năm mất"
+                              className={fieldClass}
+                            />
+                          </div>
+                          <select
+                            aria-label="Giới tính"
+                            value={spouseDraft.gender}
+                            onChange={(e) => setSpouseDraft({ ...spouseDraft, gender: e.target.value })}
+                            className={fieldClass}
+                          >
+                            <option value="">Không rõ</option>
+                            <option value="male">Nam</option>
+                            <option value="female">Nữ</option>
+                            <option value="other">Khác</option>
+                          </select>
+                          <input
+                            type="number"
+                            value={spouseDraft.marriageYear}
+                            onChange={(e) => setSpouseDraft({ ...spouseDraft, marriageYear: e.target.value })}
+                            placeholder="Năm cưới"
+                            aria-label="Năm cưới"
+                            className={fieldClass}
+                          />
+                          <textarea
+                            value={spouseDraft.notes}
+                            onChange={(e) => setSpouseDraft({ ...spouseDraft, notes: e.target.value })}
+                            rows={2}
+                            placeholder="Ghi chú"
+                            aria-label="Ghi chú"
+                            className={fieldClass}
+                          />
+                          <div className="flex items-center gap-x-2">
+                            <button type="button" onClick={() => handleSaveSpouse(spouse.marriageId)} disabled={isSubmitting} className={primaryButton}>
+                              Lưu
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setEditingSpouseId(null);
+                                setSpouseDraft(null);
+                              }}
+                              className={ghostButton}
+                            >
+                              Huỷ
+                            </button>
+                          </div>
+                        </li>
+                      ) : (
+                        <li key={spouse.marriageId} className="rounded-lg bg-surface-muted p-3 text-sm text-default">
+                          <div className="flex items-center justify-between gap-x-2">
+                            <span className="font-display font-semibold">{spouse.name}</span>
+                            <div className="flex items-center">
+                              <button type="button" onClick={() => startEditingSpouse(spouse)} className={ghostButton}>
+                                Sửa
+                              </button>
+                              <button type="button" onClick={() => handleDeleteSpouse(spouse)} className={dangerButton}>
+                                Xoá
+                              </button>
+                            </div>
+                          </div>
+                          {(lifespanLabel(spouse.birthYear, spouse.deathYear) || spouse.marriageYear !== null) && (
+                            <p className="text-xs text-muted">
+                              {lifespanLabel(spouse.birthYear, spouse.deathYear)}
+                              {spouse.marriageYear !== null && ` · Cưới năm ${spouse.marriageYear}`}
+                            </p>
+                          )}
+                        </li>
+                      )
+                    )}
+                  </ul>
+                )}
+                {detailReady && (
+                  <div className="mt-3 flex flex-wrap items-center gap-2">
+                    <input
+                      value={newSpouseName}
+                      onChange={(e) => setNewSpouseName(e.target.value)}
+                      placeholder="Tên vợ/chồng..."
+                      aria-label="Tên vợ/chồng mới"
+                      className={`${fieldClass} min-w-40 flex-1`}
+                    />
+                    <input
+                      type="number"
+                      value={newSpouseMarriageYear}
+                      onChange={(e) => setNewSpouseMarriageYear(e.target.value)}
+                      placeholder="Năm cưới"
+                      aria-label="Năm cưới"
+                      className={`${fieldClass} w-28 shrink-0`}
+                    />
+                    <button type="button" onClick={handleAddSpouse} disabled={isSubmitting || !newSpouseName.trim()} className={primaryButton}>
+                      Thêm
+                    </button>
+                  </div>
+                )}
+              </section>
+
+              <section className="mt-6">
+                <h3 className="text-[11px] font-semibold uppercase tracking-wider text-muted">Con ({childMembers.length})</h3>
+                {childMembers.length > 0 && (
+                  <ul className="mt-2 space-y-1">
+                    {childMembers.map((child) => (
+                      <li key={child.name}>
+                        <button
+                          type="button"
+                          onClick={child.onSelect}
+                          className="min-h-11 w-full rounded-lg px-3 text-left text-sm text-default hover:bg-surface-muted focus-visible:outline-2 focus-visible:outline-[var(--color-primary)]"
+                        >
+                          {child.name}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                <div className="mt-3 flex items-center gap-x-2">
+                  <input
+                    value={newChildName}
+                    onChange={(e) => setNewChildName(e.target.value)}
+                    placeholder="Tên con mới..."
+                    aria-label="Tên con mới"
+                    className={`${fieldClass} min-w-0 flex-1`}
+                  />
+                  <button type="button" onClick={handleAddChild} disabled={isSubmitting || !newChildName.trim()} className={primaryButton}>
+                    Thêm con
+                  </button>
+                </div>
+              </section>
+            </>
+          )}
         </div>
-      </div>
-
-      <button type="button" onClick={handleDelete} disabled={isSubmitting} className="mt-6 text-sm text-danger hover:underline disabled:opacity-50">
-        Xoá thành viên
-      </button>
-    </aside>
+      </aside>
+    </>
   );
 }

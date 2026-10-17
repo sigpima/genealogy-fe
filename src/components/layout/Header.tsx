@@ -18,9 +18,9 @@ export type HeaderProps = {
 
 export function Header({ clanName, searchQuery, onSearchQueryChange, searchResults, onLogout }: HeaderProps) {
   return (
-    <header className="relative z-30 flex items-center gap-x-3 border-default border-b bg-surface px-4 py-3 sm:gap-x-6 sm:px-6">
+    <header className="relative z-30 flex flex-wrap items-center gap-x-3 gap-y-2 sm:flex-nowrap border-default border-b bg-surface px-4 py-3 sm:gap-x-6 sm:px-6">
       <h1 className="font-display shrink-0 truncate text-lg font-bold text-primary sm:text-xl">{clanName}</h1>
-      <div className="relative w-full max-w-sm">
+      <div className="relative order-last basis-full sm:order-none sm:min-w-0 sm:flex-1 sm:basis-auto sm:max-w-sm">
         <SearchIcon />
         <input
           type="search"
@@ -50,7 +50,7 @@ export function Header({ clanName, searchQuery, onSearchQueryChange, searchResul
         <button
           type="button"
           onClick={onLogout}
-          className="min-h-11 rounded-lg px-2 text-sm text-muted hover:text-default focus-visible:outline-2 focus-visible:outline-[var(--color-primary)]"
+          className="min-h-11 whitespace-nowrap rounded-lg px-2 text-sm text-muted hover:text-default focus-visible:outline-2 focus-visible:outline-[var(--color-primary)]"
         >
           Đăng xuất
         </button>
