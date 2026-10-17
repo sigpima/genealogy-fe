@@ -39,7 +39,7 @@ services:
       - default
       - dev
     ports:
-      - "127.0.0.1:${WEB_PORT:-3000}:3000"
+      - "${WEB_BIND:-0.0.0.0}:${WEB_PORT:-3000}:3000"
     restart: unless-stopped
     healthcheck:
       # "/" redirect sang /login khi chưa đăng nhập (middleware) — 3xx vẫn là sống.
@@ -72,7 +72,7 @@ services:
       - web_dev_node_modules:/app/node_modules
       - web_dev_next:/app/.next
     ports:
-      - "127.0.0.1:${WEB_PORT:-3000}:3000"
+      - "${WEB_BIND:-0.0.0.0}:${WEB_PORT:-3000}:3000"
     logging: *default-logging
 
 networks:
