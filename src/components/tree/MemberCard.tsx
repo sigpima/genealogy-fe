@@ -14,6 +14,7 @@ export type MemberCardProps = {
   status: MemberStatus;
   lifespan: string | null;
   detailState: 'loading' | 'loaded' | 'failed';
+  rank: string | null;
   avatarUrl: string | null;
   spouseLabel: string | null;
   childCount: number;
@@ -72,6 +73,7 @@ export const MemberCard = React.memo(function MemberCard(props: MemberCardProps)
         tabIndex={0}
         aria-label={`${name}, đời ${generation}`}
         className="tree-card"
+        data-member-id={id}
         style={{ cursor: 'pointer', outline: 'none' }}
         onClick={() => onSelect(id)}
         onKeyDown={handleKeyDown}
@@ -228,6 +230,7 @@ function DetailedCard(props: MemberCardProps & { tier: GenerationTier; emphasize
     avatarUrl,
     spouseLabel,
     childCount,
+    rank,
   } = props;
   const frame = cardFrame(tier, emphasized);
   const { width, height } = DETAILED;
@@ -296,6 +299,11 @@ function DetailedCard(props: MemberCardProps & { tier: GenerationTier; emphasize
           {`Đời ${toRoman(generation)}`}
         </text>
       </g>
+      {detailState === 'loaded' && rank !== null && (
+        <text x={8} y={-2} dominantBaseline="central" fontSize={11} className="fill-muted">
+          {truncate(rank, 14)}
+        </text>
+      )}
       {detailState === 'loading' ? (
         <rect x={-52} y={12} width={96} height={8} rx={4} className="fill-surface-muted" />
       ) : (

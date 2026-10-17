@@ -8,6 +8,7 @@ import {
   type AvatarUploadResult,
   type MemberUpdateInput,
   type MutationResult,
+  type PanelProfile,
   type PanelSpouse,
   type SpouseAddInput,
   type SpouseUpdateInput,
@@ -52,10 +53,32 @@ type SelectedMember = {
   gender: Gender | null;
   notes: string | null;
   avatarUrl: string | null;
+  profile: PanelProfile;
+  siblingRank: string | null;
   spouses: PanelSpouse[];
   isDetailLoading: boolean;
   detailLoadError: boolean;
 };
+
+const EMPTY_PROFILE: PanelProfile = {
+  courtesyName: null,
+  title: null,
+  residence: null,
+  burialPlace: null,
+  burialLatitude: null,
+  burialLongitude: null,
+};
+
+function toPanelProfile(detail: MemberDetail): PanelProfile {
+  return {
+    courtesyName: detail.courtesy_name,
+    title: detail.title,
+    residence: detail.residence,
+    burialPlace: detail.burial_place,
+    burialLatitude: detail.burial_latitude,
+    burialLongitude: detail.burial_longitude,
+  };
+}
 
 function toPanelSpouses(spouses: Spouse[] | undefined): PanelSpouse[] {
   return (spouses ?? []).map((spouse) => ({
@@ -149,18 +172,35 @@ export default function GenealogyTree({ familyTree, focusRequest, onDataChanged,
   function patchMemberDetail(id: number, patch: Partial<Omit<MemberDetail, 'id'>>) {
     setDetailsById((prev) => {
       const next = new Map(prev);
-      const existing = next.get(id) ?? {
+      const existing: MemberDetail = next.get(id) ?? {
         id,
         birth_year: null,
         death_year: null,
         gender: null,
         notes: null,
         avatar_url: null,
+        courtesy_name: null,
+        title: null,
+        residence: null,
+        burial_place: null,
+        burial_latitude: null,
+        burial_longitude: null,
+        sibling_rank: null,
         spouses: [],
       };
       next.set(id, { ...existing, ...patch });
       return next;
     });
+  }
+
+  // Sibling ranks (Trưởng/Thứ/Út) depend on other members, so after an edit that can change them
+  // (a year/gender change, adding, deleting or moving a member) re-request details. The old data
+  // stays on screen until the fresh response replaces it.
+  function refetchDetails(alsoMemberId?: number) {
+    detailFetches.current.clear();
+    failedDetailIds.current.clear();
+    if (alsoMemberId !== undefined) void ensureMemberDetail(alsoMemberId);
+    pumpDetailFetches.current();
   }
 
   pumpDetailFetches.current = () => {
@@ -194,6 +234,15 @@ export default function GenealogyTree({ familyTree, focusRequest, onDataChanged,
     // only needs to re-scan when detailSet changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [detailSet]);
+
+  useEffect(() => {
+    if (!selectedMember) return;
+    const fresh = detailsById.get(selectedMember.id);
+    if (fresh && fresh.sibling_rank !== selectedMember.siblingRank) {
+      const memberId = selectedMember.id;
+      setSelectedMember((prev) => (prev && prev.id === memberId ? { ...prev, siblingRank: fresh.sibling_rank } : prev));
+    }
+  }, [detailsById, selectedMember]);
 
   const canvasRef = useRef<TreeCanvasHandle | null>(null);
   // Controls need to know when the (dynamically loaded) canvas handle appears or is replaced.
@@ -254,6 +303,8 @@ export default function GenealogyTree({ familyTree, focusRequest, onDataChanged,
       gender: null,
       notes: null,
       avatarUrl: null,
+      profile: EMPTY_PROFILE,
+      siblingRank: null,
       spouses: [],
       isDetailLoading: true,
       detailLoadError: false,
@@ -271,6 +322,8 @@ export default function GenealogyTree({ familyTree, focusRequest, onDataChanged,
         gender: detail.gender,
         notes: detail.notes,
         avatarUrl: detail.avatar_url,
+        profile: toPanelProfile(detail),
+        siblingRank: detail.sibling_rank,
         spouses: toPanelSpouses(detail.spouses),
       };
     });
@@ -347,6 +400,12 @@ export default function GenealogyTree({ familyTree, focusRequest, onDataChanged,
           death_year: input.deathYear,
           gender: input.gender,
           notes: input.notes,
+          courtesy_name: input.courtesyName,
+          title: input.title,
+          residence: input.residence,
+          burial_place: input.burialPlace,
+          burial_latitude: input.burialLatitude,
+          burial_longitude: input.burialLongitude,
         }),
       });
       if (!response.ok) {
@@ -361,6 +420,12 @@ export default function GenealogyTree({ familyTree, focusRequest, onDataChanged,
         death_year: input.deathYear,
         gender: input.gender,
         notes: input.notes,
+        courtesy_name: input.courtesyName,
+        title: input.title,
+        residence: input.residence,
+        burial_place: input.burialPlace,
+        burial_latitude: input.burialLatitude,
+        burial_longitude: input.burialLongitude,
       });
 
       if (input.parentId !== selectedMember.parentId) {
@@ -368,6 +433,7 @@ export default function GenealogyTree({ familyTree, focusRequest, onDataChanged,
         // generation would be stale if the panel stayed open - close it instead and let
         // onDataChanged()'s refetch reflect the new structure the next time it's opened.
         setSelectedMember(null);
+        refetchDetails();
         onDataChanged();
         return { ok: true };
       }
@@ -386,9 +452,18 @@ export default function GenealogyTree({ familyTree, focusRequest, onDataChanged,
               deathYear: input.deathYear,
               gender: input.gender,
               notes: input.notes,
+              profile: {
+                courtesyName: input.courtesyName,
+                title: input.title,
+                residence: input.residence,
+                burialPlace: input.burialPlace,
+                burialLatitude: input.burialLatitude,
+                burialLongitude: input.burialLongitude,
+              },
             }
           : prev
       );
+      refetchDetails(selectedMember.id);
       onDataChanged();
       return { ok: true };
     } catch {
@@ -416,6 +491,7 @@ export default function GenealogyTree({ familyTree, focusRequest, onDataChanged,
         next.delete(parentId);
         return next;
       });
+      refetchDetails(selectedMember.id);
       onDataChanged();
       return { ok: true };
     } catch {
@@ -435,6 +511,7 @@ export default function GenealogyTree({ familyTree, focusRequest, onDataChanged,
       }
       if (!response.ok) return { ok: false, error: 'Không thể xoá. Vui lòng thử lại.' };
       setSelectedMember(null);
+      refetchDetails();
       onDataChanged();
       return { ok: true };
     } catch {
@@ -619,6 +696,7 @@ export default function GenealogyTree({ familyTree, focusRequest, onDataChanged,
         isCollapsed={isCollapsed}
         hiddenDescendants={isCollapsed ? descendantCount(node.data) : 0}
         isHighlighted={id === highlightedId}
+        rank={detail?.sibling_rank ?? null}
         isSelected={selectedMember?.id === id}
         onSelect={handleCardSelect}
         onToggle={handleCardToggle}
@@ -669,6 +747,8 @@ export default function GenealogyTree({ familyTree, focusRequest, onDataChanged,
           gender={selectedMember.gender}
           notes={selectedMember.notes}
           avatarUrl={selectedMember.avatarUrl}
+          profile={selectedMember.profile}
+          siblingRank={selectedMember.siblingRank}
           parentId={selectedMember.parentId}
           parentOptions={getReparentCandidates(familyTree, selectedMember.id)}
           spouses={selectedMember.spouses}

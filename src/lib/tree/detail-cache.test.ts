@@ -10,6 +10,13 @@ function detailFor(id: number): MemberDetail {
     gender: null,
     notes: null,
     avatar_url: null,
+    courtesy_name: null,
+    title: null,
+    residence: null,
+    burial_place: null,
+    burial_latitude: null,
+    burial_longitude: null,
+    sibling_rank: null,
     spouses: [],
   };
 }

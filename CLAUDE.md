@@ -277,6 +277,22 @@ one member onto another — keep that key. Below `xl` the panel is a modal
 overlay: it takes focus on open, traps Tab, restores focus to the opener on
 close, and a backdrop click/Esc never discards an edit in progress.
 
+**Profile fields (backend design: `../genealogy-api/docs/superpowers/specs/2026-10-17-member-profile-fields-design.md`)** —
+`MemberDetail` also carries `courtesy_name` (tên tự), `title` (chức vị),
+`residence`, `burial_place`, `burial_latitude`/`burial_longitude` and a
+**computed** `sibling_rank` ("Trưởng nam", "Thứ nữ", "Út nam"...). The
+panel shows them in a "Thông tin" list (tab "Tiểu sử", with a Google Maps
+link when GPS is set), the header shows `Tự: … · chức vị` and the rank, and
+the edit form edits all of them; GPS is validated by `coordinatesFromInputs`
+(`src/lib/tree/profile.ts`: both-or-neither, ranges, decimal comma accepted)
+before the `PUT`. **`PUT /api/members/{id}` is a full replacement — always
+send every field** (`handleUpdateMember` does). The detailed tree card shows
+the rank next to the "Đời N" badge. Because a rank depends on *other*
+members, after any edit that can change it (an edit, add child, delete,
+reparent) `refetchDetails()` clears the fetch memory and re-requests the
+visible/focal members; the old data stays on screen until the fresh
+response replaces it.
+
 **`FormAction` (`src/components/FormAction.tsx`) must not receive a
 `handleSubmit` prop when used inside a `<form onSubmit={...}>`** — its
 button is `type="submit"`, so passing the same handler as `onClick` too

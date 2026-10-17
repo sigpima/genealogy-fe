@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { generationTier, toRoman } from '@/lib/tree/generations';
 import { lifespanLabel, memberStatus } from '@/lib/tree/member-status';
+import { coordinatesFromInputs, formatCoordinates, mapsUrl, toNullableText } from '@/lib/tree/profile';
 import type { Gender } from '@/lib/tree/types';
 
 export type MemberDetailPanelChild = {
@@ -13,7 +14,16 @@ export type MemberDetailPanelChild = {
 export type MutationResult = { ok: boolean; error?: string };
 export type AvatarUploadResult = { ok: boolean; error?: string; avatarUrl?: string };
 
-export type MemberUpdateInput = {
+export type PanelProfile = {
+  courtesyName: string | null;
+  title: string | null;
+  residence: string | null;
+  burialPlace: string | null;
+  burialLatitude: number | null;
+  burialLongitude: number | null;
+};
+
+export type MemberUpdateInput = PanelProfile & {
   name: string;
   birthYear: number | null;
   deathYear: number | null;
@@ -58,6 +68,8 @@ export type MemberDetailPanelProps = {
   gender: Gender | null;
   notes: string | null;
   avatarUrl: string | null;
+  profile: PanelProfile;
+  siblingRank: string | null;
   parentId: number | null;
   parentOptions: ParentOption[];
   childMembers: MemberDetailPanelChild[];
@@ -122,6 +134,15 @@ function draftFromSpouse(spouse: PanelSpouse): SpouseDraft {
   };
 }
 
+function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
+  return (
+    <div className="flex gap-x-3">
+      <dt className="w-20 shrink-0 text-muted">{label}</dt>
+      <dd className="min-w-0 break-words text-default">{value}</dd>
+    </div>
+  );
+}
+
 function AvatarOrInitial({ src, initial, size }: { src: string | null; initial: string; size: number }) {
   if (src) {
     return (
@@ -152,6 +173,8 @@ export function MemberDetailPanel({
   gender,
   notes,
   avatarUrl,
+  profile,
+  siblingRank,
   parentId,
   parentOptions,
   childMembers,
@@ -179,6 +202,12 @@ export function MemberDetailPanel({
   const [editedDeathYear, setEditedDeathYear] = useState(toInputValue(deathYear));
   const [editedGender, setEditedGender] = useState<string>(gender ?? '');
   const [editedNotes, setEditedNotes] = useState(notes ?? '');
+  const [editedCourtesyName, setEditedCourtesyName] = useState(profile.courtesyName ?? '');
+  const [editedTitle, setEditedTitle] = useState(profile.title ?? '');
+  const [editedResidence, setEditedResidence] = useState(profile.residence ?? '');
+  const [editedBurialPlace, setEditedBurialPlace] = useState(profile.burialPlace ?? '');
+  const [editedLatitude, setEditedLatitude] = useState(profile.burialLatitude === null ? '' : String(profile.burialLatitude));
+  const [editedLongitude, setEditedLongitude] = useState(profile.burialLongitude === null ? '' : String(profile.burialLongitude));
   const [editedParentId, setEditedParentId] = useState(toInputValue(parentId));
   const [newChildName, setNewChildName] = useState('');
   const [actionError, setActionError] = useState<string | null>(null);
@@ -251,6 +280,12 @@ export function MemberDetailPanel({
     setEditedDeathYear(toInputValue(deathYear));
     setEditedGender(gender ?? '');
     setEditedNotes(notes ?? '');
+    setEditedCourtesyName(profile.courtesyName ?? '');
+    setEditedTitle(profile.title ?? '');
+    setEditedResidence(profile.residence ?? '');
+    setEditedBurialPlace(profile.burialPlace ?? '');
+    setEditedLatitude(profile.burialLatitude === null ? '' : String(profile.burialLatitude));
+    setEditedLongitude(profile.burialLongitude === null ? '' : String(profile.burialLongitude));
     setEditedParentId(toInputValue(parentId));
     resetAvatarDraft();
     setIsEditing(true);
@@ -273,6 +308,11 @@ export function MemberDetailPanel({
 
   async function handleSave() {
     if (!editedName.trim()) return;
+    const coordinates = coordinatesFromInputs(editedLatitude, editedLongitude);
+    if (!coordinates.ok) {
+      setActionError(coordinates.error);
+      return;
+    }
     setIsSubmitting(true);
     setActionError(null);
 
@@ -298,6 +338,12 @@ export function MemberDetailPanel({
       deathYear: parseYear(editedDeathYear),
       gender: editedGender ? (editedGender as Gender) : null,
       notes: editedNotes.trim() ? editedNotes.trim() : null,
+      courtesyName: toNullableText(editedCourtesyName),
+      title: toNullableText(editedTitle),
+      residence: toNullableText(editedResidence),
+      burialPlace: toNullableText(editedBurialPlace),
+      burialLatitude: coordinates.latitude,
+      burialLongitude: coordinates.longitude,
       parentId: parentOptions.length > 0 ? Number(editedParentId) : parentId,
     });
     setIsSubmitting(false);
@@ -393,6 +439,9 @@ export function MemberDetailPanel({
   const editAvatarSrc = removeAvatar ? null : (avatarPreviewUrl ?? avatarUrl);
   const canRemoveAvatar = !removeAvatar && Boolean(avatarPreviewUrl || avatarUrl);
   const detailReady = !isDetailLoading && !detailLoadError;
+  const hasProfileInfo = Boolean(
+    profile.courtesyName || profile.title || profile.residence || profile.burialPlace || profile.burialLatitude !== null
+  );
 
   return (
     <>
@@ -419,6 +468,7 @@ export function MemberDetailPanel({
           >
             ĐỜI {toRoman(generation)}
           </span>
+          {siblingRank && <span className="ms-2 me-auto text-xs font-medium text-muted">{siblingRank}</span>}
           <button type="button" onClick={onClose} className={`${ghostButton} -me-2`}>
             Đóng <span aria-hidden="true">✕</span>
           </button>
@@ -428,6 +478,13 @@ export function MemberDetailPanel({
           <AvatarOrInitial src={avatarUrl} initial={name.charAt(0)} size={72} />
           <div className="min-w-0 flex-1">
             <h2 className="font-display text-xl font-bold text-default">{name}</h2>
+            {(profile.courtesyName || profile.title) && (
+              <p className="mt-0.5 text-sm text-muted">
+                {profile.courtesyName && <>Tự: {profile.courtesyName}</>}
+                {profile.courtesyName && profile.title && ' · '}
+                {profile.title}
+              </p>
+            )}
             {isDetailLoading && <p className="mt-1 text-sm text-muted">Đang tải chi tiết...</p>}
             {detailLoadError && (
               <p className="mt-1 text-sm text-danger">
@@ -543,6 +600,32 @@ export function MemberDetailPanel({
                     </select>
                   </label>
                   <label className="block">
+                    <span className="text-xs text-muted">Tên tự</span>
+                    <input value={editedCourtesyName} onChange={(e) => setEditedCourtesyName(e.target.value)} maxLength={100} className={fieldClass} />
+                  </label>
+                  <label className="block">
+                    <span className="text-xs text-muted">Chức vị / tước vị</span>
+                    <input value={editedTitle} onChange={(e) => setEditedTitle(e.target.value)} maxLength={150} className={fieldClass} />
+                  </label>
+                  <label className="block">
+                    <span className="text-xs text-muted">Nơi ở / quê quán</span>
+                    <input value={editedResidence} onChange={(e) => setEditedResidence(e.target.value)} maxLength={255} className={fieldClass} />
+                  </label>
+                  <label className="block">
+                    <span className="text-xs text-muted">Mộ phần</span>
+                    <input value={editedBurialPlace} onChange={(e) => setEditedBurialPlace(e.target.value)} maxLength={500} className={fieldClass} />
+                  </label>
+                  <div className="flex gap-x-2">
+                    <label className="block flex-1">
+                      <span className="text-xs text-muted">Vĩ độ mộ</span>
+                      <input inputMode="decimal" value={editedLatitude} onChange={(e) => setEditedLatitude(e.target.value)} placeholder="21.0285" className={fieldClass} />
+                    </label>
+                    <label className="block flex-1">
+                      <span className="text-xs text-muted">Kinh độ mộ</span>
+                      <input inputMode="decimal" value={editedLongitude} onChange={(e) => setEditedLongitude(e.target.value)} placeholder="105.8542" className={fieldClass} />
+                    </label>
+                  </div>
+                  <label className="block">
                     <span className="text-xs text-muted">Ghi chú</span>
                     <textarea value={editedNotes} onChange={(e) => setEditedNotes(e.target.value)} rows={4} className={fieldClass} />
                   </label>
@@ -564,6 +647,36 @@ export function MemberDetailPanel({
                 </div>
               ) : (
                 <section>
+                  {detailReady && hasProfileInfo && (
+                    <dl className="mb-5 space-y-2 text-sm">
+                      {profile.courtesyName && <InfoRow label="Tên tự" value={profile.courtesyName} />}
+                      {profile.title && <InfoRow label="Chức vị" value={profile.title} />}
+                      {profile.residence && <InfoRow label="Nơi ở" value={profile.residence} />}
+                      {(profile.burialPlace || profile.burialLatitude !== null) && (
+                        <InfoRow
+                          label="Mộ phần"
+                          value={
+                            <>
+                              {profile.burialPlace}
+                              {profile.burialLatitude !== null && profile.burialLongitude !== null && (
+                                <>
+                                  {profile.burialPlace && <br />}
+                                  <a
+                                    href={mapsUrl(profile.burialLatitude, profile.burialLongitude)}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="accent-text underline"
+                                  >
+                                    {formatCoordinates(profile.burialLatitude, profile.burialLongitude)} · Xem bản đồ
+                                  </a>
+                                </>
+                              )}
+                            </>
+                          }
+                        />
+                      )}
+                    </dl>
+                  )}
                   <div className="flex items-center justify-between">
                     <h3 className="text-[11px] font-semibold uppercase tracking-wider text-muted">Hành trạng &amp; công đức</h3>
                     {detailReady && (
