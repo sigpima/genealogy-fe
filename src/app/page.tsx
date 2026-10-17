@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Header } from '@/components/layout/Header';
 import GenealogyTree, { type FocusRequest } from './genealogy-tree/page';
 import Sidebar from './sidebar';
+import { clanName } from '@/lib/tree/generations';
 import { findMembersByName } from '@/lib/tree/search';
 import type { FamilyMember } from '@/lib/tree/types';
 
@@ -57,6 +58,7 @@ export default function Home() {
       <Sidebar />
       <div className="flex flex-1 flex-col overflow-hidden">
         <Header
+          clanName={clanName(familyTree?.name ?? '')}
           searchQuery={searchQuery}
           onSearchQueryChange={setSearchQuery}
           searchResults={matches.map((match) => ({
