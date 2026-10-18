@@ -3,7 +3,7 @@ import { SECTIONS, visibleSections } from './sections';
 
 describe('admin sections', () => {
   it('shows only the sections whose pages exist, in the planned order', () => {
-    expect(visibleSections().map((s) => s.id)).toEqual(['users', 'settings', 'privacy', 'audit', 'shares', 'publish']);
+    expect(visibleSections().map((s) => s.id)).toEqual(['users', 'settings', 'privacy', 'audit', 'shares', 'health', 'publish']);
   });
   it('has unique addresses and only the publish section lives outside /admin', () => {
     const hrefs = SECTIONS.map((s) => s.href);
