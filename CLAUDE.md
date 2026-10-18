@@ -492,3 +492,6 @@ ancestor-view mechanism (`ancestorViewRootId`, now the person themself). **Horiz
 Admin → tab "Quyền riêng tư" (`PrivacyPanel`, `lib/privacy/privacy.ts`) edits `/api/admin/privacy`. 429 from login/register/forgot/RSVP shows `TOO_MANY_ATTEMPTS`.
 `next.config.ts` adds security headers and — **production only** — a CSP (`'unsafe-inline'` scripts stay: Next hydration + the theme init script; map tiles from tile.openstreetmap.org; `data:`/`blob:` images
 for the export). A new external image/script/connect origin must be added there or it fails silently in production (it works in `next dev`!); `/xuat-ban` also links the JSON export.
+
+**Admin console (GĐ12)** — `/admin` is the home (to-do box from `/api/admin/overview`, a tile per area, a "Gần đây" strip); each area is its own page under `/admin/<area>` wrapped in
+`AdminFrame` (guard + "← Quản trị" + h1 + desktop section list). **Register a new area in `src/lib/admin/sections.ts`** (`ready: true` only when its page exists, otherwise the tile is hidden).
