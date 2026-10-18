@@ -23,7 +23,16 @@ function useEscape(onClose: () => void) {
 }
 
 /** Reset a password: the admin lets the app generate one or types one; the result is shown once. */
-export function PasswordDialog({ user, onClose }: { user: AdminUser; onClose: () => void }) {
+export function PasswordDialog({
+  user,
+  onClose,
+  endpoint,
+}: {
+  user: Pick<AdminUser, 'id' | 'full_name' | 'email'>;
+  onClose: () => void;
+  /** Where to POST; defaults to the tree admin's own route (the superadmin console passes `/api/trees/{id}/admins/{user}/password`). */
+  endpoint?: string;
+}) {
   const [typed, setTyped] = useState('');
   const [result, setResult] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -38,7 +47,7 @@ export function PasswordDialog({ user, onClose }: { user: AdminUser; onClose: ()
     setBusy(true);
     setError(null);
     try {
-      const response = await fetch(`/api/admin/users/${user.id}/password`, {
+      const response = await fetch(endpoint ?? `/api/admin/users/${user.id}/password`, {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },

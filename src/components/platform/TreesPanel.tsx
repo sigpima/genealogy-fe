@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import { AdminsDialog } from '@/components/platform/AdminsDialog';
 import { TreeActions } from '@/components/platform/TreeActions';
 import { filterTrees, lastActivityLabel, statusLabel } from '@/lib/platform/lifecycle';
 import {
@@ -37,6 +38,7 @@ export function TreesPanel() {
   const [created, setCreated] = useState<TreeCreated | null>(null);
   const [editing, setEditing] = useState<number | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const [adminsOf, setAdminsOf] = useState<number | null>(null);
   const [loc, setLoc] = useState<string | null>(null);
   useEffect(() => setLoc(new URLSearchParams(window.location.search).get('loc')), []);
 
@@ -125,6 +127,9 @@ export function TreesPanel() {
                       <button type="button" className={ghost} onClick={() => setEditing(tree.id)}>
                         Đổi tên
                       </button>
+                      <button type="button" className={ghost} onClick={() => setAdminsOf(tree.id)}>
+                        Quản trị viên
+                      </button>
                       <TreeActions
                         tree={tree}
                         onChanged={async (text) => {
@@ -141,6 +146,10 @@ export function TreesPanel() {
           ))}
         </ul>
       </section>
+
+      {adminsOf !== null && trees?.find((t) => t.id === adminsOf) && (
+        <AdminsDialog tree={trees.find((t) => t.id === adminsOf)!} onClose={() => setAdminsOf(null)} onChanged={() => void load()} />
+      )}
 
       <section aria-label="Tạo họ mới">
         <h2 className="text-sm font-semibold text-default">Tạo họ mới</h2>
