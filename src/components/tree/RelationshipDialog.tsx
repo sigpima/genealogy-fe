@@ -8,7 +8,18 @@ const ghost =
   'min-h-11 whitespace-nowrap rounded-lg px-3 text-sm text-muted hover:text-default focus-visible:outline-2 focus-visible:outline-[var(--color-primary)]';
 
 /** "Quan hệ họ hàng": pick somebody and see who each is to the other, in Vietnamese kinship terms. */
-export function RelationshipDialog({ memberId, memberName, onClose }: { memberId: number; memberName: string; onClose: () => void }) {
+export function RelationshipDialog({
+  memberId,
+  memberName,
+  myMember = null,
+  onClose,
+}: {
+  memberId: number;
+  memberName: string;
+  /** The person the signed-in account is, for the one-tap "Xem với tôi". */
+  myMember?: PickedPerson | null;
+  onClose: () => void;
+}) {
   const [other, setOther] = useState<PickedPerson | null>(null);
   const [result, setResult] = useState<Relationship | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -64,7 +75,18 @@ export function RelationshipDialog({ memberId, memberName, onClose }: { memberId
               </button>
             </p>
           ) : (
-            <PersonPicker label="Chọn người để so sánh" placeholder="Gõ tên người cần xem quan hệ..." excludeIds={[memberId]} onPick={setOther} />
+            <>
+              {myMember && myMember.id !== memberId && (
+                <button
+                  type="button"
+                  onClick={() => setOther(myMember)}
+                  className="min-h-11 w-full rounded-lg border-default border bg-surface px-3 text-sm font-medium text-default hover:bg-surface-muted focus-visible:outline-2 focus-visible:outline-[var(--color-primary)]"
+                >
+                  Xem với tôi ({myMember.name})
+                </button>
+              )}
+              <PersonPicker label="Chọn người để so sánh" placeholder="Gõ tên người cần xem quan hệ..." excludeIds={[memberId]} onPick={setOther} />
+            </>
           )}
           {error && (
             <p role="alert" className="text-sm text-danger">

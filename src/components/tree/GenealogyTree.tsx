@@ -14,6 +14,7 @@ import {
   type SpouseUpdateInput,
 } from '@/components/tree/MemberDetailPanel';
 import { BranchChips } from '@/components/tree/BranchChips';
+import type { PanelMe } from '@/components/tree/MemberDetailPanel';
 import { GenerationFilterBar } from '@/components/tree/GenerationFilterBar';
 import { MemberCard } from '@/components/tree/MemberCard';
 import { StatusStrip } from '@/components/tree/StatusStrip';
@@ -116,6 +117,10 @@ export type GenealogyTreeProps = {
   canPropose?: boolean;
   /** Signed in at all: media and places are not shown to guests. */
   signedIn?: boolean;
+  /** The signed-in account: which person it is (if linked) and whether an admin may link themself. */
+  me?: PanelMe | null;
+  /** Called after the account's link to a person changed (the session is read again). */
+  onMeChanged?: () => void;
 };
 
 export default function GenealogyTree({
@@ -127,6 +132,8 @@ export default function GenealogyTree({
   canEdit,
   canPropose,
   signedIn,
+  me = null,
+  onMeChanged,
 }: GenealogyTreeProps) {
   // Opens collapsed to the first few generations; later refetches keep the user's own state.
   const [collapsedIds, setCollapsedIds] = useState<Set<number>>(() =>
@@ -857,6 +864,8 @@ export default function GenealogyTree({
           branch={selectedMember.branch}
           restingPlace={selectedMember.restingPlace}
           signedIn={signedIn}
+          me={me}
+          onMeChanged={onMeChanged}
           parentId={selectedMember.parentId}
           parentOptions={getReparentCandidates(familyTree, selectedMember.id)}
           motherOptions={selectedMember.motherOptions}

@@ -7,6 +7,7 @@ import { AppShell } from '@/components/layout/AppShell';
 import GenealogyTree, { type FocusRequest } from '@/components/tree/GenealogyTree';
 import { landingPath } from '@/lib/auth/landing';
 import { canEdit, type CurrentUser } from '@/lib/auth/session';
+import { shouldFocusMe } from '@/lib/invites/invites';
 import type { Branch } from '@/lib/branches/branches';
 import { parseFocusParam } from '@/lib/search/search';
 import { clanName } from '@/lib/tree/generations';
@@ -93,13 +94,27 @@ export default function Home() {
   useEffect(() => {
     if (!familyTree) return;
     const id = parseFocusParam(window.location.search);
-    if (id === null) return;
+    if (id === null) {
+      // a linked person lands on themself, once per browser session
+      const mine = session.user?.member;
+      let storage: Storage | null = null;
+      try {
+        storage = window.sessionStorage;
+      } catch {
+        storage = null;
+      }
+      if (mine && shouldFocusMe(storage, mine.id)) {
+        const chain = findAncestorChainById(familyTree, mine.id);
+        if (chain) setFocusRequest({ id: mine.id, name: chain[chain.length - 1].name, token: Date.now() });
+      }
+      return;
+    }
     window.history.replaceState(null, '', window.location.pathname);
     const chain = findAncestorChainById(familyTree, id);
     if (chain) setFocusRequest({ id, name: chain[chain.length - 1].name, token: Date.now() });
-    // only the first tree load should consume the parameter
+    // the parameter is consumed once (then removed); the person focus is guarded by sessionStorage
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [familyTree === null]);
+  }, [familyTree === null, session.user?.member?.id]);
 
   const matches = familyTree ? findMembersByName(familyTree, searchQuery) : [];
 
@@ -171,6 +186,8 @@ export default function Home() {
               canEdit={userCanEdit}
               canPropose={session.user !== null && !userCanEdit}
               signedIn={session.user !== null}
+              me={session.user ? { userId: session.user.id, role: session.user.role, member: session.user.member ?? null } : null}
+              onMeChanged={() => void session.refresh()}
             />
           )}
       </div>

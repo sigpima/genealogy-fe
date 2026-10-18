@@ -49,10 +49,29 @@ export function Header({ clanName, user, search, onLogout, onMenu }: HeaderProps
         {clanName}
       </h1>
       {user && (
-        <div className="hidden min-w-0 leading-tight md:block">
-          <p className="max-w-48 truncate text-sm font-medium text-default">{user.full_name}</p>
-          <p className="text-xs text-muted">{roleLabel(user.role)}</p>
-        </div>
+        user.member ? (
+          <Link
+            href={`/?focus=${user.member.id}`}
+            prefetch={false}
+            title="Hồ sơ của tôi"
+            // on the tree page itself the address only changes the query, which the tree reads once: reload to focus
+            onClick={(event) => {
+              if (window.location.pathname === '/') {
+                event.preventDefault();
+                window.location.assign(`/?focus=${user.member!.id}`);
+              }
+            }}
+            className="hidden min-w-0 rounded-lg px-2 py-1 leading-tight hover:bg-surface-muted focus-visible:outline-2 focus-visible:outline-[var(--color-primary)] md:block"
+          >
+            <span className="block max-w-48 truncate text-sm font-medium text-default underline">{user.full_name}</span>
+            <span className="block text-xs text-muted">Hồ sơ của tôi · {roleLabel(user.role)}</span>
+          </Link>
+        ) : (
+          <div className="hidden min-w-0 leading-tight md:block">
+            <p className="max-w-48 truncate text-sm font-medium text-default">{user.full_name}</p>
+            <p className="text-xs text-muted">{roleLabel(user.role)}</p>
+          </div>
+        )
       )}
       {search && (
         <div className="relative order-last basis-full sm:order-none sm:min-w-0 sm:flex-1 sm:basis-auto sm:max-w-sm">

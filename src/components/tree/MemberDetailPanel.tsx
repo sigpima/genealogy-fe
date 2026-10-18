@@ -11,6 +11,7 @@ import {
 } from '@/lib/tree/profile';
 import Link from 'next/link';
 import { ProposeDialog } from '@/components/requests/ProposeDialog';
+import { InviteDialog } from '@/components/tree/InviteDialog';
 import { RelationshipDialog } from '@/components/tree/RelationshipDialog';
 import type { BranchRef } from '@/lib/branches/branches';
 import { formFromPanel } from '@/lib/requests/requests';
@@ -69,7 +70,12 @@ export type SpouseUpdateInput = {
   marriageYear: number | null;
 };
 
+/** The signed-in account as the panel needs it: for "Đây là tôi" and "Xem với tôi". */
+export type PanelMe = { userId: number; role: string; member: { id: number; name: string } | null };
+
 export type MemberDetailPanelProps = {
+  me?: PanelMe | null;
+  onMeChanged?: () => void;
   memberId: number;
   /** False = read-only: every edit/add/delete control is hidden. */
   canEdit: boolean;
@@ -288,6 +294,8 @@ export function MemberDetailPanel({
   memberId,
   canEdit,
   canPropose = false,
+  me = null,
+  onMeChanged,
   name,
   generation,
   ancestorPath,
@@ -325,6 +333,9 @@ export function MemberDetailPanel({
 
   const [tab, setTab] = useState<'bio' | 'family'>('bio');
   const [showRelationship, setShowRelationship] = useState(false);
+  const [showInvite, setShowInvite] = useState(false);
+  const [linkingMe, setLinkingMe] = useState(false);
+  const isMe = me?.member?.id === memberId;
   const [isEditing, setIsEditing] = useState(false);
   const [editedName, setEditedName] = useState(name);
   const [editedBirthYear, setEditedBirthYear] = useState(toInputValue(birthYear));
@@ -648,6 +659,27 @@ export function MemberDetailPanel({
     }
   }
 
+  async function handleLinkMe() {
+    if (!me) return;
+    setLinkingMe(true);
+    setActionError(null);
+    try {
+      const response = await fetch(`/api/admin/users/${me.userId}`, {
+        method: 'PATCH',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ member_id: memberId }),
+      });
+      if (response.status === 409) setActionError('Người này đã gắn với một tài khoản khác.');
+      else if (!response.ok) setActionError('Không gắn được. Vui lòng thử lại.');
+      else onMeChanged?.();
+    } catch {
+      setActionError('Không thể kết nối tới máy chủ.');
+    } finally {
+      setLinkingMe(false);
+    }
+  }
+
   async function handleAddSpouse() {
     if (!newSpouseName.trim()) return;
     setIsSubmitting(true);
@@ -806,7 +838,31 @@ export function MemberDetailPanel({
                 {label}
               </button>
             ))}
+            {!isMe && (
+              <button
+                type="button"
+                onClick={() => setShowInvite(true)}
+                className="min-h-11 rounded-lg border-default border bg-surface px-3 text-sm font-medium text-default hover:bg-surface-muted focus-visible:outline-2 focus-visible:outline-[var(--color-primary)]"
+              >
+                ✉ Mời người này
+              </button>
+            )}
+            {!isMe && me?.role === 'admin' && (
+              <button
+                type="button"
+                disabled={linkingMe}
+                onClick={() => void handleLinkMe()}
+                className="min-h-11 rounded-lg border-default border bg-surface px-3 text-sm font-medium text-default hover:bg-surface-muted focus-visible:outline-2 focus-visible:outline-[var(--color-primary)] disabled:opacity-50"
+              >
+                {linkingMe ? 'Đang gắn…' : 'Đây là tôi'}
+              </button>
+            )}
           </div>
+        )}
+        {isMe && (
+          <p className="px-5 pb-3 text-sm text-default">
+            <span className="rounded-full border border-[var(--color-text)] px-2 py-0.5 text-sm font-medium">Đây là bạn</span>
+          </p>
         )}
 
         <div role="tablist" aria-label="Nội dung hồ sơ" className="flex border-default border-b px-5">
@@ -1403,7 +1459,8 @@ export function MemberDetailPanel({
           )}
         </div>
       </aside>
-      {showRelationship && <RelationshipDialog memberId={memberId} memberName={name} onClose={() => setShowRelationship(false)} />}
+      {showRelationship && <RelationshipDialog memberId={memberId} memberName={name} myMember={me?.member ?? null} onClose={() => setShowRelationship(false)} />}
+      {showInvite && <InviteDialog memberId={memberId} memberName={name} onClose={() => setShowInvite(false)} />}
       {isProposing && (
         <ProposeDialog
           memberId={memberId}
