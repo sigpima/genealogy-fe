@@ -18,6 +18,9 @@ export function useDialogFocus(container: RefObject<HTMLElement | null>, initial
     (initial?.current ?? focusables(root)[0] ?? root).focus();
     const onKey = (event: KeyboardEvent) => {
       if (event.key !== 'Tab') return;
+      // dialogs can stack (a confirmation over a dialog): only the one opened last — the last in the DOM — handles Tab
+      const open = document.querySelectorAll('[role="dialog"][aria-modal="true"]');
+      if (open.length > 0 && open[open.length - 1] !== root) return;
       const items = focusables(root);
       if (items.length === 0) return event.preventDefault();
       const first = items[0];

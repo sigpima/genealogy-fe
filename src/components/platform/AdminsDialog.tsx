@@ -106,6 +106,7 @@ export function AdminsDialog({ tree, onClose, onChanged }: { tree: PlatformTree;
   const candidates = promotable(users);
 
   return (
+    <>
     <div className="fixed inset-0 z-[60] flex items-end justify-center bg-black/40 sm:items-center sm:p-4" onClick={onClose}>
       <div
         ref={boxRef}
@@ -217,6 +218,8 @@ export function AdminsDialog({ tree, onClose, onChanged }: { tree: PlatformTree;
           )}
         </div>
       </div>
+    </div>
+    {/* the nested dialogs are siblings of the overlay, not children: a tap on their backdrop must not reach the overlay's onClick */}
       {toggle && (
         <ConfirmDialog
           title={toggle.status === 'active' ? `Vô hiệu hoá ${toggle.full_name}?` : `Kích hoạt lại ${toggle.full_name}?`}
@@ -229,6 +232,6 @@ export function AdminsDialog({ tree, onClose, onChanged }: { tree: PlatformTree;
         />
       )}
       {passwordFor && <PasswordDialog user={passwordFor} endpoint={`/api/trees/${tree.id}/admins/${passwordFor.id}/password`} onClose={() => setPasswordFor(null)} />}
-    </div>
+    </>
   );
 }
