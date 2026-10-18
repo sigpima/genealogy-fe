@@ -5,13 +5,28 @@ import { useRouter } from 'next/navigation';
 import { useSession } from '@/components/auth/useSession';
 import { AppShell } from '@/components/layout/AppShell';
 import GenealogyTree, { type FocusRequest } from '@/components/tree/GenealogyTree';
-import { canEdit } from '@/lib/auth/session';
+import { landingPath } from '@/lib/auth/landing';
+import { canEdit, type CurrentUser } from '@/lib/auth/session';
 import type { Branch } from '@/lib/branches/branches';
 import { parseFocusParam } from '@/lib/search/search';
 import { clanName } from '@/lib/tree/generations';
 import { generateSyntheticTree } from '@/lib/tree/synthetic';
 import { findAncestorChainById, findMembersByName } from '@/lib/tree/search';
 import type { FamilyMember } from '@/lib/tree/types';
+
+/** A fresh install's superadmin has no family to show: the platform console is where to start. Null = stay here. */
+async function emptyInstallTarget(): Promise<string | null> {
+  try {
+    const me = await fetch('/api/auth/me', { credentials: 'include' });
+    if (!me.ok) return null;
+    const trees = await fetch('/api/trees', { credentials: 'include' });
+    if (!trees.ok) return null;
+    const path = landingPath((await me.json()) as CurrentUser, ((await trees.json()) as unknown[]).length);
+    return path === '/' ? null : path;
+  } catch {
+    return null;
+  }
+}
 
 export default function Home() {
   const router = useRouter();
@@ -46,6 +61,11 @@ export default function Home() {
           return;
         }
         if (!response.ok) {
+          const target = response.status === 404 ? await emptyInstallTarget() : null;
+          if (target) {
+            router.replace(target);
+            return;
+          }
           setError('Không thể tải dữ liệu gia phả. Vui lòng thử lại.');
           return;
         }

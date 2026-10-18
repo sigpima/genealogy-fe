@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { TREE_SLUG_COOKIE, isValidTreeSlug, signupTreeNotice } from './tree';
+import { TREE_SLUG_COOKIE, isValidTreeSlug } from './tree';
 
 describe('isValidTreeSlug', () => {
   it('accepts lowercase letters, digits and single hyphens', () => {
@@ -28,22 +28,5 @@ describe('isValidTreeSlug', () => {
 describe('TREE_SLUG_COOKIE', () => {
   it('matches the cookie the API reads', () => {
     expect(TREE_SLUG_COOKIE).toBe('tree_slug');
-  });
-});
-
-describe('signupTreeNotice', () => {
-  it('names the family the visitor is joining', () => {
-    expect(signupTreeNotice({ status: 'ok', treeName: 'Họ Nguyễn' })).toBe(
-      'Bạn đang đăng ký vào gia phả: Họ Nguyễn.',
-    );
-  });
-  it('asks for the family link when several families exist and none was chosen', () => {
-    expect(signupTreeNotice({ status: 'unknown', treeName: null })).toMatch(
-      /liên kết/,
-    );
-  });
-  it('says nothing while loading or without a tree name', () => {
-    expect(signupTreeNotice({ status: 'loading', treeName: null })).toBeNull();
-    expect(signupTreeNotice({ status: 'ok', treeName: null })).toBeNull();
   });
 });

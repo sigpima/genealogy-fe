@@ -32,4 +32,4 @@ export type TodoItem = { key: string; count: number; text: string; href: string;
 export type Overview = { items: TodoItem[]; counts: Record<string, number> };
 
 /** The to-do key that puts a count badge on a section's tile. */
-export const BADGE_KEY: Record<string, string> = { users: 'pending_users', health: 'data_issues', audit: 'locked_accounts', backup: 'backup_old' };
+export const BADGE_KEY: Record<string, string> = { health: 'data_issues', audit: 'locked_accounts', backup: 'backup_old' };

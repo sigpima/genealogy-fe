@@ -10,11 +10,12 @@ export type CurrentUser = {
   /** The one family tree the user belongs to; null for a superadmin (platform level). */
   tree_id: number | null;
   tree_name: string | null;
+  /** The person of the tree this account is (set by an invitation link or by an admin), or null. */
+  member?: { id: number; name: string } | null;
 };
 
 export type SiteInfo = {
   visibility: 'private' | 'public';
-  registration: 'open' | 'approval' | 'closed';
   tree_name?: string | null;
   tree_slug?: string | null;
 };
@@ -57,21 +58,4 @@ export function loginErrorMessage(
     return 'Tài khoản của bạn đã bị vô hiệu hoá. Hãy liên hệ quản trị viên.';
   }
   return 'Không thể đăng nhập lúc này. Vui lòng thử lại.';
-}
-
-export function signupNotice(info: SiteInfo | null): string | null {
-  if (!info) return null;
-  if (info.registration === 'closed') {
-    return 'Đăng ký tài khoản đang đóng. Hãy nhờ quản trị viên tạo tài khoản cho bạn.';
-  }
-  if (info.registration === 'approval') {
-    return 'Tài khoản mới cần quản trị viên duyệt trước khi đăng nhập được.';
-  }
-  return null;
-}
-
-export function signupResultMessage(status: AccountStatus): string | null {
-  return status === 'pending'
-    ? 'Đăng ký thành công. Tài khoản của bạn đang chờ quản trị viên duyệt — bạn sẽ đăng nhập được sau khi được duyệt.'
-    : null;
 }

@@ -34,7 +34,3 @@ export function buildUsersQuery(filters: { q: string; status: string; role: stri
   if (filters.role) params.set('role', filters.role);
   return params.toString();
 }
-
-export function canApproveAll(users: AdminUser[]): number[] {
-  return users.filter((u) => u.status === 'pending').map((u) => u.id);
-}

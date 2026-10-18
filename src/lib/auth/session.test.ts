@@ -4,8 +4,6 @@ import {
   canManage,
   loginErrorMessage,
   roleLabel,
-  signupNotice,
-  signupResultMessage,
   type CurrentUser,
 } from './session';
 
@@ -55,32 +53,6 @@ describe('loginErrorMessage', () => {
       /mật khẩu không đúng/,
     );
     expect(loginErrorMessage(500, undefined)).toMatch(/thử lại/i);
-  });
-});
-
-describe('signupNotice', () => {
-  it('tells people what will happen to their new account', () => {
-    expect(
-      signupNotice({ visibility: 'private', registration: 'approval' }),
-    ).toMatch(/duyệt/);
-    expect(
-      signupNotice({ visibility: 'private', registration: 'open' }),
-    ).toBeNull();
-  });
-  it('says registration is closed', () => {
-    expect(
-      signupNotice({ visibility: 'private', registration: 'closed' }),
-    ).toMatch(/đóng/i);
-  });
-  it('shows nothing while the site info is unknown', () => {
-    expect(signupNotice(null)).toBeNull();
-  });
-});
-
-describe('signupResultMessage', () => {
-  it('differs between a pending and an active new account', () => {
-    expect(signupResultMessage('pending')).toMatch(/chờ.*duyệt/i);
-    expect(signupResultMessage('active')).toBeNull();
   });
 });
 

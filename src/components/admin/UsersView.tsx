@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { LinkDialog, PasswordDialog } from '@/components/admin/UserDialogs';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { roleLabel, type AccountStatus, type Role } from '@/lib/auth/session';
-import { buildUsersQuery, canApproveAll, lastLoginLabel, type AdminUser } from '@/lib/admin/users';
+import { buildUsersQuery, lastLoginLabel, type AdminUser } from '@/lib/admin/users';
 
 const STATUS_LABEL: Record<AccountStatus, string> = {
   pending: 'Chờ duyệt',
@@ -23,8 +23,7 @@ const button =
 
 type Pending =
   | { kind: 'status'; user: AdminUser; status: AccountStatus; title: string; message: string; confirm: string; danger: boolean }
-  | { kind: 'role'; user: AdminUser; role: Role; title: string; message: string; confirm: string; danger: boolean }
-  | { kind: 'approve-all'; ids: number[]; title: string; message: string; confirm: string; danger: boolean };
+  | { kind: 'role'; user: AdminUser; role: Role; title: string; message: string; confirm: string; danger: boolean };
 
 export function UsersView({ currentUserId }: { currentUserId: number }) {
   const [users, setUsers] = useState<AdminUser[]>([]);
@@ -114,15 +113,8 @@ export function UsersView({ currentUserId }: { currentUserId: number }) {
   function confirm() {
     if (!pending) return;
     if (pending.kind === 'status') void run(() => patch(pending.user.id, { status: pending.status }), 'Đã cập nhật tài khoản.');
-    else if (pending.kind === 'role') void run(() => patch(pending.user.id, { role: pending.role }), 'Đã đổi vai trò.');
-    else
-      void run(
-        () => fetch('/api/admin/users/approve', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ids: pending.ids }) }),
-        `Đã duyệt ${pending.ids.length} tài khoản.`,
-      );
+    else void run(() => patch(pending.user.id, { role: pending.role }), 'Đã đổi vai trò.');
   }
-
-  const pendingIds = canApproveAll(users);
 
   return (
     <div className="space-y-6">
@@ -154,19 +146,6 @@ export function UsersView({ currentUserId }: { currentUserId: number }) {
         <p role={message.kind === 'error' ? 'alert' : 'status'} className={`text-base ${message.kind === 'error' ? 'text-danger' : 'text-default'}`}>
           {message.text}
         </p>
-      )}
-
-      {pendingIds.length > 1 && (
-        <button
-          type="button"
-          disabled={busy}
-          onClick={() =>
-            setPending({ kind: 'approve-all', ids: pendingIds, title: `Duyệt ${pendingIds.length} tài khoản?`, message: 'Tất cả những người đang chờ duyệt trong danh sách này sẽ đăng nhập được.', confirm: 'Duyệt tất cả', danger: false })
-          }
-          className={`${button} bg-primary text-on-primary hover:opacity-90`}
-        >
-          Duyệt tất cả ({pendingIds.length})
-        </button>
       )}
 
       <section aria-label="Danh sách người dùng">

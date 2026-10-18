@@ -7,9 +7,7 @@ export default function LoginPage() {
       <div className="w-full max-w-md space-y-8">
         <AuthHeader
           heading="Login to your account"
-          paragraph="Don't have an account yet? "
-          linkName="Signup"
-          linkUrl="/signup"
+          paragraph="Tài khoản do quản trị viên của họ tạo hoặc gửi link mời cho bạn."
         />
         <Login />
       </div>

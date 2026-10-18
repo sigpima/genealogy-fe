@@ -20,28 +20,6 @@ const VISIBILITY: {
   },
 ];
 
-const REGISTRATION: {
-  value: SiteInfo['registration'];
-  title: string;
-  hint: string;
-}[] = [
-  {
-    value: 'approval',
-    title: 'Cần duyệt',
-    hint: 'Người lạ đăng ký được nhưng phải chờ bạn duyệt mới đăng nhập được.',
-  },
-  {
-    value: 'open',
-    title: 'Mở',
-    hint: 'Ai đăng ký cũng dùng được ngay (vẫn chỉ xem, không sửa).',
-  },
-  {
-    value: 'closed',
-    title: 'Đóng',
-    hint: 'Không ai tự đăng ký được; bạn tạo tài khoản cho họ hàng.',
-  },
-];
-
 export function SettingsPanel() {
   const [settings, setSettings] = useState<SiteInfo | null>(null);
   const [message, setMessage] = useState<{
@@ -102,13 +80,6 @@ export function SettingsPanel() {
         options={VISIBILITY}
         value={settings.visibility}
         onChange={(value) => setSettings({ ...settings, visibility: value })}
-      />
-      <Choice
-        legend="Đăng ký tài khoản mới"
-        name="registration"
-        options={REGISTRATION}
-        value={settings.registration}
-        onChange={(value) => setSettings({ ...settings, registration: value })}
       />
       <div>
         {message && (

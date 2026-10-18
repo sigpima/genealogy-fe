@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildUsersQuery, canApproveAll, lastLoginLabel, type AdminUser } from './users';
+import { buildUsersQuery, lastLoginLabel, type AdminUser } from './users';
 
 const now = new Date('2026-10-18T12:00:00+07:00');
 
@@ -19,12 +19,5 @@ describe('buildUsersQuery', () => {
   it('leaves blank filters out', () => {
     expect(buildUsersQuery({ q: '  ', status: '', role: '' })).toBe('');
     expect(buildUsersQuery({ q: ' Nguyễn ', status: 'pending', role: '' })).toBe('q=Nguy%E1%BB%85n&status=pending');
-  });
-});
-
-describe('canApproveAll', () => {
-  it('lists only the pending users', () => {
-    const user = (id: number, status: AdminUser['status']) => ({ id, status }) as AdminUser;
-    expect(canApproveAll([user(1, 'active'), user(2, 'pending'), user(3, 'disabled'), user(4, 'pending')])).toEqual([2, 4]);
   });
 });
