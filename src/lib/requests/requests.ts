@@ -126,6 +126,16 @@ const ACTION_TEXT: Record<string, string> = {
   'branch.delete': 'Xoá chi',
   'request.approve': 'Duyệt yêu cầu',
   'request.reject': 'Từ chối yêu cầu',
+  'user.create': 'Tạo tài khoản',
+  'user.update': 'Sửa tài khoản',
+  'user.approve': 'Duyệt tài khoản',
+  'user.password_reset': 'Đặt lại mật khẩu',
+  'security.login_failed': 'Đăng nhập sai',
+  'security.locked': 'Tài khoản bị khoá tạm vì đăng nhập sai nhiều lần',
+  'settings.update': 'Đổi cài đặt họ',
+  'privacy.update': 'Đổi quyền riêng tư',
+  'data.export': 'Tải dữ liệu JSON',
+  'book.export': 'Xuất quyển phả PDF',
 };
 
 export function actionLabel(action: string): string {

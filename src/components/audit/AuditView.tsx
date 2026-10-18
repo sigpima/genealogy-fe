@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
+import { buildAuditQuery, KIND_LABELS, kindOfAction, type AuditKind } from '@/lib/admin/audit';
 import { actionLabel, changeLines, type AuditPage } from '@/lib/requests/requests';
 import { focusHref } from '@/lib/search/search';
 
@@ -10,24 +11,30 @@ const ghost =
 const PAGE = 50;
 
 /** The change log of the family (admins): who changed what and when. `?member=<id>` narrows it to one person. */
-export function AuditView({ onUnauthorized }: { onUnauthorized: () => void }) {
+export function AuditView({ onUnauthorized, embedded = false }: { onUnauthorized: () => void; embedded?: boolean }) {
   const [memberId, setMemberId] = useState<number | null>(null);
+  const [kind, setKind] = useState('');
+  const [since, setSince] = useState('');
+  const [until, setUntil] = useState('');
   const [ready, setReady] = useState(false);
   const [offset, setOffset] = useState(0);
   const [page, setPage] = useState<AuditPage | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const raw = new URLSearchParams(window.location.search).get('member');
+    const query = new URLSearchParams(window.location.search);
+    const raw = query.get('member');
     setMemberId(raw && /^\d+$/.test(raw) ? Number(raw) : null);
+    const loai = query.get('loai');
+    if (loai && loai in KIND_LABELS) setKind(loai);
+    setSince(query.get('tu') ?? '');
+    setUntil(query.get('den') ?? '');
     setReady(true);
   }, []);
 
   const load = useCallback(async () => {
-    const params = new URLSearchParams({ limit: String(PAGE), offset: String(offset) });
-    if (memberId !== null) params.set('member_id', String(memberId));
     try {
-      const response = await fetch(`/api/audit?${params}`, { credentials: 'include' });
+      const response = await fetch(`/api/audit?${buildAuditQuery({ kind, since, until, memberId }, offset, PAGE)}`, { credentials: 'include' });
       if (response.status === 401 || response.status === 403) return onUnauthorized();
       if (!response.ok) throw new Error(String(response.status));
       setPage((await response.json()) as AuditPage);
@@ -35,16 +42,16 @@ export function AuditView({ onUnauthorized }: { onUnauthorized: () => void }) {
     } catch {
       setError('Không tải được nhật ký. Vui lòng thử lại.');
     }
-  }, [memberId, offset, onUnauthorized]);
+  }, [memberId, kind, since, until, offset, onUnauthorized]);
 
   useEffect(() => {
     if (ready) void load();
   }, [ready, load]);
 
   return (
-    <div className="mx-auto max-w-3xl space-y-5 px-4 py-6 sm:px-6">
+    <div className={embedded ? 'space-y-5' : 'mx-auto max-w-3xl space-y-5 px-4 py-6 sm:px-6'}>
       <div>
-        <h1 className="font-display text-2xl font-bold text-default">Nhật ký thay đổi</h1>
+        {!embedded && <h1 className="font-display text-2xl font-bold text-default">Nhật ký thay đổi</h1>}
         <p className="mt-1 text-sm text-muted">
           Mọi thay đổi trên gia phả: ai làm, lúc nào, từ giá trị nào sang giá trị nào.
           {memberId !== null && (
@@ -66,6 +73,36 @@ export function AuditView({ onUnauthorized }: { onUnauthorized: () => void }) {
           )}
         </p>
       </div>
+      <section aria-label="Lọc nhật ký" className="space-y-3">
+        <div role="group" aria-label="Loại sự kiện" className="flex flex-wrap gap-2">
+          {[['', 'Tất cả'], ...Object.entries(KIND_LABELS)].map(([value, label]) => (
+            <button
+              key={value || 'all'}
+              type="button"
+              aria-pressed={kind === value}
+              onClick={() => {
+                setKind(value);
+                setOffset(0);
+              }}
+              className={`min-h-11 rounded-full border px-4 text-base focus-visible:outline-2 focus-visible:outline-[var(--color-primary)] ${
+                kind === value ? 'border-[var(--color-primary)] bg-primary font-semibold text-on-primary' : 'border-default bg-surface text-default hover:bg-surface-muted'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        <div className="flex flex-wrap gap-3">
+          <label className="text-base text-default">
+            Từ ngày
+            <input type="date" value={since} onChange={(e) => { setSince(e.target.value); setOffset(0); }} className="mt-1 block min-h-11 rounded-lg border-default border bg-app px-3 text-base text-default" />
+          </label>
+          <label className="text-base text-default">
+            Đến ngày
+            <input type="date" value={until} onChange={(e) => { setUntil(e.target.value); setOffset(0); }} className="mt-1 block min-h-11 rounded-lg border-default border bg-app px-3 text-base text-default" />
+          </label>
+        </div>
+      </section>
       {error && (
         <p role="alert" className="text-sm text-danger">
           {error}
@@ -78,6 +115,9 @@ export function AuditView({ onUnauthorized }: { onUnauthorized: () => void }) {
           return (
             <li key={entry.id} className="rounded-xl border-default border bg-surface p-4">
               <p className="text-sm text-default">
+                {kindOfAction(entry.action) === 'security' && (
+                  <span className="me-2 rounded-full bg-[var(--color-danger)] px-2 py-0.5 text-xs font-semibold text-white">{KIND_LABELS.security as AuditKind}</span>
+                )}
                 <b>{entry.actor_name}</b> · {actionLabel(entry.action)}
                 {entry.member_name && (
                   <>
@@ -95,6 +135,7 @@ export function AuditView({ onUnauthorized }: { onUnauthorized: () => void }) {
               <p className="mt-0.5 text-xs text-muted">
                 {new Date(entry.created_at).toLocaleString('vi-VN', { dateStyle: 'short', timeStyle: 'short' })}
                 {entry.request_id !== null && ` · theo yêu cầu #${entry.request_id}`}
+                {typeof entry.details?.email === 'string' && ` · ${entry.details.email}`}
                 {typeof entry.details?.via === 'string' && ` · qua ${entry.details.via === 'csv' ? 'file CSV' : entry.details.via}`}
               </p>
               {lines.length > 0 && (

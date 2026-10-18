@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { AdminIcon } from '@/components/admin/AdminIcon';
 import { BADGE_KEY, visibleSections, type Overview } from '@/lib/admin/sections';
+import { actionLabel } from '@/lib/requests/requests';
 
 type AuditLine = { id: number; action: string; actor_name: string; member_name: string | null; created_at: string };
 
@@ -113,7 +114,7 @@ export function AdminHome() {
             {recent.map((line) => (
               <li key={line.id} className="flex flex-wrap items-baseline justify-between gap-x-3 px-4 py-2 text-base text-default">
                 <span>
-                  {line.actor_name} · {line.action}
+                  {line.actor_name} · {actionLabel(line.action)}
                   {line.member_name ? ` · ${line.member_name}` : ''}
                 </span>
                 <span className="text-sm text-muted">{when(line.created_at)}</span>
