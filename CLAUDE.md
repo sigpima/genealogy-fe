@@ -512,3 +512,5 @@ a script that composites real backgrounds: it found and fixed `warm`/`modern` `-
 Touch targets: radios/checkboxes inside a ≥ 44 px label count. Keep new admin text ≥ 14 px (body 16 px).
 
 **Signup on a fresh install** — `/api/auth/bootstrap` says `first_user`/`needs_code`: the signup page then shows the "lần cài đặt đầu tiên" notice, the "Mã khởi tạo" field when required, and the Signup button even though no family exists (before this the button was hidden by the "open a family link" rule, so the first superadmin could only be created through the API/CLI).
+
+**Superadmin console (GĐ13)** — `/he-thong` is the home (to-do box, platform numbers, tiles); each area is `/he-thong/<area>` inside `PlatformFrame` (superadmin guard, "← Nền tảng", h1, section list). **Register an area in `src/lib/platform/sections.ts`** (`ready: true` only when its page exists). The family list/create/rename UI (`TreesPanel`) lives at `/he-thong/ho`.
