@@ -9,6 +9,16 @@ describe('audit labels', () => {
     }
     expect(actionLabel('security.locked')).toMatch(/khoá/);
   });
+  it('names every action the API can write (so the admin never reads "card.create")', () => {
+    const all = [
+      'member.create', 'member.update', 'member.delete', 'member.split', 'member.avatar', 'marriage.create', 'marriage.update',
+      'branch.create', 'branch.update', 'branch.delete', 'request.approve', 'request.reject', 'article.create', 'article.update', 'article.delete',
+      'timeline.create', 'timeline.update', 'timeline.delete', 'poem.update', 'event.create', 'event.update', 'event.delete',
+      'card.create', 'card.update', 'card.delete', 'place.create', 'place.update', 'place.delete', 'place.migrate',
+      'media.upload', 'media.update', 'media.delete',
+    ];
+    expect(all.filter((a) => actionLabel(a) === a)).toEqual([]);
+  });
   it('labels the four kinds', () => {
     expect(Object.keys(KIND_LABELS)).toEqual(['data', 'people', 'security', 'settings']);
   });

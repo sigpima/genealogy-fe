@@ -12,7 +12,7 @@ const STATUS_LABEL: Record<AccountStatus, string> = {
   disabled: 'Đã vô hiệu hoá',
 };
 const STATUS_STYLE: Record<AccountStatus, string> = {
-  pending: 'bg-secondary text-on-secondary',
+  pending: 'border border-[var(--color-text)] bg-surface text-default',
   active: 'bg-surface-muted text-default',
   disabled: 'bg-surface-muted text-danger',
 };
@@ -126,12 +126,12 @@ export function UsersView({ currentUserId }: { currentUserId: number }) {
 
   return (
     <div className="space-y-6">
-      <section aria-label="Tìm người dùng" className="grid gap-3 sm:grid-cols-[1fr_auto_auto]">
-        <label className="block text-base text-default">
+      <section aria-label="Tìm người dùng" className="flex flex-wrap gap-3">
+        <label className="block min-w-[14rem] flex-1 text-base text-default">
           Tìm theo tên hoặc email
           <input type="search" value={filters.q} onChange={(e) => setFilters({ ...filters, q: e.target.value })} placeholder="Gõ tên, không cần dấu..." className={field} />
         </label>
-        <label className="block text-base text-default">
+        <label className="block w-full text-base text-default sm:w-48">
           Trạng thái
           <select aria-label="Lọc theo trạng thái" value={filters.status} onChange={(e) => setFilters({ ...filters, status: e.target.value })} className={field}>
             <option value="">Tất cả</option>
@@ -140,7 +140,7 @@ export function UsersView({ currentUserId }: { currentUserId: number }) {
             <option value="disabled">Đã vô hiệu hoá</option>
           </select>
         </label>
-        <label className="block text-base text-default">
+        <label className="block w-full text-base text-default sm:w-48">
           Vai trò
           <select aria-label="Lọc theo vai trò" value={filters.role} onChange={(e) => setFilters({ ...filters, role: e.target.value })} className={field}>
             <option value="">Tất cả</option>

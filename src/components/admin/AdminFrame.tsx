@@ -80,7 +80,7 @@ export function AdminFrame({
               <>
                 <Link
                   href="/admin"
-                  className="-ms-2 inline-flex min-h-11 items-center gap-1 rounded-lg px-2 text-base text-primary hover:underline focus-visible:outline-2 focus-visible:outline-[var(--color-primary)]"
+                  className="-ms-2 inline-flex min-h-11 items-center gap-1 rounded-lg px-2 text-base text-default underline hover:no-underline focus-visible:outline-2 focus-visible:outline-[var(--color-primary)]"
                 >
                   ← Quản trị
                 </Link>

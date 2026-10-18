@@ -26,7 +26,7 @@ export function BackupView() {
         className={`rounded-2xl border p-4 ${summary.tone === 'warn' ? 'border-[var(--color-danger)]' : 'border-default'} bg-surface`}
       >
         <p role="status" className="text-lg font-semibold text-default">
-          {summary.tone === 'warn' && <span className="me-2 rounded-full bg-[var(--color-danger)] px-2 py-0.5 text-sm font-semibold text-white">Cần chú ý</span>}
+          {summary.tone === 'warn' && <span className="me-2 rounded-full border-2 border-[var(--color-danger)] px-2 py-0.5 text-sm font-semibold text-default">Cần chú ý</span>}
           {summary.headline}
         </p>
         <p className="mt-2 text-base text-muted">{summary.detail}</p>

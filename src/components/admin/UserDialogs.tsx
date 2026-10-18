@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { useDialogFocus } from '@/components/common/useDialogFocus';
 import { PersonPicker } from '@/components/common/PersonPicker';
 import type { AdminUser } from '@/lib/admin/users';
 
@@ -28,6 +29,8 @@ export function PasswordDialog({ user, onClose }: { user: AdminUser; onClose: ()
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState(false);
+  const boxRef = useRef<HTMLDivElement | null>(null);
+  useDialogFocus(boxRef);
   useEscape(onClose);
 
   async function submit(e: React.FormEvent) {
@@ -55,7 +58,7 @@ export function PasswordDialog({ user, onClose }: { user: AdminUser; onClose: ()
 
   return (
     <div className={shell} onClick={onClose}>
-      <div role="dialog" aria-modal="true" aria-label={`Đặt lại mật khẩu cho ${user.full_name}`} onClick={(e) => e.stopPropagation()} className={box}>
+      <div ref={boxRef} role="dialog" aria-modal="true" aria-label={`Đặt lại mật khẩu cho ${user.full_name}`} onClick={(e) => e.stopPropagation()} className={box}>
         <h2 className="font-display text-lg font-bold text-default">Đặt lại mật khẩu</h2>
         <p className="mt-1 text-base text-muted">{user.full_name} · {user.email}</p>
         {result === null ? (
@@ -105,6 +108,8 @@ export function PasswordDialog({ user, onClose }: { user: AdminUser; onClose: ()
 export function LinkDialog({ user, onClose, onDone }: { user: AdminUser; onClose: () => void; onDone: () => void }) {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const boxRef = useRef<HTMLDivElement | null>(null);
+  useDialogFocus(boxRef);
   useEscape(onClose);
 
   async function save(memberId: number | null) {
@@ -129,7 +134,7 @@ export function LinkDialog({ user, onClose, onDone }: { user: AdminUser; onClose
 
   return (
     <div className={shell} onClick={onClose}>
-      <div role="dialog" aria-modal="true" aria-label={`Liên kết ${user.full_name} với một người trong cây`} onClick={(e) => e.stopPropagation()} className={box}>
+      <div ref={boxRef} role="dialog" aria-modal="true" aria-label={`Liên kết ${user.full_name} với một người trong cây`} onClick={(e) => e.stopPropagation()} className={box}>
         <h2 className="font-display text-lg font-bold text-default">Liên kết với người trong cây</h2>
         <p className="mt-1 text-base text-muted">
           Tài khoản của {user.full_name} là ai trong gia phả? Chỉ để hiển thị trong danh sách này.

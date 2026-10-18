@@ -116,7 +116,7 @@ export function AuditView({ onUnauthorized, embedded = false }: { onUnauthorized
             <li key={entry.id} className="rounded-xl border-default border bg-surface p-4">
               <p className="text-base text-default">
                 {kindOfAction(entry.action) === 'security' && (
-                  <span className="me-2 rounded-full bg-[var(--color-danger)] px-2 py-0.5 text-xs font-semibold text-white">{KIND_LABELS.security as AuditKind}</span>
+                  <span className="me-2 rounded-full border-2 border-[var(--color-danger)] px-2 py-0.5 text-sm font-semibold text-default">{KIND_LABELS.security as AuditKind}</span>
                 )}
                 <b>{entry.actor_name}</b> · {actionLabel(entry.action)}
                 {entry.member_name && (

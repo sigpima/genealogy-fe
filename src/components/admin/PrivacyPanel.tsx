@@ -72,7 +72,7 @@ export function PrivacyPanel() {
           <li key={field.key} className="flex flex-wrap items-center justify-between gap-2 px-4 py-2">
             <label htmlFor={`privacy-${field.key}`} className="min-w-0 flex-1 text-sm">
               <span className="block font-medium text-default">{field.label}</span>
-              {field.hint && <span className="block text-xs text-muted">{field.hint}</span>}
+              {field.hint && <span className="block text-sm text-muted">{field.hint}</span>}
             </label>
             <select
               id={`privacy-${field.key}`}

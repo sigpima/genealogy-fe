@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
+import { useDialogFocus } from '@/components/common/useDialogFocus';
 
 /** "Are you sure?" before something that cannot be undone with one tap. Esc and the backdrop cancel; focus starts on the safe button. */
 export function ConfirmDialog({
@@ -21,9 +22,10 @@ export function ConfirmDialog({
   onCancel: () => void;
 }) {
   const cancelRef = useRef<HTMLButtonElement | null>(null);
+  const boxRef = useRef<HTMLDivElement | null>(null);
+  useDialogFocus(boxRef, cancelRef);
 
   useEffect(() => {
-    cancelRef.current?.focus();
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onCancel();
     };
@@ -34,6 +36,7 @@ export function ConfirmDialog({
   return (
     <div className="fixed inset-0 z-[70] flex items-end justify-center bg-black/40 sm:items-center sm:p-4" onClick={onCancel}>
       <div
+        ref={boxRef}
         role="dialog"
         aria-modal="true"
         aria-label={title}
