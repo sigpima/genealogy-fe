@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { THEMES } from '@/lib/theme/themes';
+import { HEADER_ICON_BUTTON_CLASS } from '@/components/layout/HeaderIconButton';
 import { useTheme } from './ThemeProvider';
 
 export function ThemeSettingsPopover() {
@@ -14,8 +15,9 @@ export function ThemeSettingsPopover() {
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-label="Chọn giao diện màu"
+        title="Giao diện"
         aria-expanded={open}
-        className="flex size-9 items-center justify-center rounded-full border-default border text-default hover:bg-app"
+        className={HEADER_ICON_BUTTON_CLASS}
       >
         <GearIcon />
       </button>
@@ -30,7 +32,7 @@ export function ThemeSettingsPopover() {
                 setTheme(option.id);
                 setOpen(false);
               }}
-              className={`flex w-full items-center gap-x-3 rounded-lg px-3 py-2 text-left text-sm text-default hover:bg-app ${
+              className={`flex min-h-11 w-full items-center gap-x-3 rounded-lg px-3 py-2 text-left text-sm text-default hover:bg-app ${
                 theme === option.id ? 'bg-app' : ''
               }`}
             >
@@ -53,8 +55,9 @@ function GearIcon() {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
-      width="18"
-      height="18"
+      aria-hidden="true"
+      width="20"
+      height="20"
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"

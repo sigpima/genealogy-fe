@@ -128,7 +128,7 @@ function NavItem({
         aria-current={current ? 'page' : undefined}
         aria-label={badge > 0 ? `${label} (${badge} đang chờ)` : label}
         className={`relative flex min-h-11 items-center gap-x-3 rounded-lg px-3 py-2 text-sm focus-visible:outline-2 focus-visible:outline-[var(--color-primary)] ${wide} ${
-          current ? 'bg-surface-muted font-medium text-primary' : 'text-default hover:bg-surface-muted'
+          current ? 'bg-surface-muted font-semibold text-default' : 'text-default hover:bg-surface-muted'
         }`}
       >
         {icon}

@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { NotificationsBell } from '@/components/layout/NotificationsBell';
+import { HeaderIconButton, SignOutIcon } from '@/components/layout/HeaderIconButton';
 import { TreeSwitcher } from '@/components/layout/TreeSwitcher';
 import { ThemeSettingsPopover } from '@/components/theme/ThemeSettingsPopover';
 import { roleLabel, type CurrentUser } from '@/lib/auth/session';
@@ -47,6 +48,12 @@ export function Header({ clanName, user, search, onLogout, onMenu }: HeaderProps
       <h1 className="font-display shrink-0 truncate text-lg font-bold text-primary sm:text-xl">
         {clanName}
       </h1>
+      {user && (
+        <div className="hidden min-w-0 leading-tight md:block">
+          <p className="max-w-48 truncate text-sm font-medium text-default">{user.full_name}</p>
+          <p className="text-xs text-muted">{roleLabel(user.role)}</p>
+        </div>
+      )}
       {search && (
         <div className="relative order-last basis-full sm:order-none sm:min-w-0 sm:flex-1 sm:basis-auto sm:max-w-sm">
           <SearchIcon />
@@ -56,7 +63,7 @@ export function Header({ clanName, user, search, onLogout, onMenu }: HeaderProps
             onChange={(e) => search.onQueryChange(e.target.value)}
             placeholder="Tìm theo tên..."
             aria-label="Tìm thành viên theo tên"
-            className="h-10 w-full rounded-lg border-default border bg-app ps-9 pe-3 text-sm text-default placeholder:text-muted focus:border-[var(--color-primary)] focus:outline-none focus:ring-4 focus:ring-[rgba(197,155,39,0.2)]"
+            className="h-11 w-full rounded-lg border-default border bg-app ps-9 pe-3 text-sm text-default placeholder:text-muted focus:border-[var(--color-primary)] focus:outline-none focus:ring-4 focus:ring-[rgba(197,155,39,0.2)]"
           />
           {search.query.trim() && (
             <ul className="shadow-float absolute left-0 right-0 top-full z-50 mt-1 max-h-72 overflow-y-auto rounded-lg border-default border bg-surface">
@@ -84,24 +91,15 @@ export function Header({ clanName, user, search, onLogout, onMenu }: HeaderProps
           )}
         </div>
       )}
-      <div className="ml-auto flex items-center gap-x-3">
+      <div className="ml-auto flex items-center gap-x-1 sm:gap-x-2">
         <TreeSwitcher user={user} />
         <NotificationsBell user={user} />
         {user ? (
           <>
-            <div className="hidden text-right leading-tight md:block">
-              <p className="max-w-40 truncate text-sm font-medium text-default">
-                {user.full_name}
-              </p>
-              <p className="text-xs text-muted">{roleLabel(user.role)}</p>
-            </div>
-            <button
-              type="button"
-              onClick={onLogout}
-              className="min-h-11 whitespace-nowrap rounded-lg px-2 text-sm text-muted hover:text-default focus-visible:outline-2 focus-visible:outline-[var(--color-primary)]"
-            >
-              Đăng xuất
-            </button>
+            <ThemeSettingsPopover />
+            <HeaderIconButton label="Đăng xuất" onClick={onLogout}>
+              <SignOutIcon />
+            </HeaderIconButton>
           </>
         ) : (
           <Link
@@ -111,7 +109,7 @@ export function Header({ clanName, user, search, onLogout, onMenu }: HeaderProps
             Đăng nhập
           </Link>
         )}
-        <ThemeSettingsPopover />
+        {!user && <ThemeSettingsPopover />}
       </div>
     </header>
   );

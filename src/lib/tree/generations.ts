@@ -1,6 +1,5 @@
 import type { FamilyMember } from './types';
 
-export const DEFAULT_EXPANDED_GENERATIONS = 4;
 
 export type GenerationTier = 'ancestor' | 'mid' | 'descendant';
 

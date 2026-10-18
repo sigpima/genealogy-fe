@@ -35,12 +35,6 @@ export function toggleMissing<T extends string>(current: T[], field: T): T[] {
   return current.includes(field) ? current.filter((f) => f !== field) : [...current, field];
 }
 
-/** Whole-number percentage (0-100) of members with the basics (gender + birth year) filled in. */
-export function basicPercent(c: Completeness): number {
-  if (c.total === 0) return 0;
-  return Math.round((c.basic / c.total) * 100);
-}
-
 export function pageRange(total: number, offset: number, count: number): string {
   if (total === 0 || count === 0) return '0';
   return `${offset + 1}–${offset + count} / ${total}`;

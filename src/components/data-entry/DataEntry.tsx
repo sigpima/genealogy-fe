@@ -1,12 +1,13 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import { CompletenessCards } from '@/components/data-entry/CompletenessCards';
 import { EditableCell } from './EditableCell';
 import { ImportPanel } from './ImportPanel';
 import { SplitDialog } from './SplitDialog';
+import { canBeAdopted } from '@/lib/tree/memberRules';
 import { patchErrorMessage } from '@/lib/data-entry/cells';
 import {
-  basicPercent,
   buildTableQuery,
   EMPTY_FILTERS,
   filtersFromAddress,
@@ -149,7 +150,6 @@ export function DataEntry({ onUnauthorized }: { onUnauthorized: () => void }) {
 
   const items = page?.items ?? [];
   const total = page?.total ?? 0;
-  const percent = completeness ? basicPercent(completeness) : 0;
 
   return (
     <div className="mx-auto max-w-[1400px] space-y-4 px-4 py-6 sm:px-6">
@@ -178,26 +178,11 @@ export function DataEntry({ onUnauthorized }: { onUnauthorized: () => void }) {
       </div>
 
       {completeness && (
-        <section aria-label="Mức độ đầy đủ" className="rounded-xl border-default border bg-surface p-4">
-          <div className="flex flex-wrap items-baseline justify-between gap-2 text-sm">
-            <span className="font-medium text-default">
-              {completeness.basic}/{completeness.total} người đã có giới tính và năm sinh ({percent}%)
-            </span>
-            <span className="text-xs text-muted">
-              Giới tính {completeness.with_gender} · Năm sinh {completeness.with_birth_year} · Quê quán {completeness.with_hometown}
-            </span>
-          </div>
-          <div
-            role="progressbar"
-            aria-label="Đã có giới tính và năm sinh"
-            aria-valuemin={0}
-            aria-valuemax={100}
-            aria-valuenow={percent}
-            className="mt-2 h-2 overflow-hidden rounded-full bg-surface-muted"
-          >
-            <div className="h-full bg-primary transition-[width]" style={{ width: `${percent}%` }} />
-          </div>
-        </section>
+        <CompletenessCards
+          completeness={completeness}
+          active={filters.missing}
+          onToggle={(field) => changeFilters({ missing: toggleMissing(filters.missing, field) })}
+        />
       )}
 
       {showImport && <ImportPanel onApplied={reload} />}
@@ -353,6 +338,8 @@ export function DataEntry({ onUnauthorized }: { onUnauthorized: () => void }) {
                     type="checkbox"
                     aria-label={`${row.full_name} là con nuôi`}
                     checked={row.is_adopted}
+                    disabled={!canBeAdopted(row) && !row.is_adopted}
+                    title={canBeAdopted(row) ? undefined : 'Người không có cha không thể là con nuôi'}
                     onChange={(e) => void saveField(row, 'is_adopted', e.target.checked)}
                   />
                 </td>

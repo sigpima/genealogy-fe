@@ -25,11 +25,16 @@ import { assignBranches, type Branch, type BranchRef } from '@/lib/branches/bran
 import type { Orientation } from '@/lib/tree/layout';
 import { idsNeedingDetail } from '@/lib/tree/detail-cache';
 import { pickIdsToFetch } from '@/lib/tree/detail-queue';
-import { collapsedIdsForDepth, expandPathTo, expandedDepthOf } from '@/lib/tree/expansion';
+import { collapsedIdsForDepth, expandPathTo } from '@/lib/tree/expansion';
 import {
-  DEFAULT_EXPANDED_GENERATIONS,
+  deepestShownGeneration,
+  defaultDepth,
+  idsInSubtree,
+  LARGE_TREE_PEOPLE,
+  subtreeDepth,
+} from '@/lib/tree/generationStepper';
+import {
   descendantCount,
-  generationCounts,
   totalMembers,
 } from '@/lib/tree/generations';
 import { computeDetailSet } from '@/lib/tree/lod';
@@ -125,7 +130,7 @@ export default function GenealogyTree({
 }: GenealogyTreeProps) {
   // Opens collapsed to the first few generations; later refetches keep the user's own state.
   const [collapsedIds, setCollapsedIds] = useState<Set<number>>(() =>
-    collapsedIdsForDepth(familyTree, DEFAULT_EXPANDED_GENERATIONS)
+    collapsedIdsForDepth(familyTree, defaultDepth(subtreeDepth(familyTree), totalMembers(familyTree)))
   );
   const [pendingCenter, setPendingCenter] = useState<{ id: number } | null>(null);
   const [ancestorViewRootId, setAncestorViewRootId] = useState<number | null>(null);
@@ -319,7 +324,10 @@ export default function GenealogyTree({
     const node = chain?.[chain.length - 1];
     if (!node) return;
     setAncestorViewRootId(memberId);
-    setCollapsedIds((prev) => new Set([...prev, ...collapsedIdsForDepth(node, DEFAULT_EXPANDED_GENERATIONS)]));
+    // A branch opens fully (a very large one on a few generations); what was collapsed inside it before is forgotten.
+    const inside = idsInSubtree(node);
+    const opening = collapsedIdsForDepth(node, defaultDepth(subtreeDepth(node), totalMembers(node)));
+    setCollapsedIds((prev) => new Set([...[...prev].filter((id) => !inside.has(id)), ...opening]));
     setFocalId(memberId);
     setSelectedMember(null);
     setPendingCenter({ id: memberId });
@@ -755,9 +763,16 @@ export default function GenealogyTree({
     );
   }
 
-  const counts = useMemo(() => generationCounts(familyTree), [familyTree]);
   const hasBranches = (branches?.length ?? 0) > 0;
-  const activeDepth = useMemo(() => expandedDepthOf(familyTree, collapsedIds), [familyTree, collapsedIds]);
+  const youngestGeneration = useMemo(
+    () => displayRootGeneration + subtreeDepth(displayRoot) - 1,
+    [displayRoot, displayRootGeneration]
+  );
+  const shownDepth = useMemo(
+    () => deepestShownGeneration(displayRoot, collapsedIds, displayRootGeneration),
+    [displayRoot, collapsedIds, displayRootGeneration]
+  );
+  const totalPeople = useMemo(() => totalMembers(displayRoot), [displayRoot]);
 
   return (
     <div className="relative h-full w-full overflow-hidden bg-app">
@@ -774,9 +789,11 @@ export default function GenealogyTree({
         onVisibleChange={handleVisibleChange}
       />
       <GenerationFilterBar
-        counts={counts}
-        activeDepth={activeDepth}
-        onSelectDepth={(depth) => setCollapsedIds(collapsedIdsForDepth(familyTree, depth))}
+        min={displayRootGeneration}
+        max={youngestGeneration}
+        value={shownDepth}
+        capped={totalPeople > LARGE_TREE_PEOPLE}
+        onChange={(depth) => setCollapsedIds(collapsedIdsForDepth(familyTree, depth))}
       />
       {hasBranches && <BranchChips branches={branches ?? []} onSelect={(branch) => focusOn(branch.root_member_id)} />}
       {ancestorViewRootId !== null && (
@@ -804,7 +821,7 @@ export default function GenealogyTree({
           onClose={() => setExporting(false)}
         />
       )}
-      <StatusStrip total={totalMembers(familyTree)} generations={counts.length} handle={canvasHandle} />
+      <StatusStrip total={totalMembers(familyTree)} generations={subtreeDepth(familyTree)} handle={canvasHandle} />
       {selectedMember && (
         <MemberDetailPanel
           key={selectedMember.id}

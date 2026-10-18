@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { importErrorsFrom, summaryText } from './import';
 import { parseCell, patchErrorMessage } from './cells';
 import { parseSplitNames, splitError, suggestSplitNames } from './split';
-import { basicPercent, buildTableQuery, EMPTY_FILTERS, hasActiveFilters, pageRange, toggleMissing } from './table';
+import { buildTableQuery, EMPTY_FILTERS, hasActiveFilters, pageRange, toggleMissing } from './table';
 
 describe('buildTableQuery', () => {
   it('always pages, and only sends the filters that are set', () => {
@@ -21,9 +21,7 @@ describe('buildTableQuery', () => {
     expect(toggleMissing(['gender'], 'hometown')).toEqual(['gender', 'hometown']);
     expect(toggleMissing(['gender', 'hometown'], 'gender')).toEqual(['hometown']);
   });
-  it('computes progress and range labels', () => {
-    expect(basicPercent({ total: 0, with_gender: 0, with_birth_year: 0, with_hometown: 0, basic: 0 })).toBe(0);
-    expect(basicPercent({ total: 3, with_gender: 2, with_birth_year: 2, with_hometown: 0, basic: 1 })).toBe(33);
+  it('computes range labels', () => {
     expect(pageRange(250, 100, 100)).toBe('101–200 / 250');
     expect(pageRange(0, 0, 0)).toBe('0');
   });

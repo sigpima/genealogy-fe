@@ -47,6 +47,8 @@ export type Completeness = {
   with_birth_year: number;
   with_hometown: number;
   basic: number;
+  with_death_year: number;
+  with_avatar: number;
 };
 
 export type TableFilters = {

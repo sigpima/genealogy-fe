@@ -18,6 +18,7 @@ import { RelationshipDialog } from '@/components/tree/RelationshipDialog';
 import type { BranchRef } from '@/lib/branches/branches';
 import { formFromPanel } from '@/lib/requests/requests';
 import { MediaGallery } from '@/components/media/MediaGallery';
+import { canBeAdopted } from '@/lib/tree/memberRules';
 import { wordHint, type ArticleSummary, type GenerationWord } from '@/lib/chronicles/chronicles';
 import { directionsUrl } from '@/lib/places/places';
 import type { Place } from '@/lib/places/places';
@@ -356,6 +357,9 @@ export function MemberDetailPanel({
   const [editingSpouseId, setEditingSpouseId] = useState<number | null>(null);
   const [spouseDraft, setSpouseDraft] = useState<SpouseDraft | null>(null);
   const [newSpouseName, setNewSpouseName] = useState('');
+  const spouseInputRef = useRef<HTMLInputElement | null>(null);
+  const childInputRef = useRef<HTMLInputElement | null>(null);
+  const [pendingFocus, setPendingFocus] = useState<'spouse' | 'child' | null>(null);
   const [newSpouseMarriageYear, setNewSpouseMarriageYear] = useState('');
 
   useEffect(() => {
@@ -570,7 +574,7 @@ export function MemberDetailPanel({
       deathIsLunar: draft.deathIsLunar,
       deathLeapMonth: draft.deathIsLunar && deathMonth !== null && draft.deathLeapMonth,
       birthOrder,
-      isAdopted: draft.isAdopted,
+      isAdopted: canBeAdopted({ parent_id: newParentId }) ? draft.isAdopted : false,
       motherId,
       burialPlaceId: placeId ? Number(placeId) : null,
       burialPlot: toNullableText(plot),
@@ -669,6 +673,16 @@ export function MemberDetailPanel({
   const editAvatarSrc = removeAvatar ? null : (avatarPreviewUrl ?? avatarUrl);
   const canRemoveAvatar = !removeAvatar && Boolean(avatarPreviewUrl || avatarUrl);
   const detailReady = !isDetailLoading && !detailLoadError;
+
+  // "＋ Thêm vợ/chồng" / "＋ Thêm con": open the family tab and put the cursor in the right form (once it exists).
+  useEffect(() => {
+    if (!pendingFocus || tab !== 'family') return;
+    const input = (pendingFocus === 'spouse' ? spouseInputRef : childInputRef).current;
+    if (!input) return;
+    input.scrollIntoView?.({ block: 'center' });
+    input.focus();
+    setPendingFocus(null);
+  }, [pendingFocus, tab, detailReady]);
   const birthDate = formatPartialDate({
     year: birthYear,
     month: profile.birthMonth,
@@ -772,6 +786,29 @@ export function MemberDetailPanel({
             )}
           </div>
         </div>
+
+        {canEdit && !isEditing && (
+          <div className="flex flex-wrap gap-2 px-5 pb-3">
+            {(
+              [
+                ['spouse', '＋ Thêm vợ/chồng'],
+                ['child', '＋ Thêm con'],
+              ] as const
+            ).map(([target, label]) => (
+              <button
+                key={target}
+                type="button"
+                onClick={() => {
+                  setTab('family');
+                  setPendingFocus(target);
+                }}
+                className="min-h-11 rounded-lg border-default border bg-surface px-3 text-sm font-medium text-default hover:bg-surface-muted focus-visible:outline-2 focus-visible:outline-[var(--color-primary)]"
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        )}
 
         <div role="tablist" aria-label="Nội dung hồ sơ" className="flex border-default border-b px-5">
           {(
@@ -964,10 +1001,12 @@ export function MemberDetailPanel({
                       </label>
                     )}
                   </div>
-                  <label className="flex min-h-11 items-center gap-x-2 text-sm text-default">
-                    <input type="checkbox" checked={draft.isAdopted} onChange={(e) => setDraft({ ...draft, isAdopted: e.target.checked })} />
-                    Con nuôi
-                  </label>
+                  {canBeAdopted({ parent_id: parentOptions.length > 0 ? Number(editedParentId) : parentId }) && (
+                    <label className="flex min-h-11 items-center gap-x-2 text-sm text-default">
+                      <input type="checkbox" checked={draft.isAdopted} onChange={(e) => setDraft({ ...draft, isAdopted: e.target.checked })} />
+                      Con nuôi
+                    </label>
+                  )}
                   <label className="block">
                     <span className="text-xs text-muted">Mộ phần</span>
                     <input value={editedBurialPlace} onChange={(e) => setEditedBurialPlace(e.target.value)} maxLength={500} className={fieldClass} />
@@ -1312,6 +1351,7 @@ export function MemberDetailPanel({
                 {detailReady && canEdit && (
                   <div className="mt-3 flex flex-wrap items-center gap-2">
                     <input
+                      ref={spouseInputRef}
                       value={newSpouseName}
                       onChange={(e) => setNewSpouseName(e.target.value)}
                       placeholder="Tên vợ/chồng..."
@@ -1353,6 +1393,7 @@ export function MemberDetailPanel({
                 {canEdit && (
                   <div className="mt-3 flex items-center gap-x-2">
                     <input
+                      ref={childInputRef}
                       value={newChildName}
                       onChange={(e) => setNewChildName(e.target.value)}
                       placeholder="Tên con mới..."
