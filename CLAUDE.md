@@ -504,3 +504,5 @@ open invitation cards with "Đóng thiệp", each behind `ConfirmDialog`). `acti
 
 **Data health page** — `/admin/suc-khoe-du-lieu` (`HealthView`, `lib/admin/health.ts`): findings grouped by kind (most certain first), each person a "Mở trên cây" link, a plain headline ("Dữ liệu ổn…" / "N chỗ cần xem lại"). `BADGE_KEY` in `sections.ts` maps tiles to to-do keys for count badges.
 **Do not run `npm run build` while `next dev` is running from the same folder** — they share `.next` and the dev server stops rendering (delete `.next` and restart it).
+
+**Backup page** — `/admin/sao-luu` (`BackupView`, `lib/admin/backup.ts`): calm/warn headline from the status, and the how-to (script, cron, copy off the box, rehearse a restore). It has no button on purpose.
