@@ -29,14 +29,6 @@ export function coordinatesFromInputs(latitudeText: string, longitudeText: strin
   return { ok: true, latitude, longitude };
 }
 
-export function mapsUrl(latitude: number, longitude: number): string {
-  return `https://www.google.com/maps?q=${latitude},${longitude}`;
-}
-
-export function formatCoordinates(latitude: number, longitude: number): string {
-  return `${latitude}, ${longitude}`;
-}
-
 /** API (snake_case) -> panel (camelCase). */
 export function toPanelProfile(detail: MemberProfile): PanelProfile {
   return {
@@ -48,6 +40,7 @@ export function toPanelProfile(detail: MemberProfile): PanelProfile {
     burialLongitude: detail.burial_longitude,
     burialPlaceId: detail.burial_place_id,
     burialPlot: detail.burial_plot,
+    burialMapUrl: detail.burial_map_url,
     hometown: detail.hometown,
     phone: detail.phone,
     email: detail.email,
@@ -76,6 +69,7 @@ export function profileToPayload(profile: PanelProfile): MemberProfile {
     burial_longitude: profile.burialLongitude,
     burial_place_id: profile.burialPlaceId,
     burial_plot: profile.burialPlot,
+    burial_map_url: profile.burialMapUrl,
     hometown: profile.hometown,
     phone: profile.phone,
     email: profile.email,

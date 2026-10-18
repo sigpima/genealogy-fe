@@ -4,6 +4,7 @@ import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { MediaGallery } from '@/components/media/MediaGallery';
+import { MapLinkField } from '@/components/places/MapLinkField';
 import {
   directionsUrl,
   EMPTY_PLACE_FORM,
@@ -178,19 +179,25 @@ export function PlacesView({ isAdmin, onUnauthorized }: { isAdmin: boolean; onUn
                 <span className="text-xs text-muted">Địa chỉ</span>
                 <input value={form.values.address} onChange={(e) => set('address', e.target.value)} maxLength={500} aria-label="Địa chỉ" className={field} />
               </label>
-              <div className="grid grid-cols-2 gap-2">
-                <label className="block text-sm">
-                  <span className="text-xs text-muted">Vĩ độ</span>
-                  <input inputMode="decimal" value={form.values.latitude} onChange={(e) => set('latitude', e.target.value)} aria-label="Vĩ độ" placeholder="18.5500" className={field} />
-                </label>
-                <label className="block text-sm">
-                  <span className="text-xs text-muted">Kinh độ</span>
-                  <input inputMode="decimal" value={form.values.longitude} onChange={(e) => set('longitude', e.target.value)} aria-label="Kinh độ" placeholder="105.7200" className={field} />
-                </label>
-              </div>
+              <MapLinkField label="Link Google Maps" value={form.values.map_url} onChange={(value) => set('map_url', value)} />
               <button type="button" className={ghost} aria-pressed={picking} onClick={() => setPicking((v) => !v)}>
-                {picking ? 'Đang chọn: bấm lên bản đồ…' : 'Chọn toạ độ trên bản đồ'}
+                {picking ? 'Đang chọn: bấm lên bản đồ…' : 'Hoặc chọn vị trí trên bản đồ'}
               </button>
+              {form.values.latitude.trim() && form.values.longitude.trim() && (
+                <p className="text-sm text-muted">
+                  Đã có vị trí trên bản đồ.{' '}
+                  <button
+                    type="button"
+                    className="min-h-11 text-default underline"
+                    onClick={() => {
+                      set('latitude', '');
+                      set('longitude', '');
+                    }}
+                  >
+                    Bỏ vị trí
+                  </button>
+                </p>
+              )}
               <label className="block text-sm">
                 <span className="text-xs text-muted">Người trông coi</span>
                 <input value={form.values.caretaker} onChange={(e) => set('caretaker', e.target.value)} maxLength={255} aria-label="Người trông coi" className={field} />
@@ -294,6 +301,16 @@ export function PlacesView({ isAdmin, onUnauthorized }: { isAdmin: boolean; onUn
                   className="inline-flex min-h-11 items-center rounded-lg bg-primary px-4 text-sm font-medium text-on-primary hover:opacity-90"
                 >
                   Chỉ đường
+                </a>
+              )}
+              {detail.map_url && (
+                <a
+                  href={detail.map_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex min-h-11 items-center rounded-lg border-default border px-4 text-sm font-medium text-default hover:bg-surface-muted"
+                >
+                  Mở trên Google Maps
                 </a>
               )}
               {detail.caretaker && (

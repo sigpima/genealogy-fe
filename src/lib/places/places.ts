@@ -1,4 +1,5 @@
 import { coordinatesFromInputs } from '../tree/profile';
+import { looksLikeMapLink } from './mapLink';
 
 export type PlaceKind = 'clan_house' | 'temple' | 'tomb' | 'cemetery' | 'other';
 
@@ -9,6 +10,7 @@ export type Place = {
   address: string | null;
   latitude: number | null;
   longitude: number | null;
+  map_url: string | null;
   description: string | null;
   caretaker: string | null;
   visit_notes: string | null;
@@ -62,6 +64,7 @@ export type PlaceForm = {
   address: string;
   latitude: string;
   longitude: string;
+  map_url: string;
   description: string;
   caretaker: string;
   visit_notes: string;
@@ -73,6 +76,7 @@ export const EMPTY_PLACE_FORM: PlaceForm = {
   address: '',
   latitude: '',
   longitude: '',
+  map_url: '',
   description: '',
   caretaker: '',
   visit_notes: '',
@@ -85,6 +89,7 @@ export function placeToForm(place: Place): PlaceForm {
     address: place.address ?? '',
     latitude: place.latitude === null ? '' : String(place.latitude),
     longitude: place.longitude === null ? '' : String(place.longitude),
+    map_url: place.map_url ?? '',
     description: place.description ?? '',
     caretaker: place.caretaker ?? '',
     visit_notes: place.visit_notes ?? '',
@@ -103,6 +108,7 @@ export function placePayload(form: PlaceForm): PlacePayloadResult {
   if (!name) return { ok: false, error: 'Hãy nhập tên địa điểm.' };
   const gps = coordinatesFromInputs(form.latitude, form.longitude);
   if (!gps.ok) return { ok: false, error: gps.error };
+  if (!looksLikeMapLink(form.map_url)) return { ok: false, error: 'Link bản đồ phải là link Google Maps (https).' };
   return {
     ok: true,
     payload: {
@@ -111,6 +117,7 @@ export function placePayload(form: PlaceForm): PlacePayloadResult {
       address: blank(form.address),
       latitude: gps.latitude,
       longitude: gps.longitude,
+      map_url: blank(form.map_url),
       description: blank(form.description),
       caretaker: blank(form.caretaker),
       visit_notes: blank(form.visit_notes),

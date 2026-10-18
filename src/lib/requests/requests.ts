@@ -65,6 +65,7 @@ export const FIELD_LABELS: Record<string, string> = {
   burial_place: 'Mộ phần',
   burial_latitude: 'Vĩ độ mộ',
   burial_longitude: 'Kinh độ mộ',
+  burial_map_url: 'Link bản đồ mộ',
   notes: 'Ghi chú',
   birth_order: 'Con thứ',
   is_adopted: 'Con nuôi',

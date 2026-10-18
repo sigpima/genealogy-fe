@@ -2,8 +2,6 @@ import { describe, expect, it } from 'vitest';
 import {
   contactError,
   coordinatesFromInputs,
-  formatCoordinates,
-  mapsUrl,
   parseBoundedInt,
   profileToPayload,
   toNullableText,
@@ -41,12 +39,6 @@ describe('coordinatesFromInputs', () => {
   });
 });
 
-describe('mapsUrl / formatCoordinates', () => {
-  it('builds a maps link and a readable label', () => {
-    expect(mapsUrl(18.55, 105.72)).toBe('https://www.google.com/maps?q=18.55,105.72');
-    expect(formatCoordinates(18.55, 105.72)).toBe('18.55, 105.72');
-  });
-});
 
 describe('toPanelProfile / profileToPayload', () => {
   it('round-trips every field (PUT replaces the member, so none may be dropped)', () => {

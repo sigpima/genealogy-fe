@@ -29,28 +29,40 @@ export function safeHref(href: string): string | null {
 
 const INLINE_PATTERN = /!\[([^\]]*)\]\(media:(\d+)\)|\[([^\]]+)\]\(([^)\s]+)\)|\*\*([^*]+)\*\*|__([^_]+)__|\*([^*\s][^*]*)\*|_([^_\s][^_]*)_|`([^`]+)`/;
 
+// A backslash before one of these shows the character literally (the chronicle editor writes `\*` for a typed star).
+// Escaped characters are swapped for private-use placeholders while the patterns run, then restored in the leaves,
+// so an escaped `*` can neither open nor close bold and the patterns themselves stay as they were.
+const ESCAPABLE = /\\([\\`*_[\]()#+\-.!>])/g;
+const PLACEHOLDER_BASE = 0xe000;
+const protect = (text: string) => text.replace(ESCAPABLE, (_, ch: string) => String.fromCharCode(PLACEHOLDER_BASE + ch.charCodeAt(0)));
+const unprotect = (text: string) => text.replace(/[\ue000-\ue07f]/g, (ch) => String.fromCharCode(ch.charCodeAt(0) - PLACEHOLDER_BASE));
+
 export function parseInline(text: string): Inline[] {
+  return parseProtected(protect(text));
+}
+
+function parseProtected(text: string): Inline[] {
   const out: Inline[] = [];
   let rest = text;
   while (rest.length > 0) {
     const match = INLINE_PATTERN.exec(rest);
     if (!match) {
-      out.push({ type: 'text', text: rest });
+      out.push({ type: 'text', text: unprotect(rest) });
       break;
     }
-    if (match.index > 0) out.push({ type: 'text', text: rest.slice(0, match.index) });
+    if (match.index > 0) out.push({ type: 'text', text: unprotect(rest.slice(0, match.index)) });
     const [whole, imageAlt, imageId, linkText, linkHref, strongA, strongB, emA, emB, code] = match;
     if (imageId !== undefined) {
-      out.push({ type: 'image', mediaId: Number(imageId), alt: imageAlt });
+      out.push({ type: 'image', mediaId: Number(imageId), alt: unprotect(imageAlt) });
     } else if (linkText !== undefined) {
-      const href = safeHref(linkHref);
-      out.push(href ? { type: 'link', href, children: parseInline(linkText) } : { type: 'text', text: linkText });
+      const href = safeHref(unprotect(linkHref));
+      out.push(href ? { type: 'link', href, children: parseProtected(linkText) } : { type: 'text', text: unprotect(linkText) });
     } else if (strongA !== undefined || strongB !== undefined) {
-      out.push({ type: 'strong', children: parseInline(strongA ?? strongB) });
+      out.push({ type: 'strong', children: parseProtected(strongA ?? strongB) });
     } else if (emA !== undefined || emB !== undefined) {
-      out.push({ type: 'em', children: parseInline(emA ?? emB) });
+      out.push({ type: 'em', children: parseProtected(emA ?? emB) });
     } else if (code !== undefined) {
-      out.push({ type: 'code', text: code });
+      out.push({ type: 'code', text: unprotect(code) });
     }
     rest = rest.slice(match.index + whole.length);
   }

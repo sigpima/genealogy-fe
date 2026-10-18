@@ -73,3 +73,34 @@ describe('helpers', () => {
     expect(mediaIdsIn('a ![x](media:3) b ![y](media:7) ![z](https://q)')).toEqual([3, 7]);
   });
 });
+
+describe('backslash escapes (written by the chronicle editor)', () => {
+  it('shows an escaped character literally instead of reading it as formatting', () => {
+    expect(parseInline('2\\*3\\*4')).toEqual([{ type: 'text', text: '2*3*4' }]);
+    expect(parseInline('snake\\_case \\[x\\]')).toEqual([{ type: 'text', text: 'snake_case [x]' }]);
+    expect(parseInline('a \\\\ b')).toEqual([{ type: 'text', text: 'a \\ b' }]);
+  });
+
+  it('keeps an escaped star from closing bold', () => {
+    expect(parseInline('**a \\* b**')).toEqual([{ type: 'strong', children: [{ type: 'text', text: 'a * b' }] }]);
+  });
+
+  it('is undone inside link text and image alt too', () => {
+    expect(parseInline('[a \\_ b](https://x.example)')).toEqual([
+      { type: 'link', href: 'https://x.example', children: [{ type: 'text', text: 'a _ b' }] },
+    ]);
+    expect(parseInline('![a \\] b](media:3)')).toEqual([{ type: 'image', mediaId: 3, alt: 'a ] b' }]);
+  });
+
+  it('leaves a backslash before an ordinary letter alone (old articles)', () => {
+    expect(parseInline('C:\\Users và \\n')).toEqual([{ type: 'text', text: 'C:\\Users và \\n' }]);
+  });
+
+  it('an escaped marker at the start of a line is not a heading, list, quote or rule', () => {
+    expect(parseMarkdown('\\# not a heading')).toEqual([{ type: 'paragraph', children: [{ type: 'text', text: '# not a heading' }] }]);
+    expect(parseMarkdown('\\- not a list')).toEqual([{ type: 'paragraph', children: [{ type: 'text', text: '- not a list' }] }]);
+    expect(parseMarkdown('1\\. not a list')).toEqual([{ type: 'paragraph', children: [{ type: 'text', text: '1. not a list' }] }]);
+    expect(parseMarkdown('\\> not a quote')).toEqual([{ type: 'paragraph', children: [{ type: 'text', text: '> not a quote' }] }]);
+    expect(parseMarkdown('\\---')).toEqual([{ type: 'paragraph', children: [{ type: 'text', text: '---' }] }]);
+  });
+});

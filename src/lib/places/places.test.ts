@@ -17,6 +17,7 @@ const place = (over: Partial<Place> = {}): Place => ({
   address: 'Xã Phú Ốc',
   latitude: 18.55,
   longitude: 105.72,
+  map_url: null,
   description: null,
   caretaker: null,
   visit_notes: null,
@@ -54,8 +55,13 @@ describe('placePayload', () => {
     const ok = placePayload({ ...EMPTY_PLACE_FORM, name: ' Lăng ', latitude: '18,5', longitude: '105.7', address: ' ' });
     expect(ok).toEqual({
       ok: true,
-      payload: { kind: 'clan_house', name: 'Lăng', address: null, latitude: 18.5, longitude: 105.7, description: null, caretaker: null, visit_notes: null },
+      payload: { kind: 'clan_house', name: 'Lăng', address: null, latitude: 18.5, longitude: 105.7, map_url: null, description: null, caretaker: null, visit_notes: null },
     });
+  });
+  it('keeps a Google Maps link and refuses anything else', () => {
+    const link = 'https://maps.app.goo.gl/AbCd123';
+    expect(placePayload({ ...EMPTY_PLACE_FORM, name: 'x', map_url: ` ${link} ` })).toMatchObject({ ok: true, payload: { map_url: link } });
+    expect(placePayload({ ...EMPTY_PLACE_FORM, name: 'x', map_url: 'https://evil.com/maps' })).toMatchObject({ ok: false });
   });
   it('rejects half a coordinate and out-of-range values', () => {
     expect(placePayload({ ...EMPTY_PLACE_FORM, name: 'x', latitude: '18' })).toMatchObject({ ok: false });

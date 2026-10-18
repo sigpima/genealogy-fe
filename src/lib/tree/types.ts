@@ -28,6 +28,7 @@ export type MemberProfile = {
   /** GĐ6: the place (record) where the person rests, and the spot in it. Admin-only fields; hidden from guests. */
   burial_place_id: number | null;
   burial_plot: string | null;
+  burial_map_url: string | null;
   hometown: string | null;
   /** Hidden from guests by the API. */
   phone: string | null;
@@ -56,6 +57,7 @@ export const EMPTY_API_PROFILE: MemberProfile = {
   burial_longitude: null,
   burial_place_id: null,
   burial_plot: null,
+  burial_map_url: null,
   hometown: null,
   phone: null,
   email: null,
@@ -82,6 +84,7 @@ export type PanelProfile = {
   burialLongitude: number | null;
   burialPlaceId: number | null;
   burialPlot: string | null;
+  burialMapUrl: string | null;
   hometown: string | null;
   phone: string | null;
   email: string | null;

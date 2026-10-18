@@ -6,9 +6,6 @@ import { formatPartialDate, hasDayOrMonth, maxDayFor } from '@/lib/tree/dates';
 import { lifespanLabel, memberStatus } from '@/lib/tree/member-status';
 import {
   contactError,
-  coordinatesFromInputs,
-  formatCoordinates,
-  mapsUrl,
   parseBoundedInt,
   toNullableText,
 } from '@/lib/tree/profile';
@@ -21,6 +18,8 @@ import { MediaGallery } from '@/components/media/MediaGallery';
 import { canBeAdopted } from '@/lib/tree/memberRules';
 import { wordHint, type ArticleSummary, type GenerationWord } from '@/lib/chronicles/chronicles';
 import { directionsUrl } from '@/lib/places/places';
+import { looksLikeMapLink, mapHrefFor } from '@/lib/places/mapLink';
+import { MapLinkField } from '@/components/places/MapLinkField';
 import type { Place } from '@/lib/places/places';
 import type { Gender, PanelProfile, RestingPlace } from '@/lib/tree/types';
 
@@ -122,7 +121,7 @@ const GENDER_LABELS: Record<Gender, string> = {
 };
 
 const fieldClass =
-  'mt-1 w-full rounded-lg border-default border bg-app px-3 py-2 text-sm text-default placeholder:text-muted focus:border-[var(--color-primary)] focus:outline-none focus:ring-4 focus:ring-[rgba(197,155,39,0.2)]';
+  'mt-1 min-h-11 w-full rounded-lg border-default border bg-app px-3 py-2 text-sm text-default placeholder:text-muted focus:border-[var(--color-primary)] focus:outline-none focus:ring-4 focus:ring-[rgba(197,155,39,0.2)]';
 const primaryButton =
   'min-h-11 shrink-0 whitespace-nowrap rounded-lg bg-primary px-4 text-sm font-medium text-on-primary hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)] disabled:opacity-50';
 const ghostButton =
@@ -336,8 +335,7 @@ export function MemberDetailPanel({
   const [editedTitle, setEditedTitle] = useState(profile.title ?? '');
   const [editedResidence, setEditedResidence] = useState(profile.residence ?? '');
   const [editedBurialPlace, setEditedBurialPlace] = useState(profile.burialPlace ?? '');
-  const [editedLatitude, setEditedLatitude] = useState(profile.burialLatitude === null ? '' : String(profile.burialLatitude));
-  const [editedLongitude, setEditedLongitude] = useState(profile.burialLongitude === null ? '' : String(profile.burialLongitude));
+  const [editedMapUrl, setEditedMapUrl] = useState(profile.burialMapUrl ?? '');
   const [editedParentId, setEditedParentId] = useState(toInputValue(parentId));
   const [draft, setDraft] = useState<ProfileDraft>(() => draftFromProfile(profile));
   const [newChildName, setNewChildName] = useState('');
@@ -470,8 +468,7 @@ export function MemberDetailPanel({
     setEditedTitle(profile.title ?? '');
     setEditedResidence(profile.residence ?? '');
     setEditedBurialPlace(profile.burialPlace ?? '');
-    setEditedLatitude(profile.burialLatitude === null ? '' : String(profile.burialLatitude));
-    setEditedLongitude(profile.burialLongitude === null ? '' : String(profile.burialLongitude));
+    setEditedMapUrl(profile.burialMapUrl ?? '');
     setEditedParentId(toInputValue(parentId));
     setDraft(draftFromProfile(profile));
     setPlaceId(toInputValue(profile.burialPlaceId));
@@ -497,9 +494,8 @@ export function MemberDetailPanel({
 
   async function handleSave() {
     if (!editedName.trim()) return;
-    const coordinates = coordinatesFromInputs(editedLatitude, editedLongitude);
-    if (!coordinates.ok) {
-      setActionError(coordinates.error);
+    if (!looksLikeMapLink(editedMapUrl)) {
+      setActionError('Link bản đồ phải là link Google Maps (https).');
       return;
     }
     const birthMonth = parseBoundedInt(draft.birthMonth, 1, 12);
@@ -560,8 +556,10 @@ export function MemberDetailPanel({
       title: toNullableText(editedTitle),
       residence: toNullableText(editedResidence),
       burialPlace: toNullableText(editedBurialPlace),
-      burialLatitude: coordinates.latitude,
-      burialLongitude: coordinates.longitude,
+      // the position follows the link on the server; old coordinates are kept until the link is cleared
+      burialLatitude: profile.burialLatitude,
+      burialLongitude: profile.burialLongitude,
+      burialMapUrl: toNullableText(editedMapUrl),
       hometown: toNullableText(draft.hometown),
       phone: toNullableText(draft.phone),
       email: toNullableText(draft.email),
@@ -709,6 +707,7 @@ export function MemberDetailPanel({
       profile.email ||
       profile.burialPlace ||
       profile.burialLatitude !== null ||
+      Boolean(profile.burialMapUrl) ||
       showBirthDate ||
       showDeathDate ||
       branch !== null ||
@@ -858,7 +857,7 @@ export function MemberDetailPanel({
                         accept="image/*"
                         aria-label="Chọn ảnh chân dung"
                         onChange={handleAvatarFileChange}
-                        className="text-xs text-muted"
+                        className="text-sm text-muted file:me-3 file:min-h-11 file:cursor-pointer file:rounded-lg file:border file:border-default file:bg-surface file:px-3 file:text-sm file:text-default"
                       />
                       {canRemoveAvatar && (
                         <button type="button" onClick={handleRemoveAvatarClick} className={`${dangerButton} text-left`}>
@@ -1011,16 +1010,7 @@ export function MemberDetailPanel({
                     <span className="text-xs text-muted">Mộ phần</span>
                     <input value={editedBurialPlace} onChange={(e) => setEditedBurialPlace(e.target.value)} maxLength={500} className={fieldClass} />
                   </label>
-                  <div className="flex gap-x-2">
-                    <label className="block flex-1">
-                      <span className="text-xs text-muted">Vĩ độ mộ</span>
-                      <input inputMode="decimal" value={editedLatitude} onChange={(e) => setEditedLatitude(e.target.value)} placeholder="21.0285" className={fieldClass} />
-                    </label>
-                    <label className="block flex-1">
-                      <span className="text-xs text-muted">Kinh độ mộ</span>
-                      <input inputMode="decimal" value={editedLongitude} onChange={(e) => setEditedLongitude(e.target.value)} placeholder="105.8542" className={fieldClass} />
-                    </label>
-                  </div>
+                  <MapLinkField label="Link Google Maps của mộ" value={editedMapUrl} onChange={setEditedMapUrl} />
                   <label className="block">
                     <span className="text-xs text-muted">Nơi an nghỉ (địa điểm đã tạo ở mục Địa điểm)</span>
                     <select value={placeId} onChange={(e) => setPlaceId(e.target.value)} aria-label="Nơi an nghỉ" className={fieldClass}>
@@ -1136,22 +1126,22 @@ export function MemberDetailPanel({
                           }
                         />
                       )}
-                      {(profile.burialPlace || profile.burialLatitude !== null) && (
+                      {(profile.burialPlace || profile.burialLatitude !== null || profile.burialMapUrl) && (
                         <InfoRow
                           label="Mộ phần"
                           value={
                             <>
                               {profile.burialPlace}
-                              {profile.burialLatitude !== null && profile.burialLongitude !== null && (
+                              {mapHrefFor(profile.burialMapUrl, profile.burialLatitude, profile.burialLongitude) && (
                                 <>
                                   {profile.burialPlace && <br />}
                                   <a
-                                    href={mapsUrl(profile.burialLatitude, profile.burialLongitude)}
+                                    href={mapHrefFor(profile.burialMapUrl, profile.burialLatitude, profile.burialLongitude)!}
                                     target="_blank"
-                                    rel="noreferrer"
-                                    className="accent-text underline"
+                                    rel="noopener noreferrer"
+                                    className="accent-text inline-flex min-h-11 items-center underline"
                                   >
-                                    {formatCoordinates(profile.burialLatitude, profile.burialLongitude)} · Xem bản đồ
+                                    Xem trên bản đồ
                                   </a>
                                 </>
                               )}

@@ -484,12 +484,28 @@ export default function GenealogyTree({
         return { ok: false, error: 'Không thể lưu. Vui lòng thử lại.' };
       }
 
+      // the server may derive the burial position from the Google Maps link, so take those fields from its answer
+      const saved = (await response.json().catch(() => null)) as {
+        burial_latitude?: number | null;
+        burial_longitude?: number | null;
+        burial_map_url?: string | null;
+      } | null;
+      const savedProfile = {
+        ...profileToPayload(input),
+        ...(saved
+          ? {
+              burial_latitude: saved.burial_latitude ?? null,
+              burial_longitude: saved.burial_longitude ?? null,
+              burial_map_url: saved.burial_map_url ?? null,
+            }
+          : {}),
+      };
       patchMemberDetail(selectedMember.id, {
         birth_year: input.birthYear,
         death_year: input.deathYear,
         gender: input.gender,
         notes: input.notes,
-        ...profileToPayload(input),
+        ...savedProfile,
       });
 
       if (input.parentId !== selectedMember.parentId) {
@@ -516,7 +532,7 @@ export default function GenealogyTree({
               deathYear: input.deathYear,
               gender: input.gender,
               notes: input.notes,
-              profile: toPanelProfile(profileToPayload(input)),
+              profile: toPanelProfile(savedProfile),
             }
           : prev
       );

@@ -1,4 +1,4 @@
-import type { Completeness, MissingField, TableFilters } from './types';
+import type { MissingField, TableFilters } from './types';
 
 export const PAGE_SIZE = 100;
 
