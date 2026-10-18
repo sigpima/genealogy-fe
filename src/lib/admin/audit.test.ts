@@ -4,7 +4,7 @@ import { buildAuditQuery, KIND_LABELS, kindOfAction } from './audit';
 
 describe('audit labels', () => {
   it('names every action the admin console writes', () => {
-    for (const action of ['user.create', 'user.update', 'user.approve', 'user.password_reset', 'security.login_failed', 'security.locked', 'settings.update', 'privacy.update', 'data.export', 'book.export']) {
+    for (const action of ['user.create', 'user.update', 'user.approve', 'user.password_reset', 'security.login_failed', 'security.locked', 'settings.update', 'privacy.update', 'calendar.enable', 'calendar.regenerate', 'calendar.disable', 'data.export', 'book.export']) {
       expect(actionLabel(action)).not.toBe(action);
     }
     expect(actionLabel('security.locked')).toMatch(/khoá/);
@@ -26,6 +26,7 @@ describe('audit labels', () => {
     expect(kindOfAction('security.login_failed')).toBe('security');
     expect(kindOfAction('user.update')).toBe('people');
     expect(kindOfAction('privacy.update')).toBe('settings');
+    expect(kindOfAction('calendar.regenerate')).toBe('settings');
     expect(kindOfAction('member.create')).toBe('data');
   });
 });

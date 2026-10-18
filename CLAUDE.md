@@ -506,3 +506,7 @@ open invitation cards with "Đóng thiệp", each behind `ConfirmDialog`). `acti
 **Do not run `npm run build` while `next dev` is running from the same folder** — they share `.next` and the dev server stops rendering (delete `.next` and restart it).
 
 **Backup page** — `/admin/sao-luu` (`BackupView`, `lib/admin/backup.ts`): calm/warn headline from the status, and the how-to (script, cron, copy off the box, rehearse a restore). It has no button on purpose.
+
+**Admin console polish (phase 6)** — dialogs use `components/common/useDialogFocus` (focus moves in, Tab/Shift+Tab stay inside, focus returns to the opener; `ConfirmDialog` starts on the safe "Huỷ"). Contrast was audited on all four themes (heritage, warm, modern, elegant) at 375/768/1024/1440 px with
+a script that composites real backgrounds: it found and fixed `warm`/`modern` `--color-text-muted` (now `#6f5f52` / `#56667c`, ≥ 4.5:1 on `surface-muted`) and chips that paired `bg-secondary`/`text-white` badly — **status/alert chips are a coloured border + `text-default`**, not a coloured fill, so they pass on every theme. Links that are text on the page background use `text-default` + underline (`text-primary` fails AA on `warm`).
+Touch targets: radios/checkboxes inside a ≥ 44 px label count. Keep new admin text ≥ 14 px (body 16 px).

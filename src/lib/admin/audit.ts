@@ -11,7 +11,7 @@ export const KIND_LABELS: Record<AuditKind, string> = {
 export function kindOfAction(action: string): AuditKind {
   if (action.startsWith('security.')) return 'security';
   if (action.startsWith('user.')) return 'people';
-  if (action.startsWith('settings.') || action.startsWith('privacy.')) return 'settings';
+  if (action.startsWith('settings.') || action.startsWith('privacy.') || action.startsWith('calendar.')) return 'settings';
   return 'data';
 }
 
