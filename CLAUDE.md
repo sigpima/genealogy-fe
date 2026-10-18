@@ -498,3 +498,6 @@ for the export). A new external image/script/connect origin must be added there 
 
 **Admin users page** — `/admin/nguoi-dung` (`UsersView`): search (accents ignored), status/role filters (`?trang-thai=pending` from the home's to-do box pre-selects), cards on every width, last login ("Chưa ghi nhận" for no value),
 linked person, password reset dialog (shown once, copy button), link dialog (`PersonPicker`), bulk "Duyệt tất cả (N)". Every role/status change and bulk approve goes through `components/common/ConfirmDialog` (Esc cancels, focus starts on "Huỷ").
+
+**Admin audit and share pages** — `/admin/nhat-ky` embeds `AuditView` (kind chips, date range, `?loai=security` from the home's lockout task; security rows carry a "Bảo mật" badge, not just a colour) and `/admin/link` (`SharesView`: calendar link create/regenerate/off and
+open invitation cards with "Đóng thiệp", each behind `ConfirmDialog`). `actionLabel` (Vietnamese text per audit action) lives in `lib/requests/requests.ts`; add new audit actions there.

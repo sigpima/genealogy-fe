@@ -114,7 +114,7 @@ export function AuditView({ onUnauthorized, embedded = false }: { onUnauthorized
           const lines = changeLines(entry.changes);
           return (
             <li key={entry.id} className="rounded-xl border-default border bg-surface p-4">
-              <p className="text-sm text-default">
+              <p className="text-base text-default">
                 {kindOfAction(entry.action) === 'security' && (
                   <span className="me-2 rounded-full bg-[var(--color-danger)] px-2 py-0.5 text-xs font-semibold text-white">{KIND_LABELS.security as AuditKind}</span>
                 )}
@@ -123,7 +123,7 @@ export function AuditView({ onUnauthorized, embedded = false }: { onUnauthorized
                   <>
                     {' · '}
                     {entry.member_id !== null && entry.action !== 'member.delete' ? (
-                      <Link href={focusHref(entry.member_id)} className="font-display text-primary underline">
+                      <Link href={focusHref(entry.member_id)} className="font-display inline-flex min-h-11 items-center text-primary underline">
                         {entry.member_name}
                       </Link>
                     ) : (
@@ -132,14 +132,14 @@ export function AuditView({ onUnauthorized, embedded = false }: { onUnauthorized
                   </>
                 )}
               </p>
-              <p className="mt-0.5 text-xs text-muted">
+              <p className="mt-0.5 text-sm text-muted">
                 {new Date(entry.created_at).toLocaleString('vi-VN', { dateStyle: 'short', timeStyle: 'short' })}
                 {entry.request_id !== null && ` · theo yêu cầu #${entry.request_id}`}
                 {typeof entry.details?.email === 'string' && ` · ${entry.details.email}`}
                 {typeof entry.details?.via === 'string' && ` · qua ${entry.details.via === 'csv' ? 'file CSV' : entry.details.via}`}
               </p>
               {lines.length > 0 && (
-                <ul className="mt-2 space-y-0.5 text-xs text-default">
+                <ul className="mt-2 space-y-0.5 text-sm text-default">
                   {lines.slice(0, 12).map((line) => (
                     <li key={line}>{line}</li>
                   ))}

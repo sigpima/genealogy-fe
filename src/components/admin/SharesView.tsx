@@ -52,8 +52,8 @@ export function SharesView() {
 
   async function calendar(method: 'POST' | 'DELETE', okText: string) {
     const response = await fetch('/api/calendar/subscription', { method, credentials: 'include' });
+    await load(); // show the new state first, then say it worked
     setMessage(response.ok ? { kind: 'ok', text: okText } : { kind: 'error', text: 'Không thể thực hiện. Vui lòng thử lại.' });
-    await load();
   }
 
   async function closeCard(card: Card) {
@@ -63,8 +63,8 @@ export function SharesView() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ closed: true }),
     });
-    setMessage(response.ok ? { kind: 'ok', text: 'Đã đóng thiệp.' } : { kind: 'error', text: 'Không đóng được thiệp. Vui lòng thử lại.' });
     await load();
+    setMessage(response.ok ? { kind: 'ok', text: 'Đã đóng thiệp.' } : { kind: 'error', text: 'Không đóng được thiệp. Vui lòng thử lại.' });
   }
 
   const url = subscription?.path ? feedUrl(window.location.origin, subscription.path) : null;
