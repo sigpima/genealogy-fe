@@ -41,7 +41,7 @@ the three compose files is in `../DOCKER.md`.
 ## Architecture
 
 Next.js 15 App Router / React 19 / Tailwind v4 app: an interactive family
-tree (custom `TreeCanvas`: d3-hierarchy layout + d3-zoom pan/zoom) plus login/signup pages, both wired to the sibling
+tree (custom `TreeCanvas`: d3-hierarchy layout + d3-zoom pan/zoom) plus a login page and the invitation page (no public sign-up), wired to the sibling
 `genealogy-api` project. `Home` (`src/app/page.tsx`) fetches
 `/api/members/tree` on mount and passes the result to `GenealogyTree` as
 a prop — there is no bundled tree JSON anymore (`new_treeData.json` was
@@ -296,11 +296,10 @@ every user belongs to one family tree (`CurrentUser.tree_id`/`tree_name`; null f
 comes from their account (a superadmin picks the family with the header's **`TreeSwitcher`** — shown only with two or more families —
 which sets the `acting_tree` cookie (`actingTreeCookie`, `src/lib/platform/trees.ts`) and reloads; the API reads
 that cookie only for a superadmin). Guests and
-signup need to know which family they mean: **`/t/<slug>`** (`src/app/t/[slug]/route.ts`) sets the
+the login context need to know which family they mean: **`/t/<slug>`** (`src/app/t/[slug]/route.ts`) sets the
 `tree_slug` cookie (validated by `isValidTreeSlug`, `src/lib/auth/tree.ts`) and redirects to `/` with a
-*relative* `Location` (behind a proxy the request's own origin is not the public one). The signup page
-shows which family the visitor is joining, or asks for the family link when the API cannot tell
-(`/api/site/info` answers 404 with several families and no cookie, and the form is hidden). Trees and
+*relative* `Location` (behind a proxy the request's own origin is not the public one). (`/api/site/info`
+answers 404 with several families and no cookie.) Trees and
 their first admin are created on **`/he-thong`** (`src/app/he-thong/page.tsx`, `TreesPanel`; superadmin only, sidebar item
 "Các họ"): list with counts and admins, "Xem cây"/"Quản trị" (switch to that family, then open `/` or `/admin`), rename
 (slug included), and a create form that suggests the slug from the name (`slugify`) and shows the generated admin
@@ -450,11 +449,11 @@ shared link, add personal links (one name per line), see every answer with names
 **`FormAction` (`src/components/FormAction.tsx`) must not receive a
 `handleSubmit` prop when used inside a `<form onSubmit={...}>`** — its
 button is `type="submit"`, so passing the same handler as `onClick` too
-fires it twice per submit. `loginForm.tsx`/`signupForm.tsx` rely on the
+fires it twice per submit. `loginForm.tsx` relies on the
 form's `onSubmit` alone; follow that pattern for any new auth-style form.
 
 **Forgot/reset password pages** (`/forgot-password`, `/reset-password`)
-follow the same layout pattern as `/login`/`/signup` (an `AuthHeader` +
+follow the same layout pattern as `/login` (an `AuthHeader` +
 a client form component). `/forgot-password`'s form always shows the
 same generic success message on any successful response — it never
 reflects back whether the email was registered, matching the backend's
@@ -497,7 +496,7 @@ for the export). A new external image/script/connect origin must be added there 
 `AdminFrame` (guard + "← Quản trị" + h1 + desktop section list). **Register a new area in `src/lib/admin/sections.ts`** (`ready: true` only when its page exists, otherwise the tile is hidden).
 
 **Admin users page** — `/admin/nguoi-dung` (`UsersView`): search (accents ignored), status/role filters (`?trang-thai=pending` from the home's to-do box pre-selects), cards on every width, last login ("Chưa ghi nhận" for no value),
-linked person, password reset dialog (shown once, copy button), link dialog (`PersonPicker`), bulk "Duyệt tất cả (N)". Every role/status change and bulk approve goes through `components/common/ConfirmDialog` (Esc cancels, focus starts on "Huỷ").
+linked person, password reset dialog (shown once, copy button), link dialog (`PersonPicker`), single "Duyệt" for an old pending account. Every role/status change goes through `components/common/ConfirmDialog` (Esc cancels, focus starts on "Huỷ").
 
 **Admin audit and share pages** — `/admin/nhat-ky` embeds `AuditView` (kind chips, date range, `?loai=security` from the home's lockout task; security rows carry a "Bảo mật" badge, not just a colour) and `/admin/link` (`SharesView`: calendar link create/regenerate/off and
 open invitation cards with "Đóng thiệp", each behind `ConfirmDialog`). `actionLabel` (Vietnamese text per audit action) lives in `lib/requests/requests.ts`; add new audit actions there.
@@ -511,7 +510,8 @@ open invitation cards with "Đóng thiệp", each behind `ConfirmDialog`). `acti
 a script that composites real backgrounds: it found and fixed `warm`/`modern` `--color-text-muted` (now `#6f5f52` / `#56667c`, ≥ 4.5:1 on `surface-muted`) and chips that paired `bg-secondary`/`text-white` badly — **status/alert chips are a coloured border + `text-default`**, not a coloured fill, so they pass on every theme. Links that are text on the page background use `text-default` + underline (`text-primary` fails AA on `warm`).
 Touch targets: radios/checkboxes inside a ≥ 44 px label count. Keep new admin text ≥ 14 px (body 16 px).
 
-**Signup on a fresh install** — `/api/auth/bootstrap` says `first_user`/`needs_code`: the signup page then shows the "lần cài đặt đầu tiên" notice, the "Mã khởi tạo" field when required, and the Signup button even though no family exists (before this the button was hidden by the "open a family link" rule, so the first superadmin could only be created through the API/CLI).
+**No public sign-up (feedback batch, phase 4)** — `/signup`, `lib/auth/bootstrap.ts`, the `registration` setting block, "Duyệt tất cả" and the `pending_users` to-do item are gone; the login page has no Signup link. A fresh install's superadmin (made with the CLI) has no family: the home page's tree fetch answers 404, `emptyInstallTarget` (`src/app/page.tsx`, `lib/auth/landing.ts::landingPath`) then sends them to `/he-thong`.
+**Invitations** — `/moi/<token>` (`InviteView`, public like `/thiep/*`: no `AppShell`, not in the middleware matcher) shows "Bạn được mời vào gia phả … với tư cách …" and a form (name, e-mail, password twice), then lands on `/?focus=<member id>`. Admin side: the person panel's "✉ Mời người này" opens `InviteDialog` (one request per opening; the link is shown **once** with a select-all fallback because `navigator.clipboard` needs HTTPS), **"Đây là tôi"** PATCHes the admin's own `member_id` (no approval), and `/admin/nguoi-dung` lists links with `InvitationsPanel` ("Thu hồi" behind `ConfirmDialog`). A linked account (`CurrentUser.member`) gets the header name as a "Hồ sơ của tôi" link (`/?focus=<id>`, a full navigation on the tree page because the tree reads `?focus` once), the tree focuses them once per browser session (`shouldFocusMe`, sessionStorage guarded), and the relationship dialog offers "Xem với tôi". The panel gets the account through `PanelMe` (`GenealogyTree` `me` prop + `onMeChanged` = session refresh).
 
 **Superadmin console (GĐ13)** — `/he-thong` is the home (to-do box, platform numbers, tiles); each area is `/he-thong/<area>` inside `PlatformFrame` (superadmin guard, "← Nền tảng", h1, section list). **Register an area in `src/lib/platform/sections.ts`** (`ready: true` only when its page exists). The family list/create/rename UI (`TreesPanel`) lives at `/he-thong/ho`.
 
