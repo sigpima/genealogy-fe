@@ -47,6 +47,9 @@ export function loginErrorMessage(
 ): string {
   if (status === 429) return TOO_MANY_ATTEMPTS;
   if (status === 401) return 'Email hoặc mật khẩu không đúng.';
+  if (status === 403 && detail === 'tree_paused') {
+    return 'Họ của bạn đang tạm ngưng. Hãy liên hệ người quản lý hệ thống.';
+  }
   if (status === 403 && detail === 'account_pending') {
     return 'Tài khoản của bạn đang chờ quản trị viên duyệt. Vui lòng quay lại sau.';
   }

@@ -12,6 +12,7 @@ export type PlatformTree = {
   is_current: boolean;
   /** Latest audit entry or login of the family (ISO), null when nothing has happened yet. */
   last_activity: string | null;
+  status: 'active' | 'paused';
 };
 
 export type TreeCreated = { tree: PlatformTree; admin: TreeAdmin; admin_password: string | null };
@@ -55,6 +56,9 @@ export function treeErrorMessage(status: number, detail: unknown): string {
   const text = typeof detail === 'string' ? detail : '';
   if (status === 409 && /slug/.test(text)) return 'Đường dẫn (slug) này đã có họ khác dùng.';
   if (status === 409 && /email/.test(text)) return 'Email này đã có tài khoản.';
+  if (status === 409 && /paused/.test(text)) return 'Hãy tạm ngưng họ này trước khi xoá.';
+  if (status === 409 && /slug does not match/.test(text)) return 'Đường dẫn (slug) gõ lại chưa đúng.';
+  if (status === 409 && /already/.test(text)) return 'Họ này đã ở trạng thái đó rồi.';
   if (status === 409) return 'Bị trùng với dữ liệu đã có.';
   if (status === 422) return 'Thông tin chưa hợp lệ: kiểm tra tên, slug, email và mật khẩu (từ 8 ký tự).';
   if (status === 401 || status === 403) return 'Chỉ quản trị tối cao mới dùng được chức năng này.';

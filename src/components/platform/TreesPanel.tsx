@@ -1,6 +1,8 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import { TreeActions } from '@/components/platform/TreeActions';
+import { filterTrees, lastActivityLabel, statusLabel } from '@/lib/platform/lifecycle';
 import {
   actingTreeCookie,
   familyLink,
@@ -34,6 +36,9 @@ export function TreesPanel() {
   const [error, setError] = useState<string | null>(null);
   const [created, setCreated] = useState<TreeCreated | null>(null);
   const [editing, setEditing] = useState<number | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
+  const [loc, setLoc] = useState<string | null>(null);
+  useEffect(() => setLoc(new URLSearchParams(window.location.search).get('loc')), []);
 
   const load = useCallback(async () => {
     try {
@@ -57,10 +62,23 @@ export function TreesPanel() {
         </p>
       )}
 
+      {message && (
+        <p role="status" className="text-base text-default">
+          {message}
+        </p>
+      )}
+
       <section aria-label="Danh sách họ">
-        <h2 className="text-sm font-semibold text-default">Các họ ({trees?.length ?? '…'})</h2>
+        <h2 className="text-lg font-semibold text-default">
+          Các họ ({trees ? filterTrees(trees, loc).length : '…'})
+          {loc && (
+            <button type="button" className="ms-3 min-h-11 text-base font-normal text-default underline" onClick={() => { setLoc(null); window.history.replaceState(null, '', window.location.pathname); }}>
+              Xem tất cả
+            </button>
+          )}
+        </h2>
         <ul className="mt-3 space-y-3">
-          {(trees ?? []).map((tree) => (
+          {filterTrees(trees ?? [], loc).map((tree) => (
             <li key={tree.id} className="rounded-xl border-default border bg-surface p-4">
               {editing === tree.id ? (
                 <RenameForm
@@ -77,16 +95,20 @@ export function TreesPanel() {
                       <h3 className="font-display text-base font-bold text-default">
                         {tree.name}{' '}
                         {tree.is_current && (
-                          <span className="ms-1 rounded-full bg-surface-muted px-2 py-0.5 align-middle text-[11px] font-semibold text-primary">
+                          <span className="ms-1 rounded-full bg-surface-muted px-2 py-0.5 align-middle text-sm font-semibold text-default">
                             đang xem
                           </span>
-                        )}
+                        )}{' '}
+                        <span className={`ms-1 rounded-full border-2 px-2 py-0.5 align-middle text-sm font-semibold text-default ${tree.status === 'paused' ? 'border-[var(--color-danger)]' : 'border-[var(--color-border)]'}`}>
+                          {statusLabel(tree.status)}
+                        </span>
                       </h3>
-                      <p className="mt-0.5 text-xs text-muted">
+                      <p className="mt-0.5 text-sm text-muted">Hoạt động gần nhất: {lastActivityLabel(tree.last_activity, new Date())}</p>
+                      <p className="mt-0.5 text-sm text-muted">
                         {tree.member_count} người · {tree.user_count} tài khoản · link:{' '}
                         <code>{familyLink(typeof window === 'undefined' ? '' : window.location.origin, tree.slug)}</code>
                       </p>
-                      <p className="mt-0.5 text-xs text-muted">
+                      <p className="mt-0.5 text-sm text-muted">
                         Admin:{' '}
                         {tree.admins.length
                           ? tree.admins.map((a) => `${a.full_name} <${a.email}>${a.status === 'active' ? '' : ` (${a.status})`}`).join('; ')
@@ -103,6 +125,14 @@ export function TreesPanel() {
                       <button type="button" className={ghost} onClick={() => setEditing(tree.id)}>
                         Đổi tên
                       </button>
+                      <TreeActions
+                        tree={tree}
+                        onChanged={async (text) => {
+                          setMessage(text);
+                          await load();
+                        }}
+                        onError={(text) => setError(text)}
+                      />
                     </div>
                   </div>
                 </>
