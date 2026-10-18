@@ -522,3 +522,5 @@ Touch targets: radios/checkboxes inside a ≥ 44 px label count. Keep new admin 
 **Platform log page** — `/he-thong/nhat-ky` (`PlatformLogView`, `lib/platform/log.ts`: labels, one-line details, `buildEventsQuery`); the home shows the last 5 lines. **Every way into a family goes through `enterFamily`** (family card buttons, the header `TreeSwitcher`, the JSON export link in the delete dialog) so it is logged first; never set the `acting_tree` cookie directly.
 
 **System page** — `/he-thong/he-thong` (`SystemView`, `lib/platform/system.ts`: one `Summary {tone ok|warn|neutral, headline, detail}` per card, no fetching in the helpers). Warn cards use a coloured border + "Cần chú ý" chip (not a coloured fill). The Hệ thống tile's badge follows the `worker_stale` task.
+
+**Superadmin console polish (phase 6)** — the contrast/targets/keyboard audit (`gd14-p6` pattern: 4 themes × 4 widths × every `/he-thong` page, dialogs trap focus, Esc returns focus) is the same as the admin console's; the create/rename forms were raised to 44 px inputs and 16 px text. New platform dialogs must use `useDialogFocus`/`ConfirmDialog` and `enterFamily` for any way into a family.
