@@ -19,7 +19,7 @@ export const SECTIONS: AdminSection[] = [
   { id: 'audit', href: '/admin/nhat-ky', label: 'Nhật ký', hint: 'Ai đã đổi gì, sự kiện bảo mật', icon: 'audit', ready: true },
   { id: 'shares', href: '/admin/link', label: 'Link chia sẻ', hint: 'Link lịch và thiệp đang mở', icon: 'shares', ready: true },
   { id: 'health', href: '/admin/suc-khoe-du-lieu', label: 'Sức khoẻ dữ liệu', hint: 'Số liệu trùng hoặc vô lý', icon: 'health', ready: true },
-  { id: 'backup', href: '/admin/sao-luu', label: 'Sao lưu', hint: 'Bản sao lưu gần nhất', icon: 'backup', ready: false },
+  { id: 'backup', href: '/admin/sao-luu', label: 'Sao lưu', hint: 'Bản sao lưu gần nhất', icon: 'backup', ready: true },
   { id: 'publish', href: '/xuat-ban', label: 'Xuất bản', hint: 'Quyển phả PDF, dữ liệu JSON', icon: 'publish', ready: true },
 ];
 
@@ -32,4 +32,4 @@ export type TodoItem = { key: string; count: number; text: string; href: string;
 export type Overview = { items: TodoItem[]; counts: Record<string, number> };
 
 /** The to-do key that puts a count badge on a section's tile. */
-export const BADGE_KEY: Record<string, string> = { users: 'pending_users', health: 'data_issues', audit: 'locked_accounts' };
+export const BADGE_KEY: Record<string, string> = { users: 'pending_users', health: 'data_issues', audit: 'locked_accounts', backup: 'backup_old' };
