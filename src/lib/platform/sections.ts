@@ -5,7 +5,7 @@ export type PlatformSection = { id: string; href: string; label: string; hint: s
 
 export const PLATFORM_SECTIONS: PlatformSection[] = [
   { id: 'trees', href: '/he-thong/ho', label: 'Các họ', hint: 'Tạo, đổi tên, tạm ngưng hoặc xoá một họ', icon: 'families', ready: true },
-  { id: 'audit', href: '/he-thong/nhat-ky', label: 'Nhật ký nền tảng', hint: 'Những gì bạn đã làm với các họ', icon: 'audit', ready: false },
+  { id: 'audit', href: '/he-thong/nhat-ky', label: 'Nhật ký nền tảng', hint: 'Những gì bạn đã làm với các họ', icon: 'audit', ready: true },
   { id: 'system', href: '/he-thong/he-thong', label: 'Hệ thống', hint: 'Cơ sở dữ liệu, bộ nhắc việc, đĩa, sao lưu', icon: 'health', ready: false },
 ];
 

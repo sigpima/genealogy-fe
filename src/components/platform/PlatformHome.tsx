@@ -4,18 +4,24 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { AdminIcon } from '@/components/admin/AdminIcon';
 import { formatBytes } from '@/lib/admin/backup';
+import { platformActionLabel, type PlatformEvent } from '@/lib/platform/log';
 import { PLATFORM_BADGE_KEY, visiblePlatformSections, type PlatformOverview } from '@/lib/platform/sections';
 
 /** The superadmin home: what needs attention across all families, the platform's size, and a tile per area. */
 export function PlatformHome() {
   const [overview, setOverview] = useState<PlatformOverview | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [recent, setRecent] = useState<PlatformEvent[]>([]);
 
   useEffect(() => {
     fetch('/api/platform/overview', { credentials: 'include' })
       .then((r) => (r.ok ? (r.json() as Promise<PlatformOverview>) : Promise.reject()))
       .then(setOverview)
       .catch(() => setError('Không tải được danh sách việc cần làm. Các mục bên dưới vẫn dùng được.'));
+    fetch('/api/platform/events?limit=5', { credentials: 'include' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((body) => setRecent(body?.items ?? []))
+      .catch(() => undefined);
   }, []);
 
   const tasks = overview?.items.filter((i) => i.kind === 'task') ?? [];
@@ -98,6 +104,23 @@ export function PlatformHome() {
           })}
         </ul>
       </section>
+
+      {recent.length > 0 && (
+        <section aria-label="Gần đây">
+          <h2 className="text-lg font-semibold text-default">Gần đây</h2>
+          <ul className="mt-2 divide-y divide-[var(--color-border)] rounded-2xl border-default border bg-surface">
+            {recent.map((e) => (
+              <li key={e.id} className="flex flex-wrap items-baseline justify-between gap-x-3 px-4 py-2 text-base text-default">
+                <span>
+                  {platformActionLabel(e.action)}
+                  {e.tree_name ? ` · ${e.tree_name}` : ''}
+                </span>
+                <span className="text-sm text-muted">{new Date(e.created_at).toLocaleString('vi-VN', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
     </div>
   );
 }

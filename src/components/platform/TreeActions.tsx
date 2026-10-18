@@ -4,7 +4,7 @@ import { useRef, useState } from 'react';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { useDialogFocus } from '@/components/common/useDialogFocus';
 import { canDelete, deleteSummary } from '@/lib/platform/lifecycle';
-import { actingTreeCookie, treeErrorMessage, type PlatformTree } from '@/lib/platform/trees';
+import { enterFamily, treeErrorMessage, type PlatformTree } from '@/lib/platform/trees';
 
 const ghost =
   'min-h-11 whitespace-nowrap rounded-lg px-3 text-base text-default hover:bg-surface-muted focus-visible:outline-2 focus-visible:outline-[var(--color-primary)] disabled:opacity-50';
@@ -128,17 +128,17 @@ function DeleteTreeDialog({ tree, onCancel, onDeleted, onError }: { tree: Platfo
         </p>
         <p className="mt-2 text-base text-default">
           Nên{' '}
-          <a
-            href="/api/export/data.json"
-            target="_blank"
-            rel="noreferrer"
-            onClick={() => {
-              document.cookie = actingTreeCookie(tree.id); // the export is of the family the superadmin is acting on
+          <button
+            type="button"
+            className="inline min-h-11 underline"
+            onClick={async () => {
+              // the export is of the family the superadmin is acting on: switching into it is logged like any entry
+              if (await enterFamily(tree.id)) window.open('/api/export/data.json', '_blank', 'noreferrer');
+              else onError('Không ghi được nhật ký nên chưa tải được. Vui lòng thử lại.');
             }}
-            className="underline"
           >
             tải dữ liệu JSON của họ này
-          </a>{' '}
+          </button>{' '}
           trước.
         </p>
         <label className="mt-4 block text-base text-default">

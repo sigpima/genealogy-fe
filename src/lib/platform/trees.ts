@@ -64,3 +64,23 @@ export function treeErrorMessage(status: number, detail: unknown): string {
   if (status === 401 || status === 403) return 'Chỉ quản trị tối cao mới dùng được chức năng này.';
   return 'Không thể thực hiện. Vui lòng thử lại.';
 }
+
+/**
+ * Go into a family to help: the entry is logged on the platform FIRST, and only then is the acting-tree cookie set. If the
+ * log line cannot be written the superadmin does not switch (returns false), so nothing goes unrecorded.
+ */
+export async function enterFamily(
+  treeId: number,
+  deps: { fetchFn?: typeof fetch; setCookie?: (cookie: string) => void } = {},
+): Promise<boolean> {
+  const fetchFn = deps.fetchFn ?? fetch;
+  const setCookie = deps.setCookie ?? ((cookie: string) => void (document.cookie = cookie));
+  try {
+    const response = await fetchFn(`/api/trees/${treeId}/support`, { method: 'POST', credentials: 'include' });
+    if (!response.ok) return false;
+  } catch {
+    return false;
+  }
+  setCookie(actingTreeCookie(treeId));
+  return true;
+}

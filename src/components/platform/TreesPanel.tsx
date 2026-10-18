@@ -5,7 +5,7 @@ import { AdminsDialog } from '@/components/platform/AdminsDialog';
 import { TreeActions } from '@/components/platform/TreeActions';
 import { filterTrees, lastActivityLabel, statusLabel } from '@/lib/platform/lifecycle';
 import {
-  actingTreeCookie,
+  enterFamily,
   familyLink,
   isValidSlug,
   slugify,
@@ -26,9 +26,9 @@ async function problem(response: Response): Promise<string> {
   return treeErrorMessage(response.status, (body as { detail?: unknown } | null)?.detail);
 }
 
-/** Switch the acting family and go somewhere (a full load, so nothing stale from the old family stays). */
-function actOn(treeId: number, path: string) {
-  document.cookie = actingTreeCookie(treeId);
+/** Go into a family and somewhere in it (a full load, so nothing stale from the old family stays). The entry is logged first. */
+async function actOn(treeId: number, path: string, onError: (message: string) => void) {
+  if (!(await enterFamily(treeId))) return onError('Không ghi được nhật ký nên chưa vào họ này. Vui lòng thử lại.');
   window.location.assign(path);
 }
 
@@ -118,10 +118,10 @@ export function TreesPanel() {
                       </p>
                     </div>
                     <div className="flex flex-wrap items-center">
-                      <button type="button" className={ghost} onClick={() => actOn(tree.id, '/')}>
+                      <button type="button" className={ghost} onClick={() => void actOn(tree.id, '/', setError)}>
                         Xem cây
                       </button>
-                      <button type="button" className={ghost} onClick={() => actOn(tree.id, '/admin')}>
+                      <button type="button" className={ghost} onClick={() => void actOn(tree.id, '/admin', setError)}>
                         Quản trị
                       </button>
                       <button type="button" className={ghost} onClick={() => setEditing(tree.id)}>

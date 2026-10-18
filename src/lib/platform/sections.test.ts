@@ -3,7 +3,7 @@ import { PLATFORM_SECTIONS, visiblePlatformSections } from './sections';
 
 describe('platform sections', () => {
   it('shows only the sections whose pages exist', () => {
-    expect(visiblePlatformSections().map((s) => s.id)).toEqual(['trees']);
+    expect(visiblePlatformSections().map((s) => s.id)).toEqual(['trees', 'audit']);
   });
   it('has unique addresses, all under /he-thong', () => {
     const hrefs = PLATFORM_SECTIONS.map((s) => s.href);
