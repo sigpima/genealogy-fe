@@ -13,6 +13,7 @@ import {
   type SiteInfo,
 } from '@/lib/auth/session';
 import { signupTreeNotice, type SiteInfoState } from '@/lib/auth/tree';
+import { bootstrapErrorMessage, bootstrapNotice } from '@/lib/auth/bootstrap';
 
 const fields = signupFields;
 const fieldsState: { [key: string]: string } = {};
@@ -27,8 +28,14 @@ export default function Signup() {
   const [infoStatus, setInfoStatus] =
     useState<SiteInfoState['status']>('loading');
   const [success, setSuccess] = useState<string | null>(null);
+  // Fresh install: the first account becomes the platform owner, and production guards that with a code.
+  const [boot, setBoot] = useState<{ first_user: boolean; needs_code: boolean }>({ first_user: false, needs_code: false });
 
   useEffect(() => {
+    fetch('/api/auth/bootstrap')
+      .then((response) => (response.ok ? response.json() : null))
+      .then((state) => state && setBoot(state))
+      .catch(() => undefined);
     fetch('/api/site/info')
       .then((response) =>
         response.ok ? (response.json() as Promise<SiteInfo>) : null,
@@ -41,12 +48,15 @@ export default function Signup() {
   }, []);
   const isClosed = siteInfo?.registration === 'closed';
   // Several families and no /t/<slug> link opened yet: we cannot know where this account would go.
-  const needsFamilyLink = infoStatus === 'unknown';
+  const needsFamilyLink = infoStatus === 'unknown' && !boot.first_user;
   const notice = [
-    signupTreeNotice({
-      status: infoStatus,
-      treeName: siteInfo?.tree_name ?? null,
-    }),
+    boot.first_user ? bootstrapNotice(boot.needs_code) : null,
+    boot.first_user
+      ? null
+      : signupTreeNotice({
+          status: infoStatus,
+          treeName: siteInfo?.tree_name ?? null,
+        }),
     signupNotice(siteInfo),
   ]
     .filter(Boolean)
@@ -75,6 +85,7 @@ export default function Signup() {
           email: signupState['email-address'],
           password: signupState['password'],
           full_name: signupState['full-name'],
+          ...(boot.needs_code ? { bootstrap_code: signupState['bootstrap-code'] } : {}),
         }),
       });
       if (response.status === 429) {
@@ -83,6 +94,10 @@ export default function Signup() {
       }
       if (response.status === 409) {
         setError('Email này đã được đăng ký.');
+        return;
+      }
+      if (response.status === 403 && boot.first_user) {
+        setError(bootstrapErrorMessage());
         return;
       }
       if (response.status === 403) {
@@ -142,6 +157,19 @@ export default function Signup() {
               placeholder={field.placeholder}
             />
           ))}
+          {boot.needs_code && (
+            <Input
+              handleChange={handleChange}
+              value={signupState['bootstrap-code'] ?? ''}
+              labelText="Mã khởi tạo"
+              labelFor="bootstrap-code"
+              id="bootstrap-code"
+              name="bootstrap-code"
+              type="password"
+              isRequired
+              placeholder="Mã khởi tạo (BOOTSTRAP_CODE trong .env)"
+            />
+          )}
           {error && (
             <p role="alert" className="text-sm text-danger">
               {error}
