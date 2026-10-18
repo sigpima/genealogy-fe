@@ -15,11 +15,11 @@ import {
 } from '@/lib/platform/trees';
 
 const field =
-  'mt-1 w-full rounded-lg border-default border bg-app px-3 py-2 text-sm text-default placeholder:text-muted focus:border-[var(--color-primary)] focus:outline-none';
+  'mt-1 w-full min-h-11 rounded-lg border-default border bg-app px-3 text-base text-default placeholder:text-muted focus:border-[var(--color-primary)] focus:outline-none';
 const primary =
-  'min-h-11 rounded-lg bg-primary px-4 text-sm font-medium text-on-primary hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)] disabled:opacity-50';
+  'min-h-11 rounded-lg bg-primary px-4 text-base font-medium text-on-primary hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)] disabled:opacity-50';
 const ghost =
-  'min-h-11 whitespace-nowrap rounded-lg px-3 text-sm text-muted hover:text-default focus-visible:outline-2 focus-visible:outline-[var(--color-primary)] disabled:opacity-50';
+  'min-h-11 whitespace-nowrap rounded-lg px-3 text-base text-default hover:bg-surface-muted focus-visible:outline-2 focus-visible:outline-[var(--color-primary)] disabled:opacity-50';
 
 async function problem(response: Response): Promise<string> {
   const body: unknown = await response.json().catch(() => null);
@@ -59,7 +59,7 @@ export function TreesPanel() {
   return (
     <div className="space-y-8">
       {error && (
-        <p role="alert" className="text-sm text-danger">
+        <p role="alert" className="text-base text-danger">
           {error}
         </p>
       )}
@@ -152,7 +152,7 @@ export function TreesPanel() {
       )}
 
       <section aria-label="Tạo họ mới">
-        <h2 className="text-sm font-semibold text-default">Tạo họ mới</h2>
+        <h2 className="text-lg font-semibold text-default">Tạo họ mới</h2>
         <CreateForm
           onCreated={async (result) => {
             setCreated(result);
@@ -160,7 +160,7 @@ export function TreesPanel() {
           }}
         />
         {created && (
-          <div role="status" className="mt-4 rounded-xl border-default border bg-surface p-4 text-sm text-default">
+          <div role="status" className="mt-4 rounded-xl border-default border bg-surface p-4 text-base text-default">
             <p>
               Đã tạo họ <b>{created.tree.name}</b>. Admin: <b>{created.admin.email}</b>.
             </p>
@@ -174,7 +174,7 @@ export function TreesPanel() {
             ) : (
               <p className="mt-2 text-muted">Mật khẩu là mật khẩu bạn đã nhập.</p>
             )}
-            <p className="mt-2 text-xs text-muted">
+            <p className="mt-2 text-sm text-muted">
               Link cho họ hàng đăng ký/xem: {familyLink(window.location.origin, created.tree.slug)}
             </p>
           </div>
@@ -237,12 +237,12 @@ function CreateForm({ onCreated }: { onCreated: (result: TreeCreated) => Promise
 
   return (
     <form onSubmit={submit} className="mt-3 grid gap-3 rounded-xl border-default border bg-surface p-4 sm:grid-cols-2">
-      <label className="block text-sm sm:col-span-2">
-        <span className="text-xs text-muted">Tên họ</span>
+      <label className="block text-base sm:col-span-2">
+        <span className="text-sm text-muted">Tên họ</span>
         <input required value={name} onChange={(e) => setName(e.target.value)} maxLength={255} className={field} placeholder="Nguyễn Tộc Làng Phú Ốc" />
       </label>
-      <label className="block text-sm sm:col-span-2">
-        <span className="text-xs text-muted">Đường dẫn (slug) — link họ hàng vào sẽ là /t/{effectiveSlug || '…'}</span>
+      <label className="block text-base sm:col-span-2">
+        <span className="text-sm text-muted">Đường dẫn (slug) — link họ hàng vào sẽ là /t/{effectiveSlug || '…'}</span>
         <input
           required
           value={effectiveSlug}
@@ -255,16 +255,16 @@ function CreateForm({ onCreated }: { onCreated: (result: TreeCreated) => Promise
           aria-label="Slug"
         />
       </label>
-      <label className="block text-sm">
-        <span className="text-xs text-muted">Email admin của họ</span>
+      <label className="block text-base">
+        <span className="text-sm text-muted">Email admin của họ</span>
         <input required type="email" value={email} onChange={(e) => setEmail(e.target.value)} className={field} />
       </label>
-      <label className="block text-sm">
-        <span className="text-xs text-muted">Tên admin</span>
+      <label className="block text-base">
+        <span className="text-sm text-muted">Tên admin</span>
         <input required value={adminName} onChange={(e) => setAdminName(e.target.value)} className={field} />
       </label>
-      <label className="block text-sm sm:col-span-2">
-        <span className="text-xs text-muted">Mật khẩu admin (để trống = tự sinh, hiện một lần)</span>
+      <label className="block text-base sm:col-span-2">
+        <span className="text-sm text-muted">Mật khẩu admin (để trống = tự sinh, hiện một lần)</span>
         <input type="text" autoComplete="off" value={password} onChange={(e) => setPassword(e.target.value)} minLength={8} className={field} />
       </label>
       {message && (
@@ -315,16 +315,16 @@ function RenameForm({ tree, onDone }: { tree: PlatformTree; onDone: (changed: bo
 
   return (
     <form onSubmit={save} className="space-y-3">
-      <label className="block text-sm">
-        <span className="text-xs text-muted">Tên họ</span>
+      <label className="block text-base">
+        <span className="text-sm text-muted">Tên họ</span>
         <input required value={name} onChange={(e) => setName(e.target.value)} className={field} aria-label={`Tên họ ${tree.name}`} />
       </label>
-      <label className="block text-sm">
-        <span className="text-xs text-muted">Slug (đổi thì link cũ /t/{tree.slug} ngừng dùng được)</span>
+      <label className="block text-base">
+        <span className="text-sm text-muted">Slug (đổi thì link cũ /t/{tree.slug} ngừng dùng được)</span>
         <input required value={slug} onChange={(e) => setSlug(e.target.value)} className={field} aria-label={`Slug của ${tree.name}`} />
       </label>
       {message && (
-        <p role="alert" className="text-sm text-danger">
+        <p role="alert" className="text-base text-danger">
           {message}
         </p>
       )}
