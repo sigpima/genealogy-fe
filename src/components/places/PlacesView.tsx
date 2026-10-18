@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { MediaGallery } from '@/components/media/MediaGallery';
 import { MapLinkField } from '@/components/places/MapLinkField';
+import { linkCoordinates } from '@/lib/places/mapLink';
 import {
   directionsUrl,
   EMPTY_PLACE_FORM,
@@ -180,9 +181,13 @@ export function PlacesView({ isAdmin, onUnauthorized }: { isAdmin: boolean; onUn
                 <input value={form.values.address} onChange={(e) => set('address', e.target.value)} maxLength={500} aria-label="Địa chỉ" className={field} />
               </label>
               <MapLinkField label="Link Google Maps" value={form.values.map_url} onChange={(value) => set('map_url', value)} />
-              <button type="button" className={ghost} aria-pressed={picking} onClick={() => setPicking((v) => !v)}>
-                {picking ? 'Đang chọn: bấm lên bản đồ…' : 'Hoặc chọn vị trí trên bản đồ'}
-              </button>
+              {linkCoordinates(form.values.map_url) ? (
+                <p className="text-sm text-muted">Vị trí trên bản đồ lấy từ link Google Maps ở trên. Muốn tự chọn điểm khác, hãy xoá link.</p>
+              ) : (
+                <button type="button" className={ghost} aria-pressed={picking} onClick={() => setPicking((v) => !v)}>
+                  {picking ? 'Đang chọn: bấm lên bản đồ…' : 'Hoặc chọn vị trí trên bản đồ'}
+                </button>
+              )}
               {form.values.latitude.trim() && form.values.longitude.trim() && (
                 <p className="text-sm text-muted">
                   Đã có vị trí trên bản đồ.{' '}
@@ -358,7 +363,7 @@ export function PlacesView({ isAdmin, onUnauthorized }: { isAdmin: boolean; onUn
             places={places ?? []}
             selectedId={selectedId}
             onSelect={setSelectedId}
-            picking={picking}
+            picking={picking && !linkCoordinates(form?.values.map_url ?? "")}
             picked={picked}
             onPick={(lat, lng) => {
               set('latitude', lat.toFixed(6));

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { acceptErrorMessage, inviteErrorMessage, inviteStatusLabel, inviteUrl, shouldFocusMe, tokenFromPath } from './invites';
+import { acceptErrorMessage, inviteErrorMessage, inviteStatusLabel, inviteUrl, myProfileHref, shouldFocusMe, tokenFromPath } from './invites';
 
 describe('inviteUrl', () => {
   it('joins the site address and the path the API gave', () => {
@@ -55,5 +55,11 @@ describe('error messages', () => {
     expect(acceptErrorMessage(422, undefined)).toMatch(/8 ký tự/);
     expect(acceptErrorMessage(429, undefined)).toMatch(/quá nhiều/);
     expect(acceptErrorMessage(500, undefined)).toMatch(/thử lại/);
+  });
+});
+
+describe('myProfileHref', () => {
+  it('opens the tree focused on the person', () => {
+    expect(myProfileHref(7)).toBe('/?focus=7');
   });
 });

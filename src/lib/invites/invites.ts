@@ -31,6 +31,11 @@ export function inviteStatusLabel(status: InviteStatus): string {
   return STATUS_LABELS[status];
 }
 
+/** "Hồ sơ của tôi": the home page focused on the account's own person. */
+export function myProfileHref(memberId: number): string {
+  return `/?focus=${memberId}`;
+}
+
 export function tokenFromPath(path: string): string | null {
   const match = /^\/moi\/([^/]+)\/?$/.exec(path);
   return match ? match[1] : null;

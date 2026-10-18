@@ -6,6 +6,7 @@ import { HeaderIconButton, SignOutIcon } from '@/components/layout/HeaderIconBut
 import { TreeSwitcher } from '@/components/layout/TreeSwitcher';
 import { ThemeSettingsPopover } from '@/components/theme/ThemeSettingsPopover';
 import { roleLabel, type CurrentUser } from '@/lib/auth/session';
+import { myProfileHref } from '@/lib/invites/invites';
 
 export type HeaderSearchResult = {
   key: string;
@@ -51,14 +52,14 @@ export function Header({ clanName, user, search, onLogout, onMenu }: HeaderProps
       {user && (
         user.member ? (
           <Link
-            href={`/?focus=${user.member.id}`}
+            href={myProfileHref(user.member.id)}
             prefetch={false}
             title="Hồ sơ của tôi"
             // on the tree page itself the address only changes the query, which the tree reads once: reload to focus
             onClick={(event) => {
               if (window.location.pathname === '/') {
                 event.preventDefault();
-                window.location.assign(`/?focus=${user.member!.id}`);
+                window.location.assign(myProfileHref(user.member!.id));
               }
             }}
             className="hidden min-w-0 rounded-lg px-2 py-1 leading-tight hover:bg-surface-muted focus-visible:outline-2 focus-visible:outline-[var(--color-primary)] md:block"

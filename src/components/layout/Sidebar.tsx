@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
+import { myProfileHref } from '@/lib/invites/invites';
 
 export type NavId =
   | 'tree'
@@ -25,6 +26,8 @@ export type SidebarProps = {
   isSuperadmin?: boolean;
   /** Signed-in users get the "Yêu cầu" item (their proposals; admins: the ones to review). */
   signedIn?: boolean;
+  /** The person this account is: phones, where the header has no room for the name, get "Hồ sơ của tôi" in the drawer. */
+  myProfile?: { id: number; name: string } | null;
   /** Phones have no sidebar: the same list opens as a drawer from the header's menu button. */
   mobileOpen?: boolean;
   onMobileClose?: () => void;
@@ -37,6 +40,7 @@ export default function Sidebar({
   isAdmin,
   isSuperadmin = false,
   signedIn = false,
+  myProfile = null,
   mobileOpen = false,
   onMobileClose,
 }: SidebarProps) {
@@ -93,6 +97,28 @@ export default function Sidebar({
               </button>
             </div>
             <nav aria-label="Điều hướng chính (điện thoại)" className="flex-1 overflow-y-auto px-2 pt-3">
+              {myProfile && (
+                <ul className="mb-2 border-default border-b pb-2">
+                  <li>
+                    <Link
+                      href={myProfileHref(myProfile.id)}
+                      prefetch={false}
+                      onClick={(event) => {
+                        // on the tree page the address only changes the query, which the tree reads once: reload to focus
+                        if (window.location.pathname === '/') {
+                          event.preventDefault();
+                          window.location.assign(myProfileHref(myProfile.id));
+                        }
+                        onMobileClose?.();
+                      }}
+                      className="flex min-h-11 flex-col justify-center rounded-lg px-3 py-2 text-sm text-default hover:bg-surface-muted focus-visible:outline-2 focus-visible:outline-[var(--color-primary)]"
+                    >
+                      <span className="font-semibold underline">Hồ sơ của tôi</span>
+                      <span className="text-muted">{myProfile.name}</span>
+                    </Link>
+                  </li>
+                </ul>
+              )}
               {list(true)}
             </nav>
           </div>

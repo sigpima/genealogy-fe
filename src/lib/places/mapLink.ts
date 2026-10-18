@@ -27,3 +27,24 @@ export function fallbackMapHref(latitude: number | null, longitude: number | nul
 export function mapHrefFor(link: string | null, latitude: number | null, longitude: number | null): string | null {
   return link ?? fallbackMapHref(latitude, longitude);
 }
+
+const NUMBER = '(-?\\d{1,3}(?:\\.\\d+)?)';
+const POSITION_PATTERNS = [
+  new RegExp(`@${NUMBER},${NUMBER}`),
+  new RegExp(`!3d${NUMBER}!4d${NUMBER}`),
+  new RegExp(`[?&](?:q|ll|query)=${NUMBER}(?:,|%2C)${NUMBER}(?:&|$)`),
+  new RegExp(`/maps/place/${NUMBER},${NUMBER}(?:/|$|\\?)`),
+];
+
+/** The position a link carries, if any — the same forms the API reads (`coordinates_from`), which then decides the place's position. */
+export function linkCoordinates(url: string): [number, number] | null {
+  for (const pattern of POSITION_PATTERNS) {
+    const found = pattern.exec(url);
+    if (found) {
+      const lat = Number(found[1]);
+      const lng = Number(found[2]);
+      if (lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) return [lat, lng];
+    }
+  }
+  return null;
+}

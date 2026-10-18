@@ -31,6 +31,7 @@ export function AppShell({
         isAdmin={canManage(user)}
         isSuperadmin={user?.role === 'superadmin'}
         signedIn={user !== null}
+        myProfile={user?.member ?? null}
         mobileOpen={menuOpen}
         onMobileClose={() => setMenuOpen(false)}
       />
