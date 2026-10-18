@@ -501,3 +501,6 @@ linked person, password reset dialog (shown once, copy button), link dialog (`Pe
 
 **Admin audit and share pages** — `/admin/nhat-ky` embeds `AuditView` (kind chips, date range, `?loai=security` from the home's lockout task; security rows carry a "Bảo mật" badge, not just a colour) and `/admin/link` (`SharesView`: calendar link create/regenerate/off and
 open invitation cards with "Đóng thiệp", each behind `ConfirmDialog`). `actionLabel` (Vietnamese text per audit action) lives in `lib/requests/requests.ts`; add new audit actions there.
+
+**Data health page** — `/admin/suc-khoe-du-lieu` (`HealthView`, `lib/admin/health.ts`): findings grouped by kind (most certain first), each person a "Mở trên cây" link, a plain headline ("Dữ liệu ổn…" / "N chỗ cần xem lại"). `BADGE_KEY` in `sections.ts` maps tiles to to-do keys for count badges.
+**Do not run `npm run build` while `next dev` is running from the same folder** — they share `.next` and the dev server stops rendering (delete `.next` and restart it).
