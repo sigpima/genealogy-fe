@@ -244,3 +244,45 @@ body {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* The chronicle editor's writing surface: the same look as the reader (MarkdownView) so what is typed is what is read. */
+.rich-content {
+  min-height: 24rem;
+  padding: 1rem;
+  font-size: 15px;
+  line-height: 1.75rem;
+  color: var(--color-text);
+  outline: none;
+}
+.rich-content:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: -2px;
+  border-radius: 0 0 0.5rem 0.5rem;
+}
+.rich-content > * + * { margin-top: 1rem; }
+.rich-content h1, .rich-content h2, .rich-content h3, .rich-content h4 {
+  font-family: var(--font-serif), 'Noto Serif', Georgia, serif;
+  font-weight: 700;
+  color: var(--color-text);
+}
+.rich-content h1 { font-size: 1.5rem; }
+.rich-content h2 { font-size: 1.25rem; }
+.rich-content h3 { font-size: 1.125rem; }
+.rich-content h4 { font-size: 1rem; }
+.rich-content ul, .rich-content ol { padding-inline-start: 1.5rem; }
+.rich-content ul { list-style: disc; }
+.rich-content ol { list-style: decimal; }
+.rich-content li > p { margin: 0; }
+.rich-content li + li { margin-top: 0.25rem; }
+.rich-content blockquote {
+  border-inline-start: 4px solid var(--color-accent);
+  padding-inline-start: 1rem;
+  font-style: italic;
+  color: var(--color-text-muted);
+}
+.rich-content hr { border: 0; border-top: 1px solid var(--color-border); }
+.rich-content a { color: var(--color-text); text-decoration: underline; }
+.rich-content code { padding: 0 0.25rem; border-radius: 0.25rem; background: var(--color-surface-muted); font-size: 0.9em; }
+.rich-content img.rich-image { display: inline-block; max-height: 18rem; max-width: 100%; border-radius: 0.5rem; vertical-align: middle; }
+.rich-content img.rich-image.ProseMirror-selectednode { outline: 3px solid var(--color-primary); }
+.rich-content img.rich-image:not([src]), .rich-content img.rich-image[src=""] { min-width: 4rem; min-height: 3rem; background: var(--color-surface-muted); }

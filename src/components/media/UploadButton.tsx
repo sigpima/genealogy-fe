@@ -4,7 +4,19 @@ import { useRef, useState } from 'react';
 import { ACCEPT_ATTRIBUTE } from '@/lib/media/media';
 
 /** The one obvious way to add files: a big button (and, on wide screens, dropping files onto the box). */
-export function UploadButton({ onFiles, busy }: { onFiles: (files: File[]) => void; busy: boolean }) {
+export function UploadButton({
+  onFiles,
+  busy,
+  accept = ACCEPT_ATTRIBUTE,
+  label = 'Thêm ảnh hoặc tài liệu',
+  hint = 'Ảnh JPEG, PNG, WebP hoặc PDF, tối đa 10 MB mỗi file.',
+}: {
+  onFiles: (files: File[]) => void;
+  busy: boolean;
+  accept?: string;
+  label?: string;
+  hint?: string;
+}) {
   const input = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
 
@@ -28,7 +40,7 @@ export function UploadButton({ onFiles, busy }: { onFiles: (files: File[]) => vo
       }}
       className={`rounded-xl border border-dashed p-3 ${dragging ? 'border-[var(--color-primary)] bg-surface-muted' : 'border-default'}`}
     >
-      <input ref={input} type="file" multiple accept={ACCEPT_ATTRIBUTE} hidden tabIndex={-1} aria-hidden="true" onChange={(event) => pick(event.target.files)} />
+      <input ref={input} type="file" multiple accept={accept} hidden tabIndex={-1} aria-hidden="true" onChange={(event) => pick(event.target.files)} />
       <button
         type="button"
         disabled={busy}
@@ -38,10 +50,10 @@ export function UploadButton({ onFiles, busy }: { onFiles: (files: File[]) => vo
         <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M12 16V4M6 10l6-6 6 6M4 20h16" />
         </svg>
-        {busy ? 'Đang tải lên…' : 'Thêm ảnh hoặc tài liệu'}
+        {busy ? 'Đang tải lên…' : label}
       </button>
       <p className="mt-2 text-sm text-muted">
-        Ảnh JPEG, PNG, WebP hoặc PDF, tối đa 10 MB mỗi file. Có thể chọn nhiều file một lúc<span className="hidden md:inline"> hoặc kéo thả vào khung này</span>.
+        {hint} Có thể chọn nhiều file một lúc<span className="hidden md:inline"> hoặc kéo thả vào khung này</span>.
       </p>
     </div>
   );
