@@ -180,7 +180,7 @@ export function UsersView({ currentUserId }: { currentUserId: number }) {
             {users.map((user) => (
               <li key={user.id} className="shadow-card rounded-xl border-default border bg-surface p-4">
                 <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
-                  <div className="min-w-0 flex-1">
+                  <div className="min-w-[14rem] flex-1">
                     <p className="font-display break-words text-lg font-semibold text-default">
                       {user.full_name}
                       {user.id === currentUserId && <span className="ms-2 text-sm font-normal text-muted">(bạn)</span>}

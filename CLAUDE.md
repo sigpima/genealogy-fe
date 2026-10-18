@@ -495,3 +495,6 @@ for the export). A new external image/script/connect origin must be added there 
 
 **Admin console (GĐ12)** — `/admin` is the home (to-do box from `/api/admin/overview`, a tile per area, a "Gần đây" strip); each area is its own page under `/admin/<area>` wrapped in
 `AdminFrame` (guard + "← Quản trị" + h1 + desktop section list). **Register a new area in `src/lib/admin/sections.ts`** (`ready: true` only when its page exists, otherwise the tile is hidden).
+
+**Admin users page** — `/admin/nguoi-dung` (`UsersView`): search (accents ignored), status/role filters (`?trang-thai=pending` from the home's to-do box pre-selects), cards on every width, last login ("Chưa ghi nhận" for no value),
+linked person, password reset dialog (shown once, copy button), link dialog (`PersonPicker`), bulk "Duyệt tất cả (N)". Every role/status change and bulk approve goes through `components/common/ConfirmDialog` (Esc cancels, focus starts on "Huỷ").
