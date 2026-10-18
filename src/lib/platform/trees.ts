@@ -10,6 +10,8 @@ export type PlatformTree = {
   admins: TreeAdmin[];
   /** The family the superadmin is acting on right now. */
   is_current: boolean;
+  /** Latest audit entry or login of the family (ISO), null when nothing has happened yet. */
+  last_activity: string | null;
 };
 
 export type TreeCreated = { tree: PlatformTree; admin: TreeAdmin; admin_password: string | null };

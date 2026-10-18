@@ -1,7 +1,7 @@
 // The areas of the admin console. Registering a new area = adding it here (and giving its page `ready: true`
 // only once it exists, so the home never shows a tile that leads nowhere).
 
-export type AdminIcon = 'users' | 'settings' | 'privacy' | 'audit' | 'shares' | 'health' | 'backup' | 'publish';
+export type AdminIcon = 'families' | 'users' | 'settings' | 'privacy' | 'audit' | 'shares' | 'health' | 'backup' | 'publish';
 
 export type AdminSection = {
   id: string;

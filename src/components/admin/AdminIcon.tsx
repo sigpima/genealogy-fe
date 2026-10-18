@@ -1,6 +1,14 @@
 import type { AdminIcon as IconKey } from '@/lib/admin/sections';
 
 const PATHS: Record<IconKey, React.ReactNode> = {
+  families: (
+    <>
+      <circle cx="12" cy="5" r="2.5" />
+      <circle cx="5" cy="19" r="2.5" />
+      <circle cx="19" cy="19" r="2.5" />
+      <path d="M12 7.5V12M12 12 5 16.5M12 12l7 4.5" />
+    </>
+  ),
   users: (
     <>
       <circle cx="9" cy="8" r="3.5" />
