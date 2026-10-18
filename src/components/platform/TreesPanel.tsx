@@ -128,8 +128,8 @@ export function TreesPanel() {
                       <TreeActions
                         tree={tree}
                         onChanged={async (text) => {
+                          await load(); // show the new state first, then say it worked
                           setMessage(text);
-                          await load();
                         }}
                         onError={(text) => setError(text)}
                       />
