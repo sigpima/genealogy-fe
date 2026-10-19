@@ -164,6 +164,7 @@ const ACTION_TEXT: Record<string, string> = {
   'calendar.disable': 'Tắt link lịch điện thoại',
   'privacy.update': 'Đổi quyền riêng tư',
   'data.export': 'Tải dữ liệu JSON',
+  'data.export_gedcom': 'Tải dữ liệu GEDCOM',
   'book.export': 'Xuất quyển phả PDF',
 };
 

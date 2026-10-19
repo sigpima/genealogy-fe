@@ -97,6 +97,15 @@ export function BookView({ canManage }: { canManage: boolean }) {
           Tải dữ liệu JSON
         </a>
       </section>
+      <section aria-label="Xuất GEDCOM" className="rounded-xl border-default border bg-surface p-4">
+        <h2 className="text-sm font-semibold text-default">Tải bản GEDCOM (.ged)</h2>
+        <p className="mt-1 text-xs text-muted">
+          Định dạng chuẩn để mở gia phả trong phần mềm khác (Ancestry, MyHeritage, Gramps…). Có người, giới tính, ngày sinh/mất, nơi ở, mộ phần, vợ chồng và con cái. Ngày âm lịch chỉ giữ năm trong trường ngày, ngày tháng âm nằm ở phần ghi chú; không có ảnh, tài liệu và chi phái.
+        </p>
+        <a href="/api/export/data.ged" download className="mt-2 inline-flex min-h-11 items-center rounded-lg border-default border px-4 text-sm font-medium text-default hover:bg-surface-muted focus-visible:outline-2 focus-visible:outline-[var(--color-primary)]">
+          Tải GEDCOM
+        </a>
+      </section>
       <p className="text-xs text-muted">Mỗi lần xuất được ghi vào Nhật ký. Muốn ảnh của riêng cây, dùng nút “Xuất ảnh” ở trang Cây Gia Phả.</p>
     </div>
   );

@@ -4,7 +4,7 @@ import { actorBadge, buildAuditQuery, KIND_LABELS, kindOfAction } from './audit'
 
 describe('audit labels', () => {
   it('names every action the admin console writes', () => {
-    for (const action of ['user.create', 'user.update', 'user.approve', 'user.password_reset', 'security.login_failed', 'security.locked', 'settings.update', 'privacy.update', 'calendar.enable', 'calendar.regenerate', 'calendar.disable', 'data.export', 'book.export']) {
+    for (const action of ['user.create', 'user.update', 'user.approve', 'user.password_reset', 'security.login_failed', 'security.locked', 'settings.update', 'privacy.update', 'calendar.enable', 'calendar.regenerate', 'calendar.disable', 'data.export', 'data.export_gedcom', 'book.export']) {
       expect(actionLabel(action)).not.toBe(action);
     }
     expect(actionLabel('security.locked')).toMatch(/khoá/);
