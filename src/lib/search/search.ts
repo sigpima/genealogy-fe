@@ -85,6 +85,15 @@ export function filterProblem(filters: SearchFilters): string | null {
   return null;
 }
 
+export type PersonOption = { id: number; name: string; hint: string };
+
+/** Quick-pick rows for a person search box: blood members only, in the server's ranking, with "đời 3 · con Nguyễn Văn Hai". */
+export function personOptions(items: SearchItem[], excludeIds: number[]): PersonOption[] {
+  return items
+    .filter((i) => !i.is_spouse && !excludeIds.includes(i.id))
+    .map((i) => ({ id: i.id, name: i.full_name, hint: `đời ${i.generation}${i.parent_name ? ` · con ${i.parent_name}` : ''}` }));
+}
+
 /** The line under a result's name: "Đời 3 · 1930 – 2001 · Hà Tĩnh". */
 export function itemSubtitle(item: SearchItem): string {
   const parts = [`Đời ${item.generation}`];

@@ -11,6 +11,8 @@ import { myProfileHref } from '@/lib/invites/invites';
 export type HeaderSearchResult = {
   key: string;
   label: string;
+  /** A smaller line after the name: "đời 3 · con Nguyễn Văn Hai". */
+  hint?: string;
   onSelect: () => void;
 };
 
@@ -96,6 +98,7 @@ export function Header({ clanName, user, search, onLogout, onMenu }: HeaderProps
                     className="block min-h-11 w-full px-3 py-2 text-left text-sm text-default hover:bg-surface-muted focus-visible:bg-surface-muted focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-primary)]"
                   >
                     {result.label}
+                    {result.hint && <span className="text-xs text-muted"> · {result.hint}</span>}
                   </button>
                 </li>
               ))}

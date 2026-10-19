@@ -106,7 +106,6 @@ export type MemberDetailPanelProps = {
   isDetailLoading: boolean;
   detailLoadError: boolean;
   onRetryLoadDetail: () => void;
-  onViewAncestors: () => void;
   /** Show only this person's descendants on the tree. */
   onViewBranch?: () => void;
   onClose: () => void;
@@ -363,7 +362,6 @@ export function MemberDetailPanel({
   isDetailLoading,
   detailLoadError,
   onRetryLoadDetail,
-  onViewAncestors,
   onViewBranch,
   onClose,
   onUpdate,
@@ -1266,9 +1264,6 @@ export function MemberDetailPanel({
                   <div className="mb-3">
                     <p className="text-sm font-medium text-default">Dòng tổ tiên</p>
                     <p className="mt-1 text-sm leading-6 text-muted">{ancestors.join(' → ')}</p>
-                    <button type="button" onClick={onViewAncestors} className={`${outlineButton} mt-2`}>
-                      Xem tổ tiên 4 đời
-                    </button>
                   </div>
                 )}
                 <button type="button" onClick={() => setShowRelationship(true)} className={outlineButton}>

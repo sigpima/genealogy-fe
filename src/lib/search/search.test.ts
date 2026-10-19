@@ -10,6 +10,7 @@ import {
   itemSubtitle,
   pageLabel,
   parseFocusParam,
+  personOptions,
   type SearchItem,
 } from './search';
 
@@ -103,5 +104,21 @@ describe('filtersFromSearch', () => {
     });
     expect(filtersFromSearch('?gender=robot&status=zombie&generation=abc&branch=x&born_from=19500')).toEqual(EMPTY_FILTERS);
     expect(filtersFromSearch('')).toEqual(EMPTY_FILTERS);
+  });
+});
+
+describe('personOptions', () => {
+  it('shows the name and where the person sits: generation and father', () => {
+    expect(personOptions([item({ id: 5, full_name: 'Nguyễn Văn Ba', generation: 3, parent_name: 'Nguyễn Văn Hai' })], [])).toEqual([
+      { id: 5, name: 'Nguyễn Văn Ba', hint: 'đời 3 · con Nguyễn Văn Hai' },
+    ]);
+    expect(personOptions([item({ id: 1, full_name: 'Tổ', generation: 1, parent_name: null })], [])[0].hint).toBe('đời 1');
+  });
+  it('leaves out spouses (the tree shows blood members) and anybody excluded', () => {
+    const rows = [item({ id: 1 }), item({ id: 2, is_spouse: true }), item({ id: 3 })];
+    expect(personOptions(rows, [3]).map((o) => o.id)).toEqual([1]);
+  });
+  it('keeps the order the server ranked them in', () => {
+    expect(personOptions([item({ id: 9 }), item({ id: 4 }), item({ id: 7 })], []).map((o) => o.id)).toEqual([9, 4, 7]);
   });
 });

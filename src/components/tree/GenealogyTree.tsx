@@ -339,18 +339,6 @@ export default function GenealogyTree({
     setPendingCenter({ id: memberId });
   }
 
-  function handleViewAncestors(memberId: number) {
-    const chain = findAncestorChainById(familyTree, memberId);
-    if (!chain) return;
-    const ancestor = chain[Math.max(0, chain.length - 1 - 4)];
-    if (ancestor.id === undefined) return;
-    setAncestorViewRootId(ancestor.id);
-    setCollapsedIds((prev) => expandPathTo(familyTree, prev, memberId));
-    setFocalId(memberId);
-    setSelectedMember(null);
-    setPendingCenter({ id: memberId });
-  }
-
   async function openMemberDetail(
     id: number,
     parentId: number | null,
@@ -870,7 +858,6 @@ export default function GenealogyTree({
           isDetailLoading={selectedMember.isDetailLoading}
           detailLoadError={selectedMember.detailLoadError}
           onRetryLoadDetail={handleRetryLoadDetail}
-          onViewAncestors={() => handleViewAncestors(selectedMember.id)}
           onViewBranch={() => handleViewBranch(selectedMember.id)}
           childMembers={selectedMember.childrenNames.map((childName) => ({
             name: childName,

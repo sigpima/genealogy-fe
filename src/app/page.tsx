@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSession } from '@/components/auth/useSession';
+import { usePersonSearch } from '@/components/common/usePersonSearch';
 import { AppShell } from '@/components/layout/AppShell';
 import GenealogyTree, { type FocusRequest } from '@/components/tree/GenealogyTree';
 import { landingPath } from '@/lib/auth/landing';
@@ -116,7 +117,9 @@ export default function Home() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [familyTree === null, session.user?.member?.id]);
 
-  const matches = familyTree ? findMembersByName(familyTree, searchQuery) : [];
+  // the same ranked search as every other person box (the dev-only synthetic tree has no API behind it: it keeps the in-page search)
+  const found = usePersonSearch(searchQuery, { enabled: !isSynthetic });
+  const syntheticMatches = isSynthetic && familyTree ? findMembersByName(familyTree, searchQuery) : [];
 
   async function handleLogout() {
     await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
@@ -139,14 +142,25 @@ export default function Home() {
       search={{
         query: searchQuery,
         onQueryChange: setSearchQuery,
-        results: matches.map((match) => ({
-          key: match.path.join(' > '),
-          label: match.path.join(' → '),
-          onSelect: () => {
-            setFocusRequest({ id: match.member.id ?? -1, name: match.member.name, token: Date.now() });
-            setSearchQuery('');
-          },
-        })),
+        results: isSynthetic
+          ? syntheticMatches.map((match) => ({
+              key: match.path.join(' > '),
+              label: match.member.name,
+              hint: `đời ${match.path.length}`,
+              onSelect: () => {
+                setFocusRequest({ id: match.member.id ?? -1, name: match.member.name, token: Date.now() });
+                setSearchQuery('');
+              },
+            }))
+          : found.map((person) => ({
+              key: String(person.id),
+              label: person.name,
+              hint: person.hint,
+              onSelect: () => {
+                setFocusRequest({ id: person.id, name: person.name, token: Date.now() });
+                setSearchQuery('');
+              },
+            })),
       }}
     >
       <div className="h-full overflow-hidden">

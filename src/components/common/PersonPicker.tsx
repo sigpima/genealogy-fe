@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import type { SearchPage } from '@/lib/search/search';
+import { useState } from 'react';
+import { usePersonSearch } from '@/components/common/usePersonSearch';
 
 export type PickedPerson = { id: number; name: string };
 
@@ -18,30 +18,7 @@ export function PersonPicker({
   excludeIds?: number[];
 }) {
   const [query, setQuery] = useState('');
-  const [options, setOptions] = useState<{ id: number; name: string; hint: string }[]>([]);
-
-  useEffect(() => {
-    const text = query.trim();
-    if (!text) {
-      setOptions([]);
-      return;
-    }
-    const timer = window.setTimeout(() => {
-      fetch(`/api/members/search?${new URLSearchParams({ q: text, limit: '8' })}`, { credentials: 'include' })
-        .then((r) => (r.ok ? (r.json() as Promise<SearchPage>) : null))
-        .then((page) =>
-          setOptions(
-            (page?.items ?? [])
-              .filter((i) => !i.is_spouse && !excludeIds.includes(i.id))
-              .map((i) => ({ id: i.id, name: i.full_name, hint: `đời ${i.generation}${i.parent_name ? ` · con ${i.parent_name}` : ''}` })),
-          ),
-        )
-        .catch(() => setOptions([]));
-    }, 250);
-    return () => window.clearTimeout(timer);
-    // excludeIds is a fresh array every render; the query is what should trigger a search
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [query]);
+  const options = usePersonSearch(query, { excludeIds });
 
   return (
     <div>
@@ -62,7 +39,6 @@ export function PersonPicker({
                 onClick={() => {
                   onPick({ id: o.id, name: o.name });
                   setQuery('');
-                  setOptions([]);
                 }}
                 className="block min-h-11 w-full px-3 py-2 text-left text-sm text-default hover:bg-surface-muted focus-visible:bg-surface-muted focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--color-primary)]"
               >
