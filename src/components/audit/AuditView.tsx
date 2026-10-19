@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
-import { buildAuditQuery, KIND_LABELS, kindOfAction, type AuditKind } from '@/lib/admin/audit';
+import { actorBadge, buildAuditQuery, KIND_LABELS, kindOfAction, type AuditKind } from '@/lib/admin/audit';
 import { actionLabel, changeLines, type AuditPage } from '@/lib/requests/requests';
 import { focusHref } from '@/lib/search/search';
 
@@ -11,9 +11,11 @@ const ghost =
 const PAGE = 50;
 
 /** The change log of the family (admins): who changed what and when. `?member=<id>` narrows it to one person. */
-export function AuditView({ onUnauthorized, embedded = false }: { onUnauthorized: () => void; embedded?: boolean }) {
+export function AuditView({ onUnauthorized }: { onUnauthorized: () => void }) {
   const [memberId, setMemberId] = useState<number | null>(null);
   const [kind, setKind] = useState('');
+  const [actorId, setActorId] = useState<number | null>(null);
+  const [actors, setActors] = useState<{ id: number; name: string; role: string }[]>([]);
   const [since, setSince] = useState('');
   const [until, setUntil] = useState('');
   const [ready, setReady] = useState(false);
@@ -34,7 +36,7 @@ export function AuditView({ onUnauthorized, embedded = false }: { onUnauthorized
 
   const load = useCallback(async () => {
     try {
-      const response = await fetch(`/api/audit?${buildAuditQuery({ kind, since, until, memberId }, offset, PAGE)}`, { credentials: 'include' });
+      const response = await fetch(`/api/audit?${buildAuditQuery({ kind, since, until, memberId, actorId }, offset, PAGE)}`, { credentials: 'include' });
       if (response.status === 401 || response.status === 403) return onUnauthorized();
       if (!response.ok) throw new Error(String(response.status));
       setPage((await response.json()) as AuditPage);
@@ -42,16 +44,24 @@ export function AuditView({ onUnauthorized, embedded = false }: { onUnauthorized
     } catch {
       setError('Không tải được nhật ký. Vui lòng thử lại.');
     }
-  }, [memberId, kind, since, until, offset, onUnauthorized]);
+  }, [memberId, kind, since, until, actorId, offset, onUnauthorized]);
 
   useEffect(() => {
     if (ready) void load();
   }, [ready, load]);
 
+  // who has made entries in this family (for the "Người thực hiện" filter); the log still works without it
+  useEffect(() => {
+    fetch('/api/audit/actors', { credentials: 'include' })
+      .then((r) => (r.ok ? (r.json() as Promise<{ id: number; name: string; role: string }[]>) : []))
+      .then(setActors)
+      .catch(() => undefined);
+  }, []);
+
   return (
-    <div className={embedded ? 'space-y-5' : 'mx-auto max-w-3xl space-y-5 px-4 py-6 sm:px-6'}>
+    <div className="mx-auto max-w-3xl space-y-5 px-4 py-6 sm:px-6">
       <div>
-        {!embedded && <h1 className="font-display text-2xl font-bold text-default">Nhật ký thay đổi</h1>}
+        <h1 className="font-display text-2xl font-bold text-default">Nhật ký thay đổi</h1>
         <p className="mt-1 text-sm text-muted">
           Mọi thay đổi trên gia phả: ai làm, lúc nào, từ giá trị nào sang giá trị nào.
           {memberId !== null && (
@@ -93,6 +103,27 @@ export function AuditView({ onUnauthorized, embedded = false }: { onUnauthorized
           ))}
         </div>
         <div className="flex flex-wrap gap-3">
+          {actors.length > 0 && (
+            <label className="text-base text-default">
+              Người thực hiện
+              <select
+                value={actorId ?? ''}
+                onChange={(e) => {
+                  setActorId(e.target.value ? Number(e.target.value) : null);
+                  setOffset(0);
+                }}
+                className="mt-1 block min-h-11 rounded-lg border-default border bg-app px-3 text-base text-default"
+              >
+                <option value="">Tất cả</option>
+                {actors.map((actor) => (
+                  <option key={actor.id} value={actor.id}>
+                    {actor.name}
+                    {actorBadge(actor.role) ? ` (${actorBadge(actor.role)})` : ''}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
           <label className="text-base text-default">
             Từ ngày
             <input type="date" value={since} onChange={(e) => { setSince(e.target.value); setOffset(0); }} className="mt-1 block min-h-11 rounded-lg border-default border bg-app px-3 text-base text-default" />
@@ -118,12 +149,16 @@ export function AuditView({ onUnauthorized, embedded = false }: { onUnauthorized
                 {kindOfAction(entry.action) === 'security' && (
                   <span className="me-2 rounded-full border-2 border-[var(--color-danger)] px-2 py-0.5 text-sm font-semibold text-default">{KIND_LABELS.security as AuditKind}</span>
                 )}
-                <b>{entry.actor_name}</b> · {actionLabel(entry.action)}
+                <b>{entry.actor_name}</b>
+                {actorBadge(entry.actor_role) && (
+                  <span className="ms-2 rounded-full border border-[var(--color-text)] px-2 py-0.5 text-sm font-medium text-default">{actorBadge(entry.actor_role)}</span>
+                )}{' '}
+                · {actionLabel(entry.action)}
                 {entry.member_name && (
                   <>
                     {' · '}
                     {entry.member_id !== null && entry.action !== 'member.delete' ? (
-                      <Link href={focusHref(entry.member_id)} className="font-display inline-flex min-h-11 items-center text-primary underline">
+                      <Link href={focusHref(entry.member_id)} className="font-display inline-flex min-h-11 min-w-11 items-center justify-center text-primary underline">
                         {entry.member_name}
                       </Link>
                     ) : (

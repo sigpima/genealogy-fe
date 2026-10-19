@@ -33,6 +33,13 @@ const nextConfig: NextConfig = {
   async headers() {
     return [{ source: '/:path*', headers: SECURITY_HEADERS }];
   },
+  async redirects() {
+    // the change log and the backup status moved out of the admin console (log: its own page in the menu; backups: the platform owner's)
+    return [
+      { source: '/admin/nhat-ky', destination: '/nhat-ky', permanent: false },
+      { source: '/admin/sao-luu', destination: '/admin', permanent: false },
+    ];
+  },
   async rewrites() {
     return [
       {

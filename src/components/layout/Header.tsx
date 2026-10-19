@@ -23,7 +23,8 @@ export type HeaderSearch = {
 };
 
 export type HeaderProps = {
-  clanName: string;
+  /** The family's name, the same on every page. */
+  familyName: string;
   /** null = a guest browsing a public site. */
   user: CurrentUser | null;
   /** Omit on pages that have nothing to search (e.g. the admin page). */
@@ -33,51 +34,31 @@ export type HeaderProps = {
   onMenu?: () => void;
 };
 
-export function Header({ clanName, user, search, onLogout, onMenu }: HeaderProps) {
+/**
+ * Left: menu button (phone) and the family's name. Middle: the search box, centred. Right: who is signed in (name and role) right next to the
+ * icons — notifications, colour theme, sign out. On a phone the search drops to its own row and the name leaves (it is in the menu).
+ */
+export function Header({ familyName, user, search, onLogout, onMenu }: HeaderProps) {
   return (
-    <header className="relative z-30 flex flex-wrap items-center gap-x-3 gap-y-2 border-default border-b bg-surface px-4 py-3 sm:flex-nowrap sm:gap-x-6 sm:px-6">
-      {onMenu && (
-        <button
-          type="button"
-          onClick={onMenu}
-          aria-label="Mở menu"
-          className="-ms-2 flex size-11 shrink-0 items-center justify-center rounded-lg text-default hover:bg-surface-muted focus-visible:outline-2 focus-visible:outline-[var(--color-primary)] md:hidden"
-        >
-          <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-            <path d="M4 6h16M4 12h16M4 18h16" />
-          </svg>
-        </button>
-      )}
-      <h1 className="font-display shrink-0 truncate text-lg font-bold text-primary sm:text-xl">
-        {clanName}
-      </h1>
-      {user && (
-        user.member ? (
-          <Link
-            href={myProfileHref(user.member.id)}
-            prefetch={false}
-            title="Hồ sơ của tôi"
-            // on the tree page itself the address only changes the query, which the tree reads once: reload to focus
-            onClick={(event) => {
-              if (window.location.pathname === '/') {
-                event.preventDefault();
-                window.location.assign(myProfileHref(user.member!.id));
-              }
-            }}
-            className="hidden min-w-0 rounded-lg px-2 py-1 leading-tight hover:bg-surface-muted focus-visible:outline-2 focus-visible:outline-[var(--color-primary)] md:block"
+    <header className="relative z-30 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-2 border-default border-b bg-surface px-4 py-3 sm:px-6 md:grid-cols-[minmax(0,1fr)_minmax(0,14rem)_minmax(0,1fr)] lg:grid-cols-[minmax(0,1fr)_minmax(0,18rem)_minmax(0,1fr)] xl:grid-cols-[minmax(0,1fr)_minmax(0,22rem)_minmax(0,1fr)]">
+      <div className="flex min-w-0 items-center gap-x-2">
+        {onMenu && (
+          <button
+            type="button"
+            onClick={onMenu}
+            aria-label="Mở menu"
+            className="-ms-2 flex size-11 shrink-0 items-center justify-center rounded-lg text-default hover:bg-surface-muted focus-visible:outline-2 focus-visible:outline-[var(--color-primary)] md:hidden"
           >
-            <span className="block max-w-48 truncate text-sm font-medium text-default underline">{user.full_name}</span>
-            <span className="block text-xs text-muted">Hồ sơ của tôi · {roleLabel(user.role)}</span>
-          </Link>
-        ) : (
-          <div className="hidden min-w-0 leading-tight md:block">
-            <p className="max-w-48 truncate text-sm font-medium text-default">{user.full_name}</p>
-            <p className="text-xs text-muted">{roleLabel(user.role)}</p>
-          </div>
-        )
-      )}
-      {search && (
-        <div className="relative order-last basis-full sm:order-none sm:min-w-0 sm:flex-1 sm:basis-auto sm:max-w-sm">
+            <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <path d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+          </button>
+        )}
+        <p className="font-display min-w-0 truncate text-lg font-bold text-primary sm:text-xl">{familyName}</p>
+      </div>
+
+      {search ? (
+        <div className="relative order-last col-span-2 md:order-none md:col-span-1">
           <SearchIcon />
           <input
             type="search"
@@ -113,17 +94,42 @@ export function Header({ clanName, user, search, onLogout, onMenu }: HeaderProps
             </ul>
           )}
         </div>
+      ) : (
+        <div className="hidden md:block" />
       )}
-      <div className="ml-auto flex items-center gap-x-1 sm:gap-x-2">
+
+      <div className="flex min-w-0 items-center justify-end gap-x-1 sm:gap-x-2">
         <TreeSwitcher user={user} />
+        {user &&
+          (user.member ? (
+            <Link
+              href={myProfileHref(user.member.id)}
+              prefetch={false}
+              title="Hồ sơ của tôi"
+              // on the tree page itself the address only changes the query, which the tree reads once: reload to focus
+              onClick={(event) => {
+                if (window.location.pathname === '/') {
+                  event.preventDefault();
+                  window.location.assign(myProfileHref(user.member!.id));
+                }
+              }}
+              className="hidden min-w-0 rounded-lg px-2 py-1 text-right leading-tight hover:bg-surface-muted focus-visible:outline-2 focus-visible:outline-[var(--color-primary)] xl:block"
+            >
+              <span className="block truncate text-sm font-medium text-default underline">{user.full_name}</span>
+              <span className="block truncate text-xs text-muted">Hồ sơ của tôi · {roleLabel(user.role)}</span>
+            </Link>
+          ) : (
+            <div className="hidden min-w-0 px-2 text-right leading-tight xl:block">
+              <p className="truncate text-sm font-medium text-default">{user.full_name}</p>
+              <p className="truncate text-xs text-muted">{roleLabel(user.role)}</p>
+            </div>
+          ))}
         <NotificationsBell user={user} />
+        <ThemeSettingsPopover />
         {user ? (
-          <>
-            <ThemeSettingsPopover />
-            <HeaderIconButton label="Đăng xuất" onClick={onLogout}>
-              <SignOutIcon />
-            </HeaderIconButton>
-          </>
+          <HeaderIconButton label="Đăng xuất" onClick={onLogout}>
+            <SignOutIcon />
+          </HeaderIconButton>
         ) : (
           <Link
             href="/login"
@@ -132,7 +138,6 @@ export function Header({ clanName, user, search, onLogout, onMenu }: HeaderProps
             Đăng nhập
           </Link>
         )}
-        {!user && <ThemeSettingsPopover />}
       </div>
     </header>
   );

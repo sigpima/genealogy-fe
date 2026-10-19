@@ -4,6 +4,13 @@ import type { ReactNode } from 'react';
 export const HEADER_ICON_BUTTON_CLASS =
   'relative flex size-11 shrink-0 items-center justify-center rounded-lg text-muted hover:bg-surface-muted hover:text-default focus-visible:outline-2 focus-visible:outline-[var(--color-primary)]';
 
+/** The same button while its popover is open: the gold highlight (bar-free: a ring), text stays readable. */
+export function headerIconClass(open: boolean): string {
+  return open
+    ? 'relative flex size-11 shrink-0 items-center justify-center rounded-lg bg-highlight text-default ring-gold focus-visible:outline-2 focus-visible:outline-[var(--color-primary)]'
+    : HEADER_ICON_BUTTON_CLASS;
+}
+
 export function HeaderIconButton({ label, onClick, children }: { label: string; onClick: () => void; children: ReactNode }) {
   return (
     <button type="button" onClick={onClick} aria-label={label} title={label} className={HEADER_ICON_BUTTON_CLASS}>

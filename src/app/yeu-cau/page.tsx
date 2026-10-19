@@ -30,7 +30,7 @@ export default function RequestsPage() {
   }
 
   return (
-    <AppShell clanName="Yêu cầu" user={session.user} active="requests" onLogout={handleLogout}>
+    <AppShell user={session.user} active="requests" onLogout={handleLogout}>
       <div className="h-full overflow-y-auto bg-app">
         <RequestsView isAdmin={canManage(session.user)} onUnauthorized={handleUnauthorized} />
       </div>

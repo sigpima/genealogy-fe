@@ -26,7 +26,7 @@ export default function ArticlePage() {
     );
   }
   return (
-    <AppShell clanName="Sử ký" user={session.user} active="chronicles" onLogout={handleLogout}>
+    <AppShell user={session.user} active="chronicles" onLogout={handleLogout}>
       <div className="h-full overflow-y-auto bg-app">
         <ArticleReader slug={params.slug} isAdmin={canManage(session.user)} signedIn={session.user !== null} onUnauthorized={handleUnauthorized} />
       </div>

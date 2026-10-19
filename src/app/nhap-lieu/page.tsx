@@ -35,7 +35,6 @@ export default function DataEntryPage() {
 
   return (
     <AppShell
-      clanName={session.user.tree_name ? `Nhập liệu · ${session.user.tree_name}` : 'Nhập liệu'}
       user={session.user}
       active="data"
       onLogout={handleLogout}

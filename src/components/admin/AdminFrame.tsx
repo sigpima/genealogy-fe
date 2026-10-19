@@ -47,7 +47,6 @@ export function AdminFrame({
   const user = session.user;
   return (
     <AppShell
-      clanName={user.tree_name ? `Quản trị · ${user.tree_name}` : 'Quản trị'}
       user={user}
       active="admin"
       onLogout={handleLogout}
@@ -97,6 +96,6 @@ export function AdminFrame({
 
 function navLink(current: boolean): string {
   return `flex min-h-11 items-center gap-2 rounded-lg px-3 text-base focus-visible:outline-2 focus-visible:outline-[var(--color-primary)] ${
-    current ? 'bg-surface-muted font-semibold text-primary' : 'text-default hover:bg-surface-muted'
+    current ? 'bg-highlight bar-gold font-semibold text-default' : 'text-default hover:bg-surface-muted'
   }`;
 }

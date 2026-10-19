@@ -11,7 +11,6 @@ import { canEdit, type CurrentUser } from '@/lib/auth/session';
 import { shouldFocusMe } from '@/lib/invites/invites';
 import type { Branch } from '@/lib/branches/branches';
 import { parseFocusParam } from '@/lib/search/search';
-import { clanName } from '@/lib/tree/generations';
 import { generateSyntheticTree } from '@/lib/tree/synthetic';
 import { findAncestorChainById, findMembersByName } from '@/lib/tree/search';
 import type { FamilyMember } from '@/lib/tree/types';
@@ -135,7 +134,6 @@ export default function Home() {
 
   return (
     <AppShell
-      clanName={clanName(familyTree?.name ?? '')}
       user={session.user}
       active="tree"
       onLogout={handleLogout}
@@ -164,6 +162,7 @@ export default function Home() {
       }}
     >
       <div className="h-full overflow-hidden">
+          <h1 className="sr-only">Cây gia phả</h1>
           {(isLoading || session.isLoading) && (
             <div className="flex h-full items-center justify-center bg-app">
               <div className="size-8 animate-spin rounded-full border-2 border-default border-t-transparent" />

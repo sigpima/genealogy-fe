@@ -87,6 +87,14 @@ export default function Sidebar({
     <>
       <aside className="hidden w-16 shrink-0 flex-col border-default border-e bg-surface md:flex lg:w-60">
         <nav aria-label="Điều hướng chính" className="flex-1 overflow-y-auto px-2 pt-4">
+          {myProfile && (
+            // wide screens show it in the header; here it covers tablets and narrow laptops
+            <ul className="mb-2 border-b border-[var(--color-border)] pb-2 xl:hidden">
+              <li>
+                <MyProfileLink person={myProfile} compact />
+              </li>
+            </ul>
+          )}
           {list(false)}
         </nav>
       </aside>
@@ -102,24 +110,9 @@ export default function Sidebar({
             </div>
             <nav aria-label="Điều hướng chính (điện thoại)" className="flex-1 overflow-y-auto px-2 pt-3">
               {myProfile && (
-                <ul className="mb-2 border-default border-b pb-2">
+                <ul className="mb-2 border-b border-[var(--color-border)] pb-2">
                   <li>
-                    <Link
-                      href={myProfileHref(myProfile.id)}
-                      prefetch={false}
-                      onClick={(event) => {
-                        // on the tree page the address only changes the query, which the tree reads once: reload to focus
-                        if (window.location.pathname === '/') {
-                          event.preventDefault();
-                          window.location.assign(myProfileHref(myProfile.id));
-                        }
-                        onMobileClose?.();
-                      }}
-                      className="flex min-h-11 flex-col justify-center rounded-lg px-3 py-2 text-sm text-default hover:bg-surface-muted focus-visible:outline-2 focus-visible:outline-[var(--color-primary)]"
-                    >
-                      <span className="font-semibold underline">Hồ sơ của tôi</span>
-                      <span className="text-muted">{myProfile.name}</span>
-                    </Link>
+                    <MyProfileLink person={myProfile} onNavigate={onMobileClose} />
                   </li>
                 </ul>
               )}
@@ -129,6 +122,36 @@ export default function Sidebar({
         </div>
       )}
     </>
+  );
+}
+
+/** "Hồ sơ của tôi": the tree focused on the person this account is. */
+function MyProfileLink({ person, compact = false, onNavigate }: { person: { id: number; name: string }; compact?: boolean; onNavigate?: () => void }) {
+  return (
+    <Link
+      href={myProfileHref(person.id)}
+      prefetch={false}
+      aria-label={`Hồ sơ của tôi: ${person.name}`}
+      title="Hồ sơ của tôi"
+      onClick={(event) => {
+        // on the tree page the address only changes the query, which the tree reads once: reload to focus
+        if (window.location.pathname === '/') {
+          event.preventDefault();
+          window.location.assign(myProfileHref(person.id));
+        }
+        onNavigate?.();
+      }}
+      className={`flex min-h-11 items-center gap-x-3 rounded-lg px-3 py-2 text-sm text-default hover:bg-surface-muted focus-visible:outline-2 focus-visible:outline-[var(--color-primary)] ${compact ? 'justify-center lg:justify-start' : ''}`}
+    >
+      <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
+        <circle cx="12" cy="8" r="4" />
+        <path d="M4 21v-1a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v1" />
+      </svg>
+      <span className={compact ? 'hidden min-w-0 lg:block' : 'min-w-0'}>
+        <span className="block font-semibold underline">Hồ sơ của tôi</span>
+        <span className="block truncate text-muted">{person.name}</span>
+      </span>
+    </Link>
   );
 }
 
@@ -158,7 +181,7 @@ function NavItem({
         aria-current={current ? 'page' : undefined}
         aria-label={badge > 0 ? `${label} (${badge} đang chờ)` : label}
         className={`relative flex min-h-11 items-center gap-x-3 rounded-lg px-3 py-2 text-sm focus-visible:outline-2 focus-visible:outline-[var(--color-primary)] ${wide} ${
-          current ? 'bg-surface-muted font-semibold text-default' : 'text-default hover:bg-surface-muted'
+          current ? 'bg-highlight bar-gold font-semibold text-default' : 'text-default hover:bg-surface-muted'
         }`}
       >
         {icon}

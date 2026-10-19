@@ -15,11 +15,17 @@ export function kindOfAction(action: string): AuditKind {
   return 'data';
 }
 
-export type AuditFilters = { kind?: string; since?: string; until?: string; memberId?: number | null };
+export type AuditFilters = { kind?: string; since?: string; until?: string; memberId?: number | null; actorId?: number | null };
+
+/** A small label next to a name in the log: the platform owner acting inside a family is marked, so the admin can tell. */
+export function actorBadge(role: string | null | undefined): string | null {
+  return role === 'superadmin' ? 'Quản trị hệ thống' : null;
+}
 
 export function buildAuditQuery(filters: AuditFilters, offset: number, limit = 50): string {
   const params = new URLSearchParams({ limit: String(limit), offset: String(offset) });
   if (filters.memberId != null) params.set('member_id', String(filters.memberId));
+  if (filters.actorId != null) params.set('actor_id', String(filters.actorId));
   if (filters.kind) params.set('kind', filters.kind);
   if (filters.since) params.set('since', filters.since);
   if (filters.until) params.set('until', filters.until);

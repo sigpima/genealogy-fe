@@ -37,11 +37,11 @@ export function PlatformFrame({ title, children }: { title?: string; children: (
 
   const link = (current: boolean) =>
     `flex min-h-11 items-center gap-2 rounded-lg px-3 text-base focus-visible:outline-2 focus-visible:outline-[var(--color-primary)] ${
-      current ? 'bg-surface-muted font-semibold text-primary' : 'text-default hover:bg-surface-muted'
+      current ? 'bg-highlight bar-gold font-semibold text-default' : 'text-default hover:bg-surface-muted'
     }`;
 
   return (
-    <AppShell clanName="Quản trị nền tảng" user={session.user} active="platform" onLogout={handleLogout}>
+    <AppShell title="Quản trị nền tảng" user={session.user} active="platform" onLogout={handleLogout}>
       <div className="h-full overflow-y-auto bg-app">
         <div className="mx-auto flex max-w-6xl gap-8 px-4 py-6 sm:px-6">
           <nav aria-label="Các mục nền tảng" className="hidden w-48 shrink-0 lg:block">

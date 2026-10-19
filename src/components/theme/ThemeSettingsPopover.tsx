@@ -1,25 +1,28 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
+import { useDismiss } from '@/components/common/useDismiss';
 import { THEMES } from '@/lib/theme/themes';
-import { HEADER_ICON_BUTTON_CLASS } from '@/components/layout/HeaderIconButton';
+import { headerIconClass } from '@/components/layout/HeaderIconButton';
 import { useTheme } from './ThemeProvider';
 
 export function ThemeSettingsPopover() {
   const [open, setOpen] = useState(false);
   const { theme, setTheme } = useTheme();
+  const box = useRef<HTMLDivElement>(null);
+  useDismiss(box, open, () => setOpen(false));
 
   return (
-    <div className="relative">
+    <div ref={box} className="relative">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        aria-label="Chọn giao diện màu"
-        title="Giao diện"
+        aria-label="Đổi giao diện màu"
+        title="Đổi giao diện màu"
         aria-expanded={open}
-        className={HEADER_ICON_BUTTON_CLASS}
+        className={headerIconClass(open)}
       >
-        <GearIcon />
+        <PaletteIcon />
       </button>
 
       {open && (
@@ -32,8 +35,8 @@ export function ThemeSettingsPopover() {
                 setTheme(option.id);
                 setOpen(false);
               }}
-              className={`flex min-h-11 w-full items-center gap-x-3 rounded-lg px-3 py-2 text-left text-sm text-default hover:bg-app ${
-                theme === option.id ? 'bg-app' : ''
+              className={`flex min-h-11 w-full items-center gap-x-3 rounded-lg px-3 py-2 text-left text-sm text-default hover:bg-surface-muted ${
+                theme === option.id ? 'bg-highlight font-semibold' : ''
               }`}
             >
               <span
@@ -51,7 +54,7 @@ export function ThemeSettingsPopover() {
   );
 }
 
-function GearIcon() {
+function PaletteIcon() {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -65,8 +68,10 @@ function GearIcon() {
       strokeLinecap="round"
       strokeLinejoin="round"
     >
-      <circle cx="12" cy="12" r="3" />
-      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+      <path d="M12 3a9 9 0 1 0 0 18c1.1 0 1.7-.8 1.7-1.7 0-.5-.2-.9-.5-1.2-.3-.3-.5-.7-.5-1.2 0-.9.8-1.7 1.7-1.7H16a5 5 0 0 0 5-5c0-3.9-4-7.2-9-7.2z" />
+      <circle cx="7.5" cy="11" r="1" fill="currentColor" />
+      <circle cx="10" cy="7" r="1" fill="currentColor" />
+      <circle cx="14.5" cy="7" r="1" fill="currentColor" />
     </svg>
   );
 }

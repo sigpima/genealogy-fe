@@ -25,7 +25,7 @@ export default function StatsPage() {
     );
   }
   return (
-    <AppShell clanName="Thống kê" user={session.user} active="stats" onLogout={handleLogout}>
+    <AppShell user={session.user} active="stats" onLogout={handleLogout}>
       <div className="h-full overflow-y-auto bg-app">
         <StatsView isAdmin={canManage(session.user)} onUnauthorized={handleUnauthorized} />
       </div>

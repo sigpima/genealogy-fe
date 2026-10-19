@@ -33,6 +33,8 @@ export type AuditEntry = {
   action: string;
   actor_id: number | null;
   actor_name: string;
+  /** "superadmin" = the platform owner acting inside this family; null when the account is gone. */
+  actor_role?: string | null;
   member_id: number | null;
   member_name: string | null;
   changes: Record<string, [unknown, unknown]> | null;

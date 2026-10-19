@@ -3,10 +3,12 @@
 import { Header, type HeaderSearch } from './Header';
 import Sidebar, { type NavId } from './Sidebar';
 import { useState } from 'react';
+import { useFamilyName } from '@/components/layout/useFamilyName';
 import { canManage, type CurrentUser } from '@/lib/auth/session';
 
 export type AppShellProps = {
-  clanName: string;
+  /** Only for pages that are not about a family (the platform console); everywhere else the header shows the family's name. */
+  title?: string;
   user: CurrentUser | null;
   active: NavId;
   search?: HeaderSearch;
@@ -16,7 +18,7 @@ export type AppShellProps = {
 
 /** Sidebar + header chrome shared by the tree page and the admin page. */
 export function AppShell({
-  clanName,
+  title,
   user,
   active,
   search,
@@ -24,6 +26,7 @@ export function AppShell({
   children,
 }: AppShellProps) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const familyName = useFamilyName(user);
   return (
     <div className="flex h-screen">
       <Sidebar
@@ -37,7 +40,7 @@ export function AppShell({
       />
       <div className="flex flex-1 flex-col overflow-hidden">
         <Header
-          clanName={clanName}
+          familyName={title ?? familyName ?? 'Gia phả'}
           user={user}
           search={search}
           onLogout={onLogout}

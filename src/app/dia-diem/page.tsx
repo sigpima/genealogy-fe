@@ -31,7 +31,7 @@ export default function PlacesPage() {
   }
 
   return (
-    <AppShell clanName="Địa điểm" user={session.user} active="places" onLogout={handleLogout}>
+    <AppShell user={session.user} active="places" onLogout={handleLogout}>
       <div className="h-full overflow-y-auto bg-app">
         <PlacesView isAdmin={canManage(session.user)} onUnauthorized={handleUnauthorized} />
       </div>

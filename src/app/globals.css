@@ -6,6 +6,7 @@
   --color-surface: #ffffff;
   --color-primary: #8b2635;
   --color-accent: #8b2635;
+  --color-gold: #c59b27;
   --color-text: #1c1c18;
   --color-text-muted: #564242;
   --color-border: #e3dcd1;
@@ -35,6 +36,7 @@
   --color-surface: #ffffff;
   --color-primary: #2563eb;
   --color-accent: #2563eb;
+  --color-gold: #d97706;
   --color-text: #0f172a;
   --color-text-muted: #56667c;
   --color-border: #e2e8f0;
@@ -64,6 +66,7 @@
   --color-surface: #ffffff;
   --color-primary: #b85a34;
   --color-accent: #b85a34;
+  --color-gold: #b7791f;
   --color-text: #2b211b;
   --color-text-muted: #6f5f52;
   --color-border: #e8ddd0;
@@ -93,6 +96,7 @@
   --color-surface: #1f1b18;
   --color-primary: #d4af37;
   --color-accent: #d4af37;
+  --color-gold: #d4af37;
   --color-text: #f5efe6;
   --color-text-muted: #b8aa98;
   --color-border: #332c25;
@@ -134,6 +138,20 @@
 }
 @utility text-on-primary {
   color: var(--color-on-primary);
+}
+/* The third colour: gold marks "you are here / this is open" (current menu item, an open header popover). It is always paired with a
+   second cue (a bar, weight) and text on it stays text-default, so meaning never rests on colour and contrast holds in every theme. */
+@utility bg-highlight {
+  background-color: color-mix(in srgb, var(--color-gold) 24%, var(--color-surface));
+}
+@utility border-gold {
+  border-color: var(--color-gold);
+}
+@utility bar-gold {
+  box-shadow: inset 4px 0 0 var(--color-gold);
+}
+@utility ring-gold {
+  box-shadow: 0 0 0 2px var(--color-gold);
 }
 @utility accent-text {
   color: var(--color-accent);

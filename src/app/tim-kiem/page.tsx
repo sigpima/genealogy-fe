@@ -25,7 +25,7 @@ export default function SearchPage() {
   }
 
   return (
-    <AppShell clanName="Tìm kiếm" user={session.user} active="search" onLogout={handleLogout}>
+    <AppShell user={session.user} active="search" onLogout={handleLogout}>
       <div className="h-full overflow-y-auto bg-app">
         <SearchView onUnauthorized={handleUnauthorized} />
       </div>

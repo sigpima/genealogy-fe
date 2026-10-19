@@ -34,7 +34,7 @@ export default function AuditPage() {
   }
 
   return (
-    <AppShell clanName="Nhật ký" user={session.user} active="audit" onLogout={handleLogout}>
+    <AppShell user={session.user} active="audit" onLogout={handleLogout}>
       <div className="h-full overflow-y-auto bg-app">
         <AuditView onUnauthorized={handleUnauthorized} />
       </div>

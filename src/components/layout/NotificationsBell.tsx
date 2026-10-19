@@ -2,6 +2,8 @@
 
 import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useDismiss } from '@/components/common/useDismiss';
+import { headerIconClass } from '@/components/layout/HeaderIconButton';
 import type { CurrentUser } from '@/lib/auth/session';
 import type { NotificationList } from '@/lib/calendar/calendar';
 
@@ -30,21 +32,7 @@ export function NotificationsBell({ user }: { user: CurrentUser | null }) {
     return () => window.clearInterval(timer);
   }, [signedIn, load]);
 
-  useEffect(() => {
-    if (!open) return;
-    const onDown = (event: MouseEvent) => {
-      if (box.current && !box.current.contains(event.target as Node)) setOpen(false);
-    };
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setOpen(false);
-    };
-    document.addEventListener('mousedown', onDown);
-    document.addEventListener('keydown', onKey);
-    return () => {
-      document.removeEventListener('mousedown', onDown);
-      document.removeEventListener('keydown', onKey);
-    };
-  }, [open]);
+  useDismiss(box, open, () => setOpen(false));
 
   if (!signedIn) return null;
 
@@ -74,7 +62,8 @@ export function NotificationsBell({ user }: { user: CurrentUser | null }) {
         onClick={() => void toggle()}
         aria-label={list.unread > 0 ? `Thông báo, ${list.unread} chưa đọc` : 'Thông báo'}
         aria-expanded={open}
-        className="relative flex size-11 items-center justify-center rounded-lg text-muted hover:text-default focus-visible:outline-2 focus-visible:outline-[var(--color-primary)]"
+        title="Thông báo"
+        className={headerIconClass(open)}
       >
         <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" />

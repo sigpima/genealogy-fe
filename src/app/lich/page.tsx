@@ -26,7 +26,7 @@ export default function CalendarPage() {
   }
 
   return (
-    <AppShell clanName="Lịch giỗ" user={session.user} active="calendar" onLogout={handleLogout}>
+    <AppShell user={session.user} active="calendar" onLogout={handleLogout}>
       <div className="h-full overflow-y-auto bg-app">
         <CalendarView isAdmin={canManage(session.user)} signedIn={session.user !== null} onUnauthorized={handleUnauthorized} />
       </div>

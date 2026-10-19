@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 import {
-  clanName,
   descendantCount,
   generationCounts,
   generationTier,
@@ -53,16 +52,5 @@ describe('generationTier', () => {
     expect(generationTier(3)).toBe('mid');
     expect(generationTier(5)).toBe('mid');
     expect(generationTier(6)).toBe('descendant');
-  });
-});
-
-describe('clanName', () => {
-  it('uses the first word of the root name as the surname', () => {
-    expect(clanName('Nguyễn Đức Khang')).toBe('Gia tộc Nguyễn');
-    expect(clanName('  Trần ')).toBe('Gia tộc Trần');
-  });
-  it('falls back to a generic title for empty or blank names', () => {
-    expect(clanName('')).toBe('Gia phả');
-    expect(clanName('   ')).toBe('Gia phả');
   });
 });

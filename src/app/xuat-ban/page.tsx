@@ -24,7 +24,7 @@ export default function BookPage() {
   }
 
   return (
-    <AppShell clanName="Xuất bản" user={session.user} active="export" onLogout={handleLogout}>
+    <AppShell user={session.user} active="export" onLogout={handleLogout}>
       <div className="h-full overflow-y-auto bg-app">
         <BookView canManage={canManage(session.user)} />
       </div>

@@ -54,8 +54,3 @@ export function generationTier(generation: number): GenerationTier {
   if (generation <= 5) return 'mid';
   return 'descendant';
 }
-
-export function clanName(rootName: string): string {
-  const surname = rootName.trim().split(/\s+/)[0];
-  return surname ? `Gia tộc ${surname}` : 'Gia phả';
-}

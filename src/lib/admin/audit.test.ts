@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { actionLabel } from '../requests/requests';
-import { buildAuditQuery, KIND_LABELS, kindOfAction } from './audit';
+import { actorBadge, buildAuditQuery, KIND_LABELS, kindOfAction } from './audit';
 
 describe('audit labels', () => {
   it('names every action the admin console writes', () => {
@@ -38,5 +38,18 @@ describe('buildAuditQuery', () => {
       'limit=50&offset=50&member_id=7&kind=security&since=2026-10-01&until=2026-10-18',
     );
     expect(buildAuditQuery({ kind: '' }, 0)).toBe('limit=50&offset=0');
+  });
+  it('narrows to one person when asked', () => {
+    expect(buildAuditQuery({ actorId: 12 }, 0)).toBe('limit=50&offset=0&actor_id=12');
+    expect(buildAuditQuery({ actorId: null }, 0)).toBe('limit=50&offset=0');
+  });
+});
+
+describe('actorBadge', () => {
+  it('marks the platform owner acting inside the family, nobody else', () => {
+    expect(actorBadge('superadmin')).toBe('Quản trị hệ thống');
+    expect(actorBadge('admin')).toBeNull();
+    expect(actorBadge('member')).toBeNull();
+    expect(actorBadge(null)).toBeNull();
   });
 });

@@ -26,7 +26,7 @@ export default function BranchesPage() {
   }
 
   return (
-    <AppShell clanName="Chi phái" user={session.user} active="branches" onLogout={handleLogout}>
+    <AppShell user={session.user} active="branches" onLogout={handleLogout}>
       <div className="h-full overflow-y-auto bg-app">
         <BranchesView canManage={canManage(session.user)} onUnauthorized={handleUnauthorized} />
       </div>

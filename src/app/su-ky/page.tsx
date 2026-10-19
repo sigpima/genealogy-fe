@@ -25,7 +25,7 @@ export default function ChroniclesPage() {
     );
   }
   return (
-    <AppShell clanName="Sử ký" user={session.user} active="chronicles" onLogout={handleLogout}>
+    <AppShell user={session.user} active="chronicles" onLogout={handleLogout}>
       <div className="h-full overflow-y-auto bg-app">
         <ChroniclesView isAdmin={canManage(session.user)} onUnauthorized={handleUnauthorized} />
       </div>
