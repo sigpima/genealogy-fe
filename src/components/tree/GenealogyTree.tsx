@@ -31,7 +31,6 @@ import {
   deepestShownGeneration,
   defaultDepth,
   idsInSubtree,
-  LARGE_TREE_PEOPLE,
   subtreeDepth,
 } from '@/lib/tree/generationStepper';
 import {
@@ -137,7 +136,7 @@ export default function GenealogyTree({
 }: GenealogyTreeProps) {
   // Opens collapsed to the first few generations; later refetches keep the user's own state.
   const [collapsedIds, setCollapsedIds] = useState<Set<number>>(() =>
-    collapsedIdsForDepth(familyTree, defaultDepth(subtreeDepth(familyTree), totalMembers(familyTree)))
+    collapsedIdsForDepth(familyTree, defaultDepth(subtreeDepth(familyTree)))
   );
   const [pendingCenter, setPendingCenter] = useState<{ id: number } | null>(null);
   const [ancestorViewRootId, setAncestorViewRootId] = useState<number | null>(null);
@@ -331,9 +330,9 @@ export default function GenealogyTree({
     const node = chain?.[chain.length - 1];
     if (!node) return;
     setAncestorViewRootId(memberId);
-    // A branch opens fully (a very large one on a few generations); what was collapsed inside it before is forgotten.
+    // A branch opens on its first four generations; what was collapsed inside it before is forgotten.
     const inside = idsInSubtree(node);
-    const opening = collapsedIdsForDepth(node, defaultDepth(subtreeDepth(node), totalMembers(node)));
+    const opening = collapsedIdsForDepth(node, defaultDepth(subtreeDepth(node)));
     setCollapsedIds((prev) => new Set([...[...prev].filter((id) => !inside.has(id)), ...opening]));
     setFocalId(memberId);
     setSelectedMember(null);
@@ -795,7 +794,6 @@ export default function GenealogyTree({
     () => deepestShownGeneration(displayRoot, collapsedIds, displayRootGeneration),
     [displayRoot, collapsedIds, displayRootGeneration]
   );
-  const totalPeople = useMemo(() => totalMembers(displayRoot), [displayRoot]);
 
   return (
     <div className="relative h-full w-full overflow-hidden bg-app">
@@ -815,7 +813,6 @@ export default function GenealogyTree({
         min={displayRootGeneration}
         max={youngestGeneration}
         value={shownDepth}
-        capped={totalPeople > LARGE_TREE_PEOPLE}
         onChange={(depth) => setCollapsedIds(collapsedIdsForDepth(familyTree, depth))}
       />
       {hasBranches && <BranchChips branches={branches ?? []} onSelect={(branch) => focusOn(branch.root_member_id)} />}

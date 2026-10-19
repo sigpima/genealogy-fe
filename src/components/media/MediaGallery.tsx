@@ -19,10 +19,12 @@ export type MediaGalleryProps = {
   ownerId: number;
   /** Admins upload, caption and delete; everybody else only looks. */
   canEdit: boolean;
+  /** 'panel' = inside the profile: one tinted box (like the notes) with a small centred upload button. */
+  variant?: 'plain' | 'panel';
 };
 
 /** Photos and scanned documents of a person or place: an upload button, two groups of cards, a viewer, and (admins) caption / delete. */
-export function MediaGallery({ ownerKind, ownerId, canEdit }: MediaGalleryProps) {
+export function MediaGallery({ ownerKind, ownerId, canEdit, variant = 'plain' }: MediaGalleryProps) {
   const [items, setItems] = useState<MediaItem[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [progress, setProgress] = useState<UploadState | null>(null);
@@ -116,9 +118,11 @@ export function MediaGallery({ ownerKind, ownerId, canEdit }: MediaGalleryProps)
       </section>
     );
 
+  const panel = variant === 'panel';
+  const upload_ = canEdit && <UploadButton onFiles={(files) => void upload(files)} busy={busy} compact={panel} />;
   return (
-    <div className="mt-2">
-      {canEdit && <UploadButton onFiles={(files) => void upload(files)} busy={busy} />}
+    <div className={panel ? 'rounded-lg bg-surface-muted p-4' : 'mt-2'}>
+      {!panel && upload_}
       {progress && progress.total > 0 && (busy || progress.failed.length > 0) && (
         <div aria-live="polite" className="mt-2 text-sm text-default">
           {busy && (
@@ -142,13 +146,14 @@ export function MediaGallery({ ownerKind, ownerId, canEdit }: MediaGalleryProps)
         </p>
       )}
       {items.length === 0 ? (
-        <p className="mt-3 text-base text-muted">Chưa có tư liệu. Ảnh, bản scan gia phả, sắc phong… đều có thể thêm ở đây.</p>
+        panel && canEdit ? null : <p className={`text-sm text-muted ${panel ? 'text-center' : 'mt-3'}`}>Chưa có tư liệu.</p>
       ) : (
         <>
           {group('Ảnh', photos)}
           {group('Tài liệu', documents)}
         </>
       )}
+      {panel && upload_ && <div className={items.length > 0 ? 'mt-4' : ''}>{upload_}</div>}
 
       {open && (
         <Viewer

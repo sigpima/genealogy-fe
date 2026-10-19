@@ -18,7 +18,6 @@ import {
 } from '@/lib/data-entry/table';
 import {
   MISSING_FIELDS,
-  MISSING_LABELS,
   type Completeness,
   type TableFilters,
   type TablePage,
@@ -205,20 +204,6 @@ export function DataEntry({ onUnauthorized }: { onUnauthorized: () => void }) {
           onChange={(e) => changeFilters({ generation: e.target.value ? Number(e.target.value) : null })}
           className={`${filterInput} w-24`}
         />
-        {MISSING_FIELDS.map((field) => {
-          const on = filters.missing.includes(field);
-          return (
-            <button
-              key={field}
-              type="button"
-              aria-pressed={on}
-              onClick={() => changeFilters({ missing: toggleMissing(filters.missing, field) })}
-              className={`${chip} ${on ? 'border-[var(--color-primary)] bg-primary text-on-primary' : 'border-default bg-surface text-default hover:bg-surface-muted'}`}
-            >
-              {MISSING_LABELS[field]}
-            </button>
-          );
-        })}
         {filters.under !== null && (
           <button
             type="button"

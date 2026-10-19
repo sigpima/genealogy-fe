@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { myProfileHref } from '@/lib/invites/invites';
+import { navSections, type NavGroup } from '@/lib/nav/sections';
 
 export type NavId =
   | 'tree'
@@ -33,7 +34,7 @@ export type SidebarProps = {
   onMobileClose?: () => void;
 };
 
-type Entry = { id: NavId; href: string; label: string; icon: React.ReactNode; show: boolean; badge?: number };
+type Entry = { id: NavId; group: NavGroup; href: string; label: string; icon: React.ReactNode; show: boolean; badge?: number };
 
 export default function Sidebar({
   active,
@@ -46,28 +47,31 @@ export default function Sidebar({
 }: SidebarProps) {
   const pending = usePendingRequests(signedIn);
   const entries: Entry[] = [
-    { id: 'tree', href: '/', label: 'Cây Gia Phả', icon: <TreeIcon />, show: true },
-    { id: 'chronicles', href: '/su-ky', label: 'Sử ký', icon: <BookIcon />, show: true },
-    { id: 'search', href: '/tim-kiem', label: 'Tìm kiếm', icon: <SearchNavIcon />, show: true },
-    { id: 'branches', href: '/chi-phai', label: 'Chi phái', icon: <BranchesIcon />, show: true },
-    { id: 'stats', href: '/thong-ke', label: 'Thống kê', icon: <ChartIcon />, show: true },
-    { id: 'calendar', href: '/lich', label: 'Lịch giỗ', icon: <CalendarIcon />, show: true },
-    { id: 'places', href: '/dia-diem', label: 'Địa điểm', icon: <PinIcon />, show: signedIn },
-    { id: 'requests', href: '/yeu-cau', label: 'Yêu cầu', icon: <InboxIcon />, show: signedIn, badge: pending },
-    { id: 'audit', href: '/nhat-ky', label: 'Nhật ký', icon: <HistoryIcon />, show: isAdmin },
-    { id: 'data', href: '/nhap-lieu', label: 'Nhập liệu', icon: <TableIcon />, show: isAdmin },
-    { id: 'export', href: '/xuat-ban', label: 'Xuất bản', icon: <PrintIcon />, show: isAdmin },
-    { id: 'admin', href: '/admin', label: 'Quản trị', icon: <ShieldIcon />, show: isAdmin },
-    { id: 'platform', href: '/he-thong', label: 'Các họ', icon: <FamiliesIcon />, show: isSuperadmin },
+    { id: 'tree', group: 'user', href: '/', label: 'Cây Gia Phả', icon: <TreeIcon />, show: true },
+    { id: 'chronicles', group: 'user', href: '/su-ky', label: 'Sử ký', icon: <BookIcon />, show: true },
+    { id: 'search', group: 'user', href: '/tim-kiem', label: 'Tìm kiếm', icon: <SearchNavIcon />, show: true },
+    { id: 'branches', group: 'user', href: '/chi-phai', label: 'Chi phái', icon: <BranchesIcon />, show: true },
+    { id: 'stats', group: 'user', href: '/thong-ke', label: 'Thống kê', icon: <ChartIcon />, show: true },
+    { id: 'calendar', group: 'user', href: '/lich', label: 'Lịch giỗ', icon: <CalendarIcon />, show: true },
+    { id: 'places', group: 'user', href: '/dia-diem', label: 'Địa điểm', icon: <PinIcon />, show: signedIn },
+    { id: 'requests', group: 'user', href: '/yeu-cau', label: 'Yêu cầu', icon: <InboxIcon />, show: signedIn, badge: pending },
+    { id: 'audit', group: 'admin', href: '/nhat-ky', label: 'Nhật ký', icon: <HistoryIcon />, show: isAdmin },
+    { id: 'data', group: 'admin', href: '/nhap-lieu', label: 'Nhập liệu', icon: <TableIcon />, show: isAdmin },
+    { id: 'export', group: 'admin', href: '/xuat-ban', label: 'Xuất bản', icon: <PrintIcon />, show: isAdmin },
+    { id: 'admin', group: 'admin', href: '/admin', label: 'Quản trị', icon: <ShieldIcon />, show: isAdmin },
+    { id: 'platform', group: 'platform', href: '/he-thong', label: 'Các họ', icon: <FamiliesIcon />, show: isSuperadmin },
   ];
   const list = (always: boolean) => (
-    <ul className="space-y-1">
-      {entries
-        .filter((e) => e.show)
-        .map((e) => (
-          <NavItem key={e.id} href={e.href} label={e.label} icon={e.icon} current={active === e.id} badge={e.badge} alwaysLabel={always} onNavigate={onMobileClose} />
-        ))}
-    </ul>
+    <>
+      {navSections(entries).map((section, index) => (
+        // a faint line between the sections: everyone's pages, then the admin's, then the platform owner's
+        <ul key={section[0].group} className={`space-y-1 ${index > 0 ? 'mt-2 border-t border-[var(--color-border)] pt-2' : ''}`}>
+          {section.map((e) => (
+            <NavItem key={e.id} href={e.href} label={e.label} icon={e.icon} current={active === e.id} badge={e.badge} alwaysLabel={always} onNavigate={onMobileClose} />
+          ))}
+        </ul>
+      ))}
+    </>
   );
 
   useEffect(() => {

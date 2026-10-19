@@ -38,13 +38,13 @@ describe('clampDepth', () => {
 });
 
 describe('defaultDepth', () => {
-  it('shows every generation by default', () => {
-    expect(defaultDepth(7, 100)).toBe(7);
+  it('opens on the first four generations, as the tree always did', () => {
+    expect(defaultDepth(8)).toBe(4);
+    expect(defaultDepth(4)).toBe(4);
   });
-  it('keeps 4 for a very large tree, never above max', () => {
-    expect(defaultDepth(7, 2500)).toBe(4);
-    expect(defaultDepth(3, 2500)).toBe(3);
-    expect(defaultDepth(7, 2000)).toBe(7);
+  it('shows everything when the tree is shorter than that', () => {
+    expect(defaultDepth(3)).toBe(3);
+    expect(defaultDepth(1)).toBe(1);
   });
 });
 

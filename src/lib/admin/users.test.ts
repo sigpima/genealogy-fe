@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildUsersQuery, lastLoginLabel, type AdminUser } from './users';
+import { buildUsersQuery, lastLoginLabel } from './users';
 
 const now = new Date('2026-10-18T12:00:00+07:00');
 

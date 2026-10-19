@@ -1,8 +1,7 @@
 import type { FamilyMember } from './types';
 
-/** Above this many people the tree first opens on a few generations only, so the first paint stays light. */
-export const LARGE_TREE_PEOPLE = 2000;
-const LARGE_TREE_DEFAULT_DEPTH = 4;
+/** The tree (and a branch) first opens on this many generations; the stepper shows more or fewer. */
+export const DEFAULT_GENERATIONS = 4;
 
 /** Reads what the user typed into the depth box: anything unusable falls back to `max`, the rest is kept inside [min, max]. */
 export function clampDepth(raw: string | number, min: number, max: number): number {
@@ -11,9 +10,9 @@ export function clampDepth(raw: string | number, min: number, max: number): numb
   return Math.min(max, Math.max(min, Math.floor(parsed)));
 }
 
-/** The deepest generation shown when a tree first opens: all of them, except for a very large tree. */
-export function defaultDepth(max: number, personCount: number): number {
-  return personCount > LARGE_TREE_PEOPLE ? Math.min(max, LARGE_TREE_DEFAULT_DEPTH) : max;
+/** How many generations a tree (or branch) first opens on: four, or all of them when it is shorter. */
+export function defaultDepth(max: number): number {
+  return Math.min(max, DEFAULT_GENERATIONS);
 }
 
 /** The deepest (absolute) generation that is on screen below `root`, given which people are collapsed. */

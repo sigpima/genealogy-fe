@@ -3,14 +3,6 @@ import type { Gender } from '@/lib/tree/types';
 export const MISSING_FIELDS = ['gender', 'birth_year', 'hometown', 'death_year', 'avatar'] as const;
 export type MissingField = (typeof MISSING_FIELDS)[number];
 
-export const MISSING_LABELS: Record<MissingField, string> = {
-  gender: 'Thiếu giới tính',
-  birth_year: 'Thiếu năm sinh',
-  hometown: 'Thiếu quê quán',
-  death_year: 'Chưa có năm mất',
-  avatar: 'Thiếu ảnh đại diện',
-};
-
 /** One row of `GET /api/members/table` (spouses are never rows). */
 export type TableRow = {
   id: number;

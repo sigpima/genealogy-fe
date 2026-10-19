@@ -11,14 +11,12 @@ export type GenerationFilterBarProps = {
   /** The deepest generation shown now. */
   value: number;
   onChange: (depth: number) => void;
-  /** The tree is big, so it opened on a few generations only. */
-  capped?: boolean;
 };
 
 const BUTTON =
   'flex size-11 shrink-0 items-center justify-center rounded-lg bg-surface-muted text-lg font-semibold text-default hover:opacity-80 focus-visible:outline-2 focus-visible:outline-[var(--color-primary)] disabled:opacity-40';
 
-export function GenerationFilterBar({ min, max, value, onChange, capped }: GenerationFilterBarProps) {
+export function GenerationFilterBar({ min, max, value, onChange }: GenerationFilterBarProps) {
   const [draft, setDraft] = useState(String(value));
   useEffect(() => setDraft(String(value)), [value]);
 
@@ -67,7 +65,6 @@ export function GenerationFilterBar({ min, max, value, onChange, capped }: Gener
       </button>
       <span className="text-sm text-muted">
         trên tổng {max} đời{min > 1 ? ` · từ đời ${min}` : ''}
-        {capped ? ' · hiển thị bớt cho nhanh' : ''}
       </span>
     </div>
   );

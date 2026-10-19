@@ -132,6 +132,10 @@ const primaryButton =
   'min-h-11 shrink-0 whitespace-nowrap rounded-lg bg-primary px-4 text-sm font-medium text-on-primary hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)] disabled:opacity-50';
 const ghostButton =
   'min-h-11 whitespace-nowrap rounded-lg px-3 text-sm text-muted hover:text-default focus-visible:outline-2 focus-visible:outline-[var(--color-primary)] disabled:opacity-50';
+const outlineButton =
+  'min-h-11 whitespace-nowrap rounded-lg border-default border bg-surface px-3 text-sm font-medium text-default hover:bg-surface-muted focus-visible:outline-2 focus-visible:outline-[var(--color-primary)] disabled:opacity-50';
+const dangerOutlineButton =
+  'min-h-11 whitespace-nowrap rounded-lg border border-[var(--color-danger)] bg-surface px-3 text-sm font-medium text-danger hover:bg-surface-muted focus-visible:outline-2 focus-visible:outline-[var(--color-primary)] disabled:opacity-50';
 const dangerButton =
   'min-h-11 whitespace-nowrap rounded-lg px-3 text-sm text-danger hover:underline focus-visible:outline-2 focus-visible:outline-[var(--color-primary)] disabled:opacity-50';
 
@@ -260,6 +264,48 @@ function DateFields({ label, year, month, day, isLunar, leapMonth, onChange }: D
   );
 }
 
+const iconSvg = (children: React.ReactNode) => (
+  <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    {children}
+  </svg>
+);
+const ACTION_ICONS = {
+  history: iconSvg(<><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></>),
+  edit: iconSvg(<><path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z" /></>),
+  invite: iconSvg(<><rect x="3" y="5" width="18" height="14" rx="2" /><path d="m3 7 9 6 9-6" /></>),
+};
+
+/** One of the panel's top actions: the icon centred above its name, all of them side by side. */
+function ActionTile({ label, icon, onClick, href }: { label: string; icon: React.ReactNode; onClick?: () => void; href?: string }) {
+  const className =
+    'flex min-h-16 min-w-0 flex-1 flex-col items-center justify-center gap-y-1 rounded-xl border-default border bg-surface px-2 py-2 text-center text-sm font-medium text-default hover:bg-surface-muted focus-visible:outline-2 focus-visible:outline-[var(--color-primary)]';
+  const content = (
+    <>
+      {icon}
+      <span className="leading-tight">{label}</span>
+    </>
+  );
+  return href ? (
+    <Link href={href} className={className}>
+      {content}
+    </Link>
+  ) : (
+    <button type="button" onClick={onClick} className={className}>
+      {content}
+    </button>
+  );
+}
+
+/** A titled block of the profile: the same bold header everywhere and a clear line between blocks. */
+function PanelSection({ title, label, first = false, children }: { title: string; label?: string; first?: boolean; children: React.ReactNode }) {
+  return (
+    <section aria-label={label ?? title} className={first ? '' : 'mt-6 border-t border-[var(--color-border)] pt-5'}>
+      <h3 className="font-display border-s-4 border-[var(--color-accent)] ps-2 text-base font-bold text-default">{title}</h3>
+      <div className="mt-3">{children}</div>
+    </section>
+  );
+}
+
 function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div className="flex gap-x-3">
@@ -366,9 +412,6 @@ export function MemberDetailPanel({
   const [editingSpouseId, setEditingSpouseId] = useState<number | null>(null);
   const [spouseDraft, setSpouseDraft] = useState<SpouseDraft | null>(null);
   const [newSpouseName, setNewSpouseName] = useState('');
-  const spouseInputRef = useRef<HTMLInputElement | null>(null);
-  const childInputRef = useRef<HTMLInputElement | null>(null);
-  const [pendingFocus, setPendingFocus] = useState<'spouse' | 'child' | null>(null);
   const [newSpouseMarriageYear, setNewSpouseMarriageYear] = useState('');
 
   useEffect(() => {
@@ -704,15 +747,6 @@ export function MemberDetailPanel({
   const canRemoveAvatar = !removeAvatar && Boolean(avatarPreviewUrl || avatarUrl);
   const detailReady = !isDetailLoading && !detailLoadError;
 
-  // "＋ Thêm vợ/chồng" / "＋ Thêm con": open the family tab and put the cursor in the right form (once it exists).
-  useEffect(() => {
-    if (!pendingFocus || tab !== 'family') return;
-    const input = (pendingFocus === 'spouse' ? spouseInputRef : childInputRef).current;
-    if (!input) return;
-    input.scrollIntoView?.({ block: 'center' });
-    input.focus();
-    setPendingFocus(null);
-  }, [pendingFocus, tab, detailReady]);
   const birthDate = formatPartialDate({
     year: birthYear,
     month: profile.birthMonth,
@@ -776,8 +810,15 @@ export function MemberDetailPanel({
             ĐỜI {toRoman(generation)}
           </span>
           {siblingRank && <span className="ms-2 me-auto text-xs font-medium text-muted">{siblingRank}</span>}
-          <button type="button" onClick={onClose} className={`${ghostButton} -me-2`}>
-            Đóng <span aria-hidden="true">✕</span>
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex min-h-11 items-center gap-x-2 rounded-lg border-default border bg-surface px-3 text-sm font-medium text-default hover:bg-surface-muted focus-visible:outline-2 focus-visible:outline-[var(--color-primary)]"
+          >
+            <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+              <path d="M18 6 6 18M6 6l12 12" />
+            </svg>
+            Đóng
           </button>
         </div>
 
@@ -785,13 +826,6 @@ export function MemberDetailPanel({
           <AvatarOrInitial src={avatarUrl} initial={name.charAt(0)} size={72} />
           <div className="min-w-0 flex-1">
             <h2 className="font-display text-xl font-bold text-default">{name}</h2>
-            {(profile.courtesyName || profile.title) && (
-              <p className="mt-0.5 text-sm text-muted">
-                {profile.courtesyName && <>Tự: {profile.courtesyName}</>}
-                {profile.courtesyName && profile.title && ' · '}
-                {profile.title}
-              </p>
-            )}
             {isDetailLoading && <p className="mt-1 text-sm text-muted">Đang tải chi tiết...</p>}
             {detailLoadError && (
               <p className="mt-1 text-sm text-danger">
@@ -818,46 +852,30 @@ export function MemberDetailPanel({
           </div>
         </div>
 
-        {canEdit && !isEditing && (
-          <div className="flex flex-wrap gap-2 px-5 pb-3">
-            {(
-              [
-                ['spouse', '＋ Thêm vợ/chồng'],
-                ['child', '＋ Thêm con'],
-              ] as const
-            ).map(([target, label]) => (
-              <button
-                key={target}
-                type="button"
-                onClick={() => {
-                  setTab('family');
-                  setPendingFocus(target);
-                }}
-                className="min-h-11 rounded-lg border-default border bg-surface px-3 text-sm font-medium text-default hover:bg-surface-muted focus-visible:outline-2 focus-visible:outline-[var(--color-primary)]"
-              >
-                {label}
-              </button>
-            ))}
-            {!isMe && (
-              <button
-                type="button"
-                onClick={() => setShowInvite(true)}
-                className="min-h-11 rounded-lg border-default border bg-surface px-3 text-sm font-medium text-default hover:bg-surface-muted focus-visible:outline-2 focus-visible:outline-[var(--color-primary)]"
-              >
-                ✉ Mời người này
-              </button>
-            )}
-            {!isMe && me?.role === 'admin' && (
-              <button
-                type="button"
-                disabled={linkingMe}
-                onClick={() => void handleLinkMe()}
-                className="min-h-11 rounded-lg border-default border bg-surface px-3 text-sm font-medium text-default hover:bg-surface-muted focus-visible:outline-2 focus-visible:outline-[var(--color-primary)] disabled:opacity-50"
-              >
-                {linkingMe ? 'Đang gắn…' : 'Đây là tôi'}
-              </button>
+        {detailReady && !isEditing && (canEdit || canPropose) && (
+          <div className="flex gap-2 px-5 pb-3">
+            {canEdit ? (
+              <>
+                <ActionTile label="Lịch sử" href={`/nhat-ky?member=${memberId}`} icon={ACTION_ICONS.history} />
+                <ActionTile label="Sửa" onClick={startEditing} icon={ACTION_ICONS.edit} />
+                {!isMe && <ActionTile label="Mời người này" onClick={() => setShowInvite(true)} icon={ACTION_ICONS.invite} />}
+              </>
+            ) : (
+              <ActionTile label="Đề xuất chỉnh sửa" onClick={() => setIsProposing(true)} icon={ACTION_ICONS.edit} />
             )}
           </div>
+        )}
+        {canEdit && !isEditing && !isMe && me?.role === 'admin' && (
+          <p className="px-5 pb-3">
+            <button
+              type="button"
+              disabled={linkingMe}
+              onClick={() => void handleLinkMe()}
+              className="min-h-11 rounded-lg border-default border bg-surface px-3 text-sm font-medium text-default hover:bg-surface-muted focus-visible:outline-2 focus-visible:outline-[var(--color-primary)] disabled:opacity-50"
+            >
+              {linkingMe ? 'Đang gắn…' : 'Đây là tôi'}
+            </button>
+          </p>
         )}
         {isMe && (
           <p className="px-5 pb-3 text-sm text-default">
@@ -1104,9 +1122,10 @@ export function MemberDetailPanel({
                   </div>
                 </div>
               ) : (
-                <section>
+                <>
                   {detailReady && hasProfileInfo && (
-                    <dl className="mb-5 space-y-2 text-sm">
+                    <PanelSection title="Thông tin" first>
+                    <dl className="space-y-2 text-sm">
                       {profile.courtesyName && <InfoRow label="Tên tự" value={profile.courtesyName} />}
                       {profile.title && <InfoRow label="Chức vị" value={profile.title} />}
                       {showBirthDate && <InfoRow label="Ngày sinh" value={birthDate} />}
@@ -1206,46 +1225,30 @@ export function MemberDetailPanel({
                         />
                       )}
                     </dl>
+                    </PanelSection>
                   )}
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-[11px] font-semibold uppercase tracking-wider text-muted">Hành trạng &amp; công đức</h3>
-                    {detailReady && canEdit && (
-                      <div className="flex items-center">
-                        <Link href={`/nhat-ky?member=${memberId}`} className={`${ghostButton} flex items-center`}>
-                          Lịch sử
-                        </Link>
-                        <button type="button" onClick={startEditing} className={ghostButton}>
-                          Sửa
-                        </button>
-                      </div>
-                    )}
-                    {detailReady && !canEdit && canPropose && (
-                      <button type="button" onClick={() => setIsProposing(true)} className={ghostButton}>
-                        Đề xuất chỉnh sửa
-                      </button>
-                    )}
-                  </div>
-                  <div className="mt-2 rounded-lg bg-surface-muted p-4 text-sm leading-6 text-default">
-                    {detailReady && notes ? (
-                      <p className="whitespace-pre-wrap">{notes}</p>
-                    ) : (
-                      <p className="text-muted">{detailReady ? 'Chưa có ghi chú.' : 'Đang chờ dữ liệu...'}</p>
-                    )}
-                  </div>
-                </section>
+
+                  <PanelSection title="Hành trạng & công đức" first={!(detailReady && hasProfileInfo)}>
+                    <div className="rounded-lg bg-surface-muted p-4 text-sm leading-6 text-default">
+                      {detailReady && notes ? (
+                        <p className="whitespace-pre-wrap">{notes}</p>
+                      ) : (
+                        <p className="text-center text-muted">{detailReady ? 'Chưa có ghi chú.' : 'Đang chờ dữ liệu...'}</p>
+                      )}
+                    </div>
+                  </PanelSection>
+                </>
               )}
 
               {signedIn && detailReady && (
-                <section className="mt-6" aria-label="Tư liệu và bút tích">
-                  <h3 className="text-[11px] font-semibold uppercase tracking-wider text-muted">Tư liệu &amp; bút tích</h3>
-                  <MediaGallery ownerKind="members" ownerId={memberId} canEdit={canEdit} />
-                </section>
+                <PanelSection title="Tư liệu & bút tích" label="Tư liệu và bút tích">
+                  <MediaGallery ownerKind="members" ownerId={memberId} canEdit={canEdit} variant="panel" />
+                </PanelSection>
               )}
 
               {mentions.length > 0 && (
-                <section className="mt-6" aria-label="Được nhắc trong">
-                  <h3 className="text-[11px] font-semibold uppercase tracking-wider text-muted">Được nhắc trong</h3>
-                  <ul className="mt-2 space-y-1">
+                <PanelSection title="Được nhắc trong" label="Được nhắc trong">
+                  <ul className="space-y-1">
                     {mentions.map((a) => (
                       <li key={a.id}>
                         <Link href={`/su-ky/${a.slug}`} className="text-sm text-primary underline">
@@ -1255,47 +1258,48 @@ export function MemberDetailPanel({
                       </li>
                     ))}
                   </ul>
-                </section>
+                </PanelSection>
               )}
 
-              {ancestors.length > 0 && (
-                <section className="mt-6">
-                  <h3 className="text-[11px] font-semibold uppercase tracking-wider text-muted">Dòng tổ tiên</h3>
-                  <p className="mt-2 text-xs leading-5 text-muted">{ancestors.join(' → ')}</p>
-                  <button type="button" onClick={onViewAncestors} className={`${ghostButton} mt-1 -ms-2`}>
-                    Xem tổ tiên 4 đời
-                  </button>
-                </section>
-              )}
+              <PanelSection title="Họ hàng" label="Họ hàng và nhánh">
+                {ancestors.length > 0 && (
+                  <div className="mb-3">
+                    <p className="text-sm font-medium text-default">Dòng tổ tiên</p>
+                    <p className="mt-1 text-sm leading-6 text-muted">{ancestors.join(' → ')}</p>
+                    <button type="button" onClick={onViewAncestors} className={`${outlineButton} mt-2`}>
+                      Xem tổ tiên 4 đời
+                    </button>
+                  </div>
+                )}
+                <button type="button" onClick={() => setShowRelationship(true)} className={outlineButton}>
+                  Xem quan hệ họ hàng…
+                </button>
+              </PanelSection>
 
-              <section className="mt-6" aria-label="Họ hàng và nhánh">
-                <h3 className="text-[11px] font-semibold uppercase tracking-wider text-muted">Họ hàng</h3>
-                <div className="mt-1 flex flex-wrap gap-x-2">
-                  <button type="button" onClick={() => setShowRelationship(true)} className={`${ghostButton} -ms-2`}>
-                    Xem quan hệ họ hàng…
-                  </button>
-                  {onViewBranch && childMembers.length > 0 && (
-                    <button type="button" onClick={onViewBranch} className={ghostButton}>
+              {((onViewBranch && childMembers.length > 0) || canEdit) && (
+                <div className="mt-6 flex items-center justify-between gap-x-3 border-t border-[var(--color-border)] pt-5">
+                  {onViewBranch && childMembers.length > 0 ? (
+                    <button type="button" onClick={onViewBranch} className={outlineButton}>
                       Xem riêng nhánh này
+                    </button>
+                  ) : (
+                    <span />
+                  )}
+                  {canEdit && (
+                    <button type="button" onClick={handleDelete} disabled={isSubmitting} className={dangerOutlineButton}>
+                      Xoá thành viên
                     </button>
                   )}
                 </div>
-              </section>
-
-              {canEdit && (
-                <button type="button" onClick={handleDelete} disabled={isSubmitting} className={`${dangerButton} mt-6 -ms-2`}>
-                  Xoá thành viên
-                </button>
               )}
             </>
           )}
 
           {tab === 'family' && (
             <>
-              <section>
-                <h3 className="text-[11px] font-semibold uppercase tracking-wider text-muted">Vợ/chồng ({spouses.length})</h3>
-                {isDetailLoading && <p className="mt-2 text-sm text-muted">Đang tải...</p>}
-                {detailLoadError && <p className="mt-2 text-sm text-muted">Không thể tải.</p>}
+              <PanelSection title={`Vợ/chồng (${spouses.length})`} first>
+                {isDetailLoading && <p className="text-sm text-muted">Đang tải...</p>}
+                {detailLoadError && <p className="text-sm text-muted">Không thể tải.</p>}
                 {detailReady && spouses.length > 0 && (
                   <ul className="mt-2 space-y-3">
                     {spouses.map((spouse) =>
@@ -1395,14 +1399,13 @@ export function MemberDetailPanel({
                   </ul>
                 )}
                 {detailReady && canEdit && (
-                  <div className="mt-3 flex flex-wrap items-center gap-2">
+                  <div className="mt-3 flex items-center gap-x-2">
                     <input
-                      ref={spouseInputRef}
                       value={newSpouseName}
                       onChange={(e) => setNewSpouseName(e.target.value)}
                       placeholder="Tên vợ/chồng..."
                       aria-label="Tên vợ/chồng mới"
-                      className={`${fieldClass} min-w-40 flex-1`}
+                      className={`${fieldClass} min-w-0 flex-1`}
                     />
                     <input
                       type="number"
@@ -1410,17 +1413,16 @@ export function MemberDetailPanel({
                       onChange={(e) => setNewSpouseMarriageYear(e.target.value)}
                       placeholder="Năm cưới"
                       aria-label="Năm cưới"
-                      className={`${fieldClass} w-28 shrink-0`}
+                      className={`${fieldClass} w-24! shrink-0 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none`}
                     />
                     <button type="button" onClick={handleAddSpouse} disabled={isSubmitting || !newSpouseName.trim()} className={primaryButton}>
                       Thêm
                     </button>
                   </div>
                 )}
-              </section>
+              </PanelSection>
 
-              <section className="mt-6">
-                <h3 className="text-[11px] font-semibold uppercase tracking-wider text-muted">Con ({childMembers.length})</h3>
+              <PanelSection title={`Con (${childMembers.length})`}>
                 {childMembers.length > 0 && (
                   <ul className="mt-2 space-y-1">
                     {childMembers.map((child) => (
@@ -1439,7 +1441,6 @@ export function MemberDetailPanel({
                 {canEdit && (
                   <div className="mt-3 flex items-center gap-x-2">
                     <input
-                      ref={childInputRef}
                       value={newChildName}
                       onChange={(e) => setNewChildName(e.target.value)}
                       placeholder="Tên con mới..."
@@ -1447,14 +1448,14 @@ export function MemberDetailPanel({
                       className={`${fieldClass} min-w-0 flex-1`}
                     />
                     <button type="button" onClick={handleAddChild} disabled={isSubmitting || !newChildName.trim()} className={primaryButton}>
-                      Thêm con
+                      Thêm
                     </button>
                   </div>
                 )}
                 {canEdit && wordHint(poem, generation + 1) && (
                   <p className="mt-1 text-xs text-muted">{wordHint(poem, generation + 1)}</p>
                 )}
-              </section>
+              </PanelSection>
             </>
           )}
         </div>

@@ -9,13 +9,16 @@ export function UploadButton({
   busy,
   accept = ACCEPT_ATTRIBUTE,
   label = 'Thêm ảnh hoặc tài liệu',
-  hint = 'Ảnh JPEG, PNG, WebP hoặc PDF, tối đa 10 MB mỗi file.',
+  hint,
+  compact = false,
 }: {
   onFiles: (files: File[]) => void;
   busy: boolean;
   accept?: string;
   label?: string;
   hint?: string;
+  /** A small centred button with one short line under it (inside a tinted box), instead of the full-width dashed drop box. */
+  compact?: boolean;
 }) {
   const input = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
@@ -26,6 +29,26 @@ export function UploadButton({
     if (input.current) input.current.value = '';
   }
 
+  const note = hint ?? (compact ? 'JPEG, PNG, WebP hoặc PDF · tối đa 10 MB' : 'Ảnh JPEG, PNG, WebP hoặc PDF, tối đa 10 MB mỗi file.');
+  if (compact) {
+    return (
+      <div className="flex flex-col items-center text-center">
+        <input ref={input} type="file" multiple accept={accept} hidden tabIndex={-1} aria-hidden="true" onChange={(event) => pick(event.target.files)} />
+        <button
+          type="button"
+          disabled={busy}
+          onClick={() => input.current?.click()}
+          className="flex min-h-11 items-center justify-center gap-2 rounded-lg bg-primary px-4 text-sm font-medium text-on-primary hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)] disabled:opacity-50"
+        >
+          <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M12 16V4M6 10l6-6 6 6M4 20h16" />
+          </svg>
+          {busy ? 'Đang tải lên…' : label}
+        </button>
+        <p className="mt-1 text-sm text-muted">{note}</p>
+      </div>
+    );
+  }
   return (
     <div
       onDragOver={(event) => {
@@ -53,7 +76,7 @@ export function UploadButton({
         {busy ? 'Đang tải lên…' : label}
       </button>
       <p className="mt-2 text-sm text-muted">
-        {hint} Có thể chọn nhiều file một lúc<span className="hidden md:inline"> hoặc kéo thả vào khung này</span>.
+        {note} Có thể chọn nhiều file một lúc<span className="hidden md:inline"> hoặc kéo thả vào khung này</span>.
       </p>
     </div>
   );
