@@ -3,29 +3,28 @@
 import type { HierarchyPointNode } from 'd3-hierarchy';
 import dynamic from 'next/dynamic';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import {
-  MemberDetailPanel,
-  type AvatarUploadResult,
-  type MemberUpdateInput,
-  type MutationResult,
-  type PanelProfile,
-  type PanelSpouse,
-  type SpouseAddInput,
-  type SpouseUpdateInput,
-} from '@/components/tree/MemberDetailPanel';
+import { MemberDetailPanel, type PanelMe } from '@/components/tree/MemberDetailPanel';
 import { BranchChips } from '@/components/tree/BranchChips';
-import type { PanelMe } from '@/components/tree/MemberDetailPanel';
 import { GenerationFilterBar } from '@/components/tree/GenerationFilterBar';
 import { MemberCard } from '@/components/tree/MemberCard';
 import { StatusStrip } from '@/components/tree/StatusStrip';
 import { UpcomingStrip } from '@/components/tree/UpcomingStrip';
-import type { TreeCanvasHandle, VisibleChange } from '@/components/tree/TreeCanvas';
+import type { TreeCanvasHandle } from '@/components/tree/TreeCanvas';
 import { ExportDialog } from '@/components/tree/ExportDialog';
 import { ViewportControls } from '@/components/tree/ViewportControls';
-import { assignBranches, type Branch, type BranchRef } from '@/lib/branches/branches';
-import type { Orientation } from '@/lib/tree/layout';
-import { idsNeedingDetail } from '@/lib/tree/detail-cache';
-import { pickIdsToFetch } from '@/lib/tree/detail-queue';
+import {
+  DETAIL_RADIUS,
+  INITIAL_ZOOM,
+  NODE_SIZE,
+  NODE_SIZE_HORIZONTAL,
+  SCALE_EXTENT,
+  SEPARATION,
+} from '@/components/tree/genealogy-tree/constants';
+import { loadingMember, withDetail, type SelectedMember } from '@/components/tree/genealogy-tree/selectedMember';
+import { useMemberDetails } from '@/components/tree/genealogy-tree/useMemberDetails';
+import { useMemberMutations } from '@/components/tree/genealogy-tree/useMemberMutations';
+import { useOrientation } from '@/components/tree/genealogy-tree/useOrientation';
+import { assignBranches, type Branch } from '@/lib/branches/branches';
 import { collapsedIdsForDepth, expandPathTo } from '@/lib/tree/expansion';
 import {
   deepestShownGeneration,
@@ -41,9 +40,7 @@ import { computeDetailSet } from '@/lib/tree/lod';
 import { lifespanLabel, memberStatus } from '@/lib/tree/member-status';
 import type { ZoomLevel } from '@/lib/tree/zoom';
 import { findAncestorChainById, getMemberAtPath, getReparentCandidates } from '@/lib/tree/search';
-import { profileToPayload, toPanelProfile } from '@/lib/tree/profile';
-import { EMPTY_API_PROFILE } from '@/lib/tree/types';
-import type { FamilyMember, Gender, MemberDetail, RestingPlace, Spouse } from '@/lib/tree/types';
+import type { FamilyMember } from '@/lib/tree/types';
 
 const TreeCanvas = dynamic(() => import('@/components/tree/TreeCanvas'), { ssr: false });
 
@@ -52,55 +49,6 @@ export type FocusRequest = {
   name: string;
   token: number;
 };
-
-type SelectedMember = {
-  id: number;
-  parentId: number | null;
-  name: string;
-  generation: number;
-  ancestorPath: string[];
-  childrenNames: string[];
-  birthYear: number | null;
-  deathYear: number | null;
-  gender: Gender | null;
-  notes: string | null;
-  avatarUrl: string | null;
-  profile: PanelProfile;
-  siblingRank: string | null;
-  branch: BranchRef | null;
-  restingPlace: RestingPlace | null;
-  /** The father's recorded spouses: the choices for "Mẹ". */
-  motherOptions: { id: number; name: string }[];
-  spouses: PanelSpouse[];
-  isDetailLoading: boolean;
-  detailLoadError: boolean;
-};
-
-const EMPTY_PROFILE: PanelProfile = toPanelProfile(EMPTY_API_PROFILE);
-
-function toPanelSpouses(spouses: Spouse[] | undefined): PanelSpouse[] {
-  return (spouses ?? []).map((spouse) => ({
-    marriageId: spouse.marriage_id,
-    spouseId: spouse.id,
-    name: spouse.full_name,
-    birthYear: spouse.birth_year,
-    deathYear: spouse.death_year,
-    gender: spouse.gender,
-    notes: spouse.notes,
-    marriageYear: spouse.marriage_year,
-  }));
-}
-
-// Slot sized for the detailed card (240x110): siblings 272px apart = card + 32px gap,
-// generations 206px apart = card + 96px gap. Never changes with zoom level.
-// (lateral, depth). Turned a quarter (horizontal) the same cards need 240+96 px per generation and 110+26 px per sibling.
-const NODE_SIZE = { x: 272, y: 206 };
-const NODE_SIZE_HORIZONTAL = { x: 136, y: 336 };
-const ORIENTATION_KEY = 'genealogy.tree.orientation';
-const SEPARATION = { siblings: 1, nonSiblings: 1.25 };
-const INITIAL_ZOOM = 0.9;
-const SCALE_EXTENT = { min: 0.15, max: 2.5 };
-const DETAIL_RADIUS = 3;
 
 export type GenealogyTreeProps = {
   familyTree: FamilyMember;
@@ -151,23 +99,7 @@ export default function GenealogyTree({
   }, [familyTree, displayRoot]);
   const [highlightedId, setHighlightedId] = useState<number | null>(null);
   const [exporting, setExporting] = useState(false);
-  const [orientation, setOrientation] = useState<Orientation>('vertical');
-  useEffect(() => {
-    try {
-      if (window.localStorage.getItem(ORIENTATION_KEY) === 'horizontal') setOrientation('horizontal');
-    } catch {
-      // storage can be blocked: the default is fine
-    }
-  }, []);
-  function toggleOrientation() {
-    const next: Orientation = orientation === 'vertical' ? 'horizontal' : 'vertical';
-    setOrientation(next);
-    try {
-      window.localStorage.setItem(ORIENTATION_KEY, next);
-    } catch {
-      // not remembered, still works
-    }
-  }
+  const [orientation, toggleOrientation] = useOrientation();
   const [selectedMember, setSelectedMember] = useState<SelectedMember | null>(null);
   const [focalId, setFocalId] = useState<number | null>(null);
   const detailSet = useMemo(
@@ -175,102 +107,8 @@ export default function GenealogyTree({
       familyTree ? computeDetailSet(familyTree, focalId ?? familyTree.id ?? -1, DETAIL_RADIUS) : new Set<number>(),
     [familyTree, focalId]
   );
-  const [detailsById, setDetailsById] = useState<Map<number, MemberDetail>>(new Map());
-  // Tracks in-flight/completed fetch attempts (including failures, cached as a resolved
-  // null) so the LOD-driven prefetch effect and a panel click never issue two requests for
-  // the same id, and so a failed fetch doesn't silently retry itself.
-  const detailFetches = useRef<Map<number, Promise<MemberDetail | null>>>(new Map());
-  const failedDetailIds = useRef<Set<number>>(new Set());
-  const [, setFailedTick] = useState(0);
-  const inflightDetails = useRef(0);
-  const lastVisible = useRef<VisibleChange | null>(null);
-  const pumpDetailFetches = useRef<() => void>(() => {});
-  // Focal-radius members wanted by the LOD set; fetched through the same limiter as visible ones.
-  const focalIds = useRef<number[]>([]);
-
-  function ensureMemberDetail(id: number): Promise<MemberDetail | null> {
-    const existing = detailFetches.current.get(id);
-    if (existing) return existing;
-    const promise = fetch(`/api/members/${id}`, { credentials: 'include' })
-      .then((res) => (res.ok ? (res.json() as Promise<MemberDetail>) : null))
-      .then((detail) => {
-        if (detail) {
-          setDetailsById((prev) => new Map(prev).set(id, detail));
-        } else {
-          failedDetailIds.current.add(id);
-          setFailedTick((tick) => tick + 1);
-        }
-        return detail;
-      })
-      .catch(() => {
-        failedDetailIds.current.add(id);
-        setFailedTick((tick) => tick + 1);
-        return null;
-      });
-    detailFetches.current.set(id, promise);
-    return promise;
-  }
-
-  function patchMemberDetail(id: number, patch: Partial<Omit<MemberDetail, 'id'>>) {
-    setDetailsById((prev) => {
-      const next = new Map(prev);
-      const existing: MemberDetail = next.get(id) ?? {
-        id,
-        birth_year: null,
-        death_year: null,
-        gender: null,
-        notes: null,
-        avatar_url: null,
-        ...EMPTY_API_PROFILE,
-        sibling_rank: null,
-        spouses: [],
-      };
-      next.set(id, { ...existing, ...patch });
-      return next;
-    });
-  }
-
-  // Sibling ranks (Trưởng/Thứ/Út) depend on other members, so after an edit that can change them
-  // (a year/gender change, adding, deleting or moving a member) re-request details. The old data
-  // stays on screen until the fresh response replaces it.
-  function refetchDetails(alsoMemberId?: number) {
-    detailFetches.current.clear();
-    failedDetailIds.current.clear();
-    if (alsoMemberId !== undefined) void ensureMemberDetail(alsoMemberId);
-    pumpDetailFetches.current();
-  }
-
-  pumpDetailFetches.current = () => {
-    if (synthetic) return;
-    const change = lastVisible.current;
-    const center = change?.center ?? { x: 0, y: 0 };
-    // Focal members sit at the centre (distance 0) so they go first; visible ones follow nearest-first.
-    // The dot level never fetches visible members, only the focal set.
-    const candidates = [
-      ...focalIds.current.map((id) => ({ id, x: center.x, y: center.y })),
-      ...(change && change.level !== 'dot' ? change.nodes : []),
-    ];
-    pickIdsToFetch(candidates, center, detailFetches.current, inflightDetails.current).forEach((id) => {
-      inflightDetails.current += 1;
-      void ensureMemberDetail(id).finally(() => {
-        inflightDetails.current -= 1;
-        pumpDetailFetches.current();
-      });
-    });
-  };
-  const handleVisibleChange = useCallback((change: VisibleChange) => {
-    lastVisible.current = change;
-    pumpDetailFetches.current();
-  }, []);
-
-  useEffect(() => {
-    if (synthetic) return;
-    focalIds.current = idsNeedingDetail(detailSet, detailsById);
-    pumpDetailFetches.current();
-    // detailsById intentionally excluded: the pump skips anything already requested, so this
-    // only needs to re-scan when detailSet changes.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [detailSet]);
+  const { detailsById, ensureMemberDetail, patchMemberDetail, refetchDetails, forgetFetch, handleVisibleChange, hasFailed } =
+    useMemberDetails(detailSet, synthetic);
 
   useEffect(() => {
     if (!selectedMember) return;
@@ -346,53 +184,16 @@ export default function GenealogyTree({
     ancestorPath: string[],
     childrenNames: string[]
   ) {
-    setSelectedMember({
-      id,
-      parentId,
-      name,
-      generation: ancestorPath.length,
-      ancestorPath,
-      childrenNames,
-      birthYear: null,
-      deathYear: null,
-      gender: null,
-      notes: null,
-      avatarUrl: null,
-      profile: EMPTY_PROFILE,
-      siblingRank: null,
-      branch: null,
-      restingPlace: null,
-      motherOptions: [],
-      spouses: [],
-      isDetailLoading: true,
-      detailLoadError: false,
-    });
+    setSelectedMember(loadingMember(id, parentId, name, ancestorPath, childrenNames));
     const detail = await ensureMemberDetail(id);
-    setSelectedMember((prev) => {
-      if (!prev || prev.id !== id) return prev;
-      if (!detail) return { ...prev, isDetailLoading: false, detailLoadError: true };
-      return {
-        ...prev,
-        isDetailLoading: false,
-        detailLoadError: false,
-        birthYear: detail.birth_year,
-        deathYear: detail.death_year,
-        gender: detail.gender,
-        notes: detail.notes,
-        avatarUrl: detail.avatar_url,
-        profile: toPanelProfile(detail),
-        siblingRank: detail.sibling_rank,
-        branch: detail.branch ?? null,
-        restingPlace: detail.resting_place ?? null,
-        spouses: toPanelSpouses(detail.spouses),
-      };
-    });
+    setSelectedMember((prev) => (!prev || prev.id !== id ? prev : withDetail(prev, detail)));
     if (detail && parentId !== null) {
       const father = await ensureMemberDetail(parentId);
       const options = (father?.spouses ?? []).map((spouse) => ({ id: spouse.id, name: spouse.full_name }));
       setSelectedMember((prev) => (prev && prev.id === id ? { ...prev, motherOptions: options } : prev));
     }
   }
+
 
   // Resolves the path from the real root (not the ancestor-view root) so the name-based
   // lookups in handleSelectChild keep working while the ancestor view is active.
@@ -440,8 +241,7 @@ export default function GenealogyTree({
 
   function handleRetryLoadDetail() {
     if (!selectedMember) return;
-    detailFetches.current.delete(selectedMember.id);
-    failedDetailIds.current.delete(selectedMember.id);
+    forgetFetch(selectedMember.id);
     void openMemberDetail(
       selectedMember.id,
       selectedMember.parentId,
@@ -451,296 +251,31 @@ export default function GenealogyTree({
     );
   }
 
-  async function handleUpdateMember(input: MemberUpdateInput): Promise<MutationResult> {
-    if (!selectedMember) return { ok: false, error: 'Không tìm thấy thành viên.' };
-    try {
-      const response = await fetch(`/api/members/${selectedMember.id}`, {
-        method: 'PUT',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          full_name: input.name,
-          parent_id: input.parentId,
-          birth_year: input.birthYear,
-          death_year: input.deathYear,
-          gender: input.gender,
-          notes: input.notes,
-          ...profileToPayload(input),
-        }),
-      });
-      if (!response.ok) {
-        if (response.status === 400) {
-          return { ok: false, error: 'Không thể lưu: cha/mẹ không hợp lệ (vòng lặp trong cây, hoặc mẹ không phải vợ của cha).' };
-        }
-        if (response.status === 422) {
-          return { ok: false, error: 'Dữ liệu chưa hợp lệ: kiểm tra ngày tháng, điện thoại, email.' };
-        }
-        return { ok: false, error: 'Không thể lưu. Vui lòng thử lại.' };
-      }
-
-      // the server may derive the burial position from the Google Maps link, so take those fields from its answer
-      const saved = (await response.json().catch(() => null)) as {
-        burial_latitude?: number | null;
-        burial_longitude?: number | null;
-        burial_map_url?: string | null;
-      } | null;
-      const savedProfile = {
-        ...profileToPayload(input),
-        ...(saved
-          ? {
-              burial_latitude: saved.burial_latitude ?? null,
-              burial_longitude: saved.burial_longitude ?? null,
-              burial_map_url: saved.burial_map_url ?? null,
-            }
-          : {}),
-      };
-      patchMemberDetail(selectedMember.id, {
-        birth_year: input.birthYear,
-        death_year: input.deathYear,
-        gender: input.gender,
-        notes: input.notes,
-        ...savedProfile,
-      });
-
-      if (input.parentId !== selectedMember.parentId) {
-        // Re-parenting changes this member's position in the tree, so ancestorPath and
-        // generation would be stale if the panel stayed open - close it instead and let
-        // onDataChanged()'s refetch reflect the new structure the next time it's opened.
-        setSelectedMember(null);
-        refetchDetails();
-        onDataChanged();
-        return { ok: true };
-      }
-
-      // ancestorPath's last entry is this member's own (old) name - update it too, or
-      // handleSelectChild's name-based path lookup would silently fail for any child
-      // navigated to after a rename.
-      const newAncestorPath = [...selectedMember.ancestorPath.slice(0, -1), input.name];
-      setSelectedMember((prev) =>
-        prev
-          ? {
-              ...prev,
-              name: input.name,
-              ancestorPath: newAncestorPath,
-              birthYear: input.birthYear,
-              deathYear: input.deathYear,
-              gender: input.gender,
-              notes: input.notes,
-              profile: toPanelProfile(savedProfile),
-            }
-          : prev
-      );
-      refetchDetails(selectedMember.id);
-      onDataChanged();
-      return { ok: true };
-    } catch {
-      return { ok: false, error: 'Không thể kết nối tới máy chủ.' };
-    }
-  }
-
-  async function handleAddChildMember(childName: string): Promise<MutationResult> {
-    if (!selectedMember) return { ok: false, error: 'Không tìm thấy thành viên.' };
-    try {
-      const response = await fetch('/api/members', {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ full_name: childName, parent_id: selectedMember.id }),
-      });
-      if (!response.ok) return { ok: false, error: 'Không thể thêm. Vui lòng thử lại.' };
-      setSelectedMember((prev) =>
-        prev ? { ...prev, childrenNames: [...prev.childrenNames, childName] } : prev
-      );
-      const parentId = selectedMember.id;
-      setCollapsedIds((prev) => {
-        if (!prev.has(parentId)) return prev;
-        const next = new Set(prev);
-        next.delete(parentId);
-        return next;
-      });
-      refetchDetails(selectedMember.id);
-      onDataChanged();
-      return { ok: true };
-    } catch {
-      return { ok: false, error: 'Không thể kết nối tới máy chủ.' };
-    }
-  }
-
-  async function handleDeleteMember(): Promise<MutationResult> {
-    if (!selectedMember) return { ok: false, error: 'Không tìm thấy thành viên.' };
-    try {
-      const response = await fetch(`/api/members/${selectedMember.id}`, {
-        method: 'DELETE',
-        credentials: 'include',
-      });
-      if (response.status === 409) {
-        return { ok: false, error: 'Không thể xoá vì còn con. Hãy xoá hoặc chuyển con trước.' };
-      }
-      if (!response.ok) return { ok: false, error: 'Không thể xoá. Vui lòng thử lại.' };
-      setSelectedMember(null);
-      refetchDetails();
-      onDataChanged();
-      return { ok: true };
-    } catch {
-      return { ok: false, error: 'Không thể kết nối tới máy chủ.' };
-    }
-  }
-
-  async function handleAddSpouse(input: SpouseAddInput): Promise<MutationResult> {
-    if (!selectedMember) return { ok: false, error: 'Không tìm thấy thành viên.' };
-    try {
-      const response = await fetch(`/api/members/${selectedMember.id}/marriages`, {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ spouse_full_name: input.name, marriage_year: input.marriageYear }),
-      });
-      if (!response.ok) return { ok: false, error: 'Không thể thêm. Vui lòng thử lại.' };
-      const body: Spouse = await response.json();
-      setSelectedMember((prev) =>
-        prev ? { ...prev, spouses: [...prev.spouses, ...toPanelSpouses([body])] } : prev
-      );
-      patchMemberDetail(selectedMember.id, {
-        spouses: [...(detailsById.get(selectedMember.id)?.spouses ?? []), body],
-      });
-      onDataChanged();
-      return { ok: true };
-    } catch {
-      return { ok: false, error: 'Không thể kết nối tới máy chủ.' };
-    }
-  }
-
-  async function handleUpdateSpouse(
-    marriageId: number,
-    input: SpouseUpdateInput
-  ): Promise<MutationResult> {
-    if (!selectedMember) return { ok: false, error: 'Không tìm thấy thành viên.' };
-    try {
-      const response = await fetch(`/api/members/marriages/${marriageId}`, {
-        method: 'PUT',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          spouse_full_name: input.name,
-          spouse_birth_year: input.birthYear,
-          spouse_death_year: input.deathYear,
-          spouse_gender: input.gender,
-          spouse_notes: input.notes,
-          marriage_year: input.marriageYear,
-        }),
-      });
-      if (!response.ok) return { ok: false, error: 'Không thể lưu. Vui lòng thử lại.' };
-      setSelectedMember((prev) =>
-        prev
-          ? {
-              ...prev,
-              spouses: prev.spouses.map((spouse) =>
-                spouse.marriageId === marriageId
-                  ? {
-                      ...spouse,
-                      name: input.name,
-                      birthYear: input.birthYear,
-                      deathYear: input.deathYear,
-                      gender: input.gender,
-                      notes: input.notes,
-                      marriageYear: input.marriageYear,
-                    }
-                  : spouse
-              ),
-            }
-          : prev
-      );
-      patchMemberDetail(selectedMember.id, {
-        spouses: (detailsById.get(selectedMember.id)?.spouses ?? []).map((spouse) =>
-          spouse.marriage_id === marriageId
-            ? {
-                ...spouse,
-                full_name: input.name,
-                birth_year: input.birthYear,
-                death_year: input.deathYear,
-                gender: input.gender,
-                notes: input.notes,
-                marriage_year: input.marriageYear,
-              }
-            : spouse
-        ),
-      });
-      onDataChanged();
-      return { ok: true };
-    } catch {
-      return { ok: false, error: 'Không thể kết nối tới máy chủ.' };
-    }
-  }
-
-  async function handleDeleteSpouse(spouseId: number): Promise<MutationResult> {
-    if (!selectedMember) return { ok: false, error: 'Không tìm thấy thành viên.' };
-    try {
-      const response = await fetch(`/api/members/${spouseId}`, {
-        method: 'DELETE',
-        credentials: 'include',
-      });
-      if (!response.ok) return { ok: false, error: 'Không thể xoá. Vui lòng thử lại.' };
-      setSelectedMember((prev) =>
-        prev
-          ? { ...prev, spouses: prev.spouses.filter((spouse) => spouse.spouseId !== spouseId) }
-          : prev
-      );
-      patchMemberDetail(selectedMember.id, {
-        spouses: (detailsById.get(selectedMember.id)?.spouses ?? []).filter(
-          (spouse) => spouse.id !== spouseId
-        ),
-      });
-      onDataChanged();
-      return { ok: true };
-    } catch {
-      return { ok: false, error: 'Không thể kết nối tới máy chủ.' };
-    }
-  }
-
-  async function handleUploadAvatar(file: File): Promise<AvatarUploadResult> {
-    if (!selectedMember) return { ok: false, error: 'Không tìm thấy thành viên.' };
-    try {
-      const formData = new FormData();
-      formData.append('file', file);
-      const response = await fetch(`/api/members/${selectedMember.id}/avatar`, {
-        method: 'POST',
-        credentials: 'include',
-        body: formData,
-      });
-      if (!response.ok) return { ok: false, error: 'Không thể tải ảnh lên. Vui lòng thử lại.' };
-      const body: { avatar_url: string } = await response.json();
-      setSelectedMember((prev) => (prev ? { ...prev, avatarUrl: body.avatar_url } : prev));
-      patchMemberDetail(selectedMember.id, { avatar_url: body.avatar_url });
-      onDataChanged();
-      return { ok: true, avatarUrl: body.avatar_url };
-    } catch {
-      return { ok: false, error: 'Không thể kết nối tới máy chủ.' };
-    }
-  }
-
-  async function handleDeleteAvatar(): Promise<MutationResult> {
-    if (!selectedMember) return { ok: false, error: 'Không tìm thấy thành viên.' };
-    try {
-      const response = await fetch(`/api/members/${selectedMember.id}/avatar`, {
-        method: 'DELETE',
-        credentials: 'include',
-      });
-      if (!response.ok) return { ok: false, error: 'Không thể xoá ảnh. Vui lòng thử lại.' };
-      setSelectedMember((prev) => (prev ? { ...prev, avatarUrl: null } : prev));
-      patchMemberDetail(selectedMember.id, { avatar_url: null });
-      onDataChanged();
-      return { ok: true };
-    } catch {
-      return { ok: false, error: 'Không thể kết nối tới máy chủ.' };
-    }
-  }
+  const {
+    handleUpdateMember,
+    handleAddChildMember,
+    handleDeleteMember,
+    handleAddSpouse,
+    handleUpdateSpouse,
+    handleDeleteSpouse,
+    handleUploadAvatar,
+    handleDeleteAvatar,
+  } = useMemberMutations({
+    selectedMember,
+    setSelectedMember,
+    setCollapsedIds,
+    detailsById,
+    patchMemberDetail,
+    refetchDetails,
+    onDataChanged,
+  });
 
   function renderNode(node: HierarchyPointNode<FamilyMember>, level: ZoomLevel) {
     const id = node.data.id ?? -1;
     const detail = detailsById.get(id);
     const childCount = node.data.children?.length ?? 0;
     const isCollapsed = collapsedIds.has(id);
-    const detailState = detail ? 'loaded' : synthetic || failedDetailIds.current.has(id) ? 'failed' : 'loading';
+    const detailState = detail ? 'loaded' : synthetic || hasFailed(id) ? 'failed' : 'loading';
     const birthYear = detail?.birth_year ?? null;
     const deathYear = detail?.death_year ?? null;
     const spouses = detail?.spouses ?? [];

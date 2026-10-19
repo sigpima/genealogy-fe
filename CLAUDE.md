@@ -71,9 +71,9 @@ computed from the *old* position; closing the panel and letting the
 next click re-derive them from the refetched tree avoids reintroducing
 the same class of staleness bug already documented below for renames.
 
-**Spouses (`MemberDetailPanel`'s "Vợ/chồng" section)** — a member can
+**Spouses (`MemberDetailPanel`'s "Vợ/chồng" section, `member-panel/SpousesSection.tsx`)** — a member can
 have zero or more spouses (`PanelSpouse[]`, converted in
-`components/tree/GenealogyTree.tsx`'s `toPanelSpouses` from the API's snake_case
+`components/tree/genealogy-tree/selectedMember.ts`'s `toPanelSpouses` from the API's snake_case
 `Spouse` shape). Each row has its own inline edit mode (name, birth
 year, death year, gender, notes, marriage year — one `SpouseDraft` per
 row, only one row editable at a time) submitted as a single `PUT
@@ -87,7 +87,7 @@ this panel.
 
 **Avatars** — the detailed `MemberCard` (`src/components/tree/MemberCard.tsx`)
 draws a circular portrait (SVG `<clipPath>` + `<image>`) when `avatar_url`
-is present, or a circle with the member's first initial otherwise; `MemberDetailPanel`'s `AvatarOrInitial` helper
+is present, or a circle with the member's first initial otherwise; `member-panel/PanelParts.tsx`'s `AvatarOrInitial` helper
 does the same at a larger size for the display/edit views. The upload
 flow is bundled into the existing "Sửa" form rather than being its own
 sub-form: picking a file only sets local state
@@ -98,8 +98,8 @@ first (`POST /api/members/{id}/avatar` as `multipart/form-data` if a
 new file was picked, or `DELETE /api/members/{id}/avatar` if "Xoá ảnh"
 was clicked with no replacement), and only then sends the normal JSON
 `PUT` for the other fields — the general member-update endpoint never
-carries the avatar. **All of `components/tree/GenealogyTree.tsx`'s mutation
-handlers that update `selectedMember` from its previous value use the
+carries the avatar. **All of the mutation handlers in `components/tree/genealogy-tree/useMemberMutations.ts`
+(called from `GenealogyTree`) that update `selectedMember` from its previous value use the
 functional `setSelectedMember((prev) => ...)` form, not
 `setSelectedMember({ ...selectedMember, ... })`** — this was a real bug
 (not just style): saving a new avatar and the text fields in the same
@@ -468,14 +468,20 @@ it now points at `/forgot-password`.
 
 ## Testing
 
-Vitest covers pure logic only (`src/lib/**/*.test.ts`) —
-`src/lib/tree/search.test.ts` runs in the default `node` environment;
-`src/lib/theme/storage.test.ts` needs `// @vitest-environment jsdom` (a
-per-file pragma) since it touches `window.localStorage`. There is no
-component/E2E test setup (no React Testing Library, no Playwright
-config) — UI and interaction behavior (theme switching, zoom/pan,
-expand/collapse, search-and-center, the detail panel) is verified by
-running `npm run dev` and checking it in a browser, not automated.
+Vitest covers pure logic only (`src/lib/**/*.test.ts`, plus the pure helpers next to the panel in
+`src/components/tree/member-panel/`) — `src/lib/tree/search.test.ts` runs in the default `node` environment;
+`src/lib/theme/storage.test.ts` needs `// @vitest-environment jsdom` (a per-file pragma) since it touches `window.localStorage`.
+Vitest has no `@/` alias: code under test imports its neighbours relatively. There is no component test setup (no React Testing Library);
+UI and interaction behaviour is covered by the browser suites in the repo's root `e2e/` (real Chromium against a throwaway stack;
+`../e2e/run.sh`, see `../e2e/README.md`). `../scripts/verify.sh` runs everything: api tests, `tsc`, lint, vitest, e2e.
+
+**Big components are split by job.** `components/tree/MemberDetailPanel.tsx` is the shell (header, tabs, dialogs); its parts live in
+`components/tree/member-panel/` (`EditProfileForm` owns every edit field and the portrait draft and is mounted only while editing;
+`SpousesSection` / `ChildrenSection` own their small forms; `ProfileInfoList`, `DateFields`, `PanelParts`; `draft.ts`, `profileInfo.ts`
+pure helpers; `usePanelBehavior.ts` Esc / focus trap / fetched lists; shared `run()` in the shell gives every mutation the busy flag and
+error line). `components/tree/GenealogyTree.tsx` is the canvas, view state and selection; `components/tree/genealogy-tree/` holds
+`useMemberDetails` (detail cache + prefetch pump), `useMemberMutations` (every API write of the open person), `selectedMember.ts`,
+`useOrientation`, `constants`.
 
 **GĐ10: export (backend: `../genealogy-api/docs/superpowers/specs/2026-10-19-gd10-export-design.md`)** — two things. (1) **"Xuất ảnh"** button in `ViewportControls` →
 `ExportDialog` (scope: whole tree / a chi / descendants of the person whose panel is open; generation cap; years toggle; PNG or one-page PDF). All client-side:
