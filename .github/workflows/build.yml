@@ -1,4 +1,4 @@
-# Builds the image and pushes it to GHCR as ghcr.io/<owner>/genealogy-web:sha-<commit> (+ latest on main).
+# Builds the image and pushes it to GHCR as ghcr.io/<owner>/genealogy-fe:sha-<commit> (+ latest on main).
 name: build
 on:
   push:
