@@ -63,8 +63,6 @@ jobs:
           # Đóng băng vào image lúc `next build` (rewrites); phải khớp tên service "api" trong docker-compose.
           build-args: |
             API_BASE_URL=http://api:8000
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
           provenance: false
 
       - name: Tóm tắt
