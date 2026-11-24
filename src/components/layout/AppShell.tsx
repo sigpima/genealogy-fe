@@ -3,7 +3,8 @@
 import { Header, type HeaderSearch } from './Header';
 import Sidebar, { type NavId } from './Sidebar';
 import { useState } from 'react';
-import { useFamilyName } from '@/components/layout/useFamilyName';
+import { DemoBanner } from '@/components/layout/DemoBanner';
+import { useFamilySite } from '@/components/layout/useFamilyName';
 import { canManage, type CurrentUser } from '@/lib/auth/session';
 
 export type AppShellProps = {
@@ -26,7 +27,7 @@ export function AppShell({
   children,
 }: AppShellProps) {
   const [menuOpen, setMenuOpen] = useState(false);
-  const familyName = useFamilyName(user);
+  const { familyName, treeSlug } = useFamilySite(user);
   return (
     <div className="flex h-screen">
       <Sidebar
@@ -39,6 +40,7 @@ export function AppShell({
         onMobileClose={() => setMenuOpen(false)}
       />
       <div className="flex flex-1 flex-col overflow-hidden">
+        <DemoBanner slug={treeSlug} />
         <Header
           familyName={title ?? familyName ?? 'Gia phả'}
           user={user}
